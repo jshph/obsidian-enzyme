@@ -1,0 +1,3 @@
+[submodule "src/obsidian-reason-core"]
+	path = src/obsidian-reason-core
+	url = ../obsidian-reason-core
