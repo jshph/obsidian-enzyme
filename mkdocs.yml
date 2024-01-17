@@ -1,4 +1,4 @@
-site_name: REASON
+site_name: Reason Docs
 site_author: Joshua Pham
 site_url: https://jshph.github.io/obsidian-reason/
 site_description: REASON - a plugin for Obsidian that Retrieves, Extracts, And Synthesizes Obsidian Notes.
@@ -23,8 +23,10 @@ theme:
     - navigation.top
 nav:
   - ✏️ Getting Started: index.md
+  - ⛏️ Extraction Strategies: extraction-strategies.md
+  - 💡 Examples: sample-aggregators.md
   - 🚧 Contributing: contributing/contributing.md
-  - Extraction Strategies: extraction-strategies.md
+
 markdown_extensions:
   - attr_list
   - md_in_html
