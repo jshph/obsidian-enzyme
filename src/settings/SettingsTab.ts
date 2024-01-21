@@ -71,8 +71,8 @@ export class SettingsTab extends PluginSettingTab {
           })
       })
       .addButton((button) => {
-        button.setButtonText('Validate').onClick(async () => {
-          if (await this.plugin.validateLicense()) {
+        button.setButtonText('Activate').onClick(async () => {
+          if (await this.plugin.activateLicense()) {
             new Notice('License key is valid!')
           } else {
             new Notice('License key is invalid!')

@@ -36,7 +36,7 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
   }): Promise<FileContents[]> {
     const dqlResults = await this.dataviewAPI.tryQuery(parameters.dql)
     const paths = dqlResults.values
-    const realPaths = paths.map((path: any) => path.path)
+    const realPaths = [...new Set(paths.map((path: any) => path.path))]
     const files = realPaths.map((path: string) =>
       this.app.metadataCache.getFirstLinkpathDest(path, '/')
     )

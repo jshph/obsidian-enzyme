@@ -23,6 +23,9 @@ dependencies:
   dedent-js:
     specifier: ^1.0.1
     version: 1.0.1
+  dotenv:
+    specifier: ^16.3.2
+    version: 16.3.2
   esbuild:
     specifier: 0.19.11
     version: 0.19.11
@@ -902,6 +905,11 @@ packages:
       esutils: 2.0.3
     dev: false
 
+  /dotenv@16.3.2:
+    resolution: {integrity: sha512-HTlk5nmhkm8F6JcdXvHIzaorzCoziNQT9mGxLPVXW8wJF1TiGSL60ZGB4gHWabHOaMmWmhvk2/lPHfnBiT78AQ==}
+    engines: {node: '>=12'}
+    dev: false
+
   /emoji-regex@10.3.0:
     resolution: {integrity: sha512-QpLs9D9v9kArv4lfDEgg1X/gN5XLnf/A6l9cs8SPZLRZR3ZkY9+kwIQTxm+fsSej5UMYGE8fdoaZVIBlqG0XTw==}
     dev: false
@@ -1464,7 +1472,7 @@ packages:
     resolution: {integrity: sha512-REKQtAuIOKDbvNH/th1C1gWmJWCP5tRn9T/mfZGZt4Zncgko7McXK0aSKFtEInipvgbZJ2nScivvyLdiWluSMw==}
     hasBin: true
     dependencies:
-      obsidian: github.com/obsidianmd/obsidian-api/bbb696aeb8bf5126bf2ecbf84fc8284fe133bc20(@codemirror/state@6.4.0)(@codemirror/view@6.23.0)
+      obsidian: github.com/obsidianmd/obsidian-api/da7309d0f22c073ca6eb0fe95c0eeee055a235a7(@codemirror/state@6.4.0)(@codemirror/view@6.23.0)
       tslib: 2.1.0
     transitivePeerDependencies:
       - '@codemirror/state'
@@ -1894,9 +1902,9 @@ packages:
       style-mod: 4.1.0
     dev: false
 
-  github.com/obsidianmd/obsidian-api/bbb696aeb8bf5126bf2ecbf84fc8284fe133bc20(@codemirror/state@6.4.0)(@codemirror/view@6.23.0):
-    resolution: {tarball: https://codeload.github.com/obsidianmd/obsidian-api/tar.gz/bbb696aeb8bf5126bf2ecbf84fc8284fe133bc20}
-    id: github.com/obsidianmd/obsidian-api/bbb696aeb8bf5126bf2ecbf84fc8284fe133bc20
+  github.com/obsidianmd/obsidian-api/da7309d0f22c073ca6eb0fe95c0eeee055a235a7(@codemirror/state@6.4.0)(@codemirror/view@6.23.0):
+    resolution: {tarball: https://codeload.github.com/obsidianmd/obsidian-api/tar.gz/da7309d0f22c073ca6eb0fe95c0eeee055a235a7}
+    id: github.com/obsidianmd/obsidian-api/da7309d0f22c073ca6eb0fe95c0eeee055a235a7
     name: obsidian
     version: 1.5.1
     peerDependencies:

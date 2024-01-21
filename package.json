@@ -1,11 +1,11 @@
 {
   "name": "obsidian-reason",
-  "version": "1.3.6",
+  "version": "0.0.1",
   "description": "Obsidian plugin to Retrieve, Extract, Analyze, and Synthesize Obsidian Notes",
   "main": "main.js",
   "scripts": {
-    "dev": "node esbuild.config.mjs",
-    "build": "node esbuild.config.mjs production",
+    "dev": "NODE_ENV=development node esbuild.config.mjs",
+    "build": "NODE_ENV=production node esbuild.config.mjs production",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": [],
@@ -17,6 +17,8 @@
     "@typescript-eslint/parser": "6.18.1",
     "builtin-modules": "3.3.0",
     "codemirror": "6.0.1",
+    "dedent-js": "^1.0.1",
+    "dotenv": "^16.3.2",
     "esbuild": "0.19.11",
     "esbuild-sass-plugin": "2.16.1",
     "eslint": "^8.50.0",
@@ -27,7 +29,6 @@
     "tslib": "2.4.0",
     "typescript": "4.7.4",
     "yaml": "^2.3.4",
-    "yarn": "^1.22.21",
-    "dedent-js": "^1.0.1"
+    "yarn": "^1.22.21"
   }
 }

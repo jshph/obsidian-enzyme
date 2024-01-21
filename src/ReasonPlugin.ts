@@ -7,7 +7,9 @@ import {
   ReasonAgent,
   CanvasLoader,
   RegistrationManager,
-  AIClient
+  AIClient,
+  SystemPrompts,
+  getSystemPrompts
 } from './obsidian-reason-core/notebook'
 import { SourceReasonNodeBuilder } from './reasonNode/SourceReasonNodeBuilder'
 import { AggregatorReasonNodeBuilder } from './reasonNode/AggregatorReasonNodeBuilder'
@@ -36,6 +38,11 @@ export class ReasonPlugin extends Plugin {
   async validateLicense(): Promise<boolean> {
     return await this.registrationManager.validateLicense()
   }
+
+  async activateLicense(): Promise<boolean> {
+    return await this.registrationManager.activateLicense()
+  }
+
   async openRegisterModal() {
     return await this.registrationManager.openRegisterModal()
   }
@@ -83,6 +90,8 @@ export class ReasonPlugin extends Plugin {
 
     this.initAIClient()
 
+    const prompts = await getSystemPrompts()
+
     this.reasonAgent = new ReasonAgent(
       this.registrationManager,
       this.app,
@@ -91,7 +100,8 @@ export class ReasonPlugin extends Plugin {
       this.candidateRetriever,
       () => (() => this.settings.models[this.settings.selectedModel].model)(),
       this.sourceReasonNodeBuilder,
-      this.aggregatorReasonNodeBuilder
+      this.aggregatorReasonNodeBuilder,
+      prompts
     )
 
     this.addSettingTab(new SettingsTab(this.app, this))

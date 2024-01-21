@@ -1,1 +1,1 @@
-See [jshph.github.io/obsidian-reason](https://jshph.github.io/obsidian-reason) for documentation!
+See [reason.garden/getting-started](https://www.reason.garden/getting-started) for documentation!
