@@ -18,7 +18,6 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const prod = process.argv[2] === 'production'
-console.log('Building for production:', prod)
 
 // Load environment variables
 dotenv.config({

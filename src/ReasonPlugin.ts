@@ -30,6 +30,7 @@ export class ReasonPlugin extends Plugin {
 
   constructor(app: App, pluginManifest: PluginManifest) {
     super(app, pluginManifest)
+    this.settings = DEFAULT_SETTINGS
     this.dataview = getAPI(this.app)
     this.registrationManager = new RegistrationManager(this.app)
     this.aiClient = new AIClient(this.registrationManager)
@@ -63,8 +64,8 @@ export class ReasonPlugin extends Plugin {
     return maybeCanvasView['canvas']
   }
 
-  initAIClient() {
-    this.aiClient.initAIClient(
+  async initAIClient() {
+    await this.aiClient.initAIClient(
       this.settings.models[this.settings.selectedModel]
     )
   }
@@ -88,7 +89,7 @@ export class ReasonPlugin extends Plugin {
 
     this.registrationManager.setLicense(this.settings.reasonLicenseKey)
 
-    this.initAIClient()
+    await this.initAIClient()
 
     const prompts = await getSystemPrompts()
 
@@ -99,6 +100,10 @@ export class ReasonPlugin extends Plugin {
       this.aiClient,
       this.candidateRetriever,
       () => (() => this.settings.models[this.settings.selectedModel].model)(),
+      () =>
+        (() =>
+          this.settings.models[this.settings.selectedModel].apiKey?.length >
+          0)(),
       this.sourceReasonNodeBuilder,
       this.aggregatorReasonNodeBuilder,
       prompts

@@ -26,7 +26,7 @@ export class SettingsTab extends PluginSettingTab {
         dropdown.onChange(async (value) => {
           this.plugin.settings.selectedModel = value
           await this.plugin.saveSettings()
-          this.plugin.initAIClient()
+          await this.plugin.initAIClient()
         })
       })
 
@@ -38,8 +38,12 @@ export class SettingsTab extends PluginSettingTab {
             DEFAULT_SETTINGS.models['GPT-3.5 Turbo'].apiKey
         )
         .onChange(async (value) => {
+          if (value === '') {
+            return
+          }
           this.plugin.settings.models['GPT-3.5 Turbo'].apiKey = value
           await this.plugin.saveSettings()
+          await this.plugin.initAIClient()
         })
     })
 
