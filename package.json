@@ -22,6 +22,7 @@
     "esbuild": "0.19.11",
     "esbuild-sass-plugin": "2.16.1",
     "eslint": "^8.50.0",
+    "node-machine-id": "^1.1.12",
     "obsidian": "^1.4.11",
     "obsidian-dataview": "latest",
     "openai": "^4.24.6",
