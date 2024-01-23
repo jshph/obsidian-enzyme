@@ -57,6 +57,7 @@ export class ExtractorDelegator extends BaseExtractor {
         )
       default:
         let rawContents = await this.app.vault.cachedRead(file)
+        rawContents = await this.replaceEmbeds(rawContents, metadata)
         rawContents = this.cleanContents(rawContents)
 
         let { substitutions, contents } = this.substituteBlockReferences(

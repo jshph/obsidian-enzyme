@@ -7,7 +7,7 @@ import {
   App
 } from 'obsidian'
 import * as _path from 'path'
-import { BlockRefSubstitution } from '../../obsidian-reason-core/src/types'
+import { BlockRefSubstitution } from '../../obsidian-reason-core'
 
 export type ParsedContent = {
   title: string

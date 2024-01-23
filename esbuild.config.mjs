@@ -68,12 +68,16 @@ function moveStylesPlugin() {
 }
 
 const context = await esbuild.context({
-  minify: true,
-  minifySyntax: true,
-  minifyWhitespace: true,
-  minifyIdentifiers: true,
-  mangleQuoted: true,
-  mangleProps: /^_\$/,
+  ...(prod
+    ? {
+        minify: true,
+        minifySyntax: true,
+        minifyWhitespace: true,
+        minifyIdentifiers: true,
+        mangleQuoted: true,
+        mangleProps: /^_\$/
+      }
+    : {}),
   platform: 'node',
   banner: {
     js: banner
