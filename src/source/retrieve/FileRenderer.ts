@@ -2,7 +2,7 @@ import { TFile, CachedMetadata, App } from 'obsidian'
 import { DataviewApi, getAPI } from 'obsidian-dataview'
 import { ExtractorDelegator } from '../extract/ExtractorDelegator'
 import { ReasonSettings } from '../../settings/ReasonSettings'
-import { BlockRefSubstitution } from '../../obsidian-reason-core/src/types'
+import { BlockRefSubstitution } from '../../obsidian-reason-core'
 
 export type FileContents = {
   title: string
@@ -49,6 +49,7 @@ export class FileRenderer {
       }
 
       let contentsDisplay = `## File: ${file.name}
+* Folder: ${file.path.substring(0, file.path.lastIndexOf('/'))}
 * Last modified date: ${contents.last_modified_date}${mainMarkerDisplay}
 
 ### Contents:
