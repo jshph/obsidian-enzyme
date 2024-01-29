@@ -96,7 +96,7 @@ export abstract class BaseExtractor {
       const metadata: CachedMetadata | null =
         this.app.metadataCache.getFileCache(tfile)
 
-      var fullContent = await this.app.vault.cachedRead(tfile)
+      let fullContent = await this.app.vault.cachedRead(tfile)
 
       if (pathOfEmbed.subpath && pathOfEmbed.subpath.startsWith('#^')) {
         const blockId: string = pathOfEmbed.subpath.substring(2)
