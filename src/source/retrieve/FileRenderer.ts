@@ -10,6 +10,10 @@ export type FileContents = {
 	substitutions: BlockRefSubstitution[]
 }
 
+/**
+ * The `FileRenderer` class manages the rendering of file contents.
+ * It provides methods to prepare the contents of a file for rendering, including metadata and content based on the specified strategy and evergreen status.
+ */
 export class FileRenderer {
 	dataviewAPI: DataviewApi
 	extractor: ExtractorDelegator
@@ -22,6 +26,16 @@ export class FileRenderer {
 		this.extractor = new ExtractorDelegator(app, this.dataviewAPI, settings)
 	}
 
+	/**
+	 * Prepares the contents of a file for rendering.
+	 * This method extracts relevant data from the file, including metadata and content based on the specified strategy and evergreen status.
+	 * It then formats this data into a structured object including the title, contents, and any block reference substitutions.
+	 *
+	 * @param file - The file to be processed.
+	 * @param strategy - The extraction strategy to be used (optional).
+	 * @param evergreen - The evergreen status to be considered (optional).
+	 * @returns A Promise that resolves to a FileContents object containing the prepared data.
+	 */
 	async prepareContents(
 		file: TFile,
 		strategy?: string,

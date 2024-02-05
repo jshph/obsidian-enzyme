@@ -7,7 +7,7 @@ import {
 } from './RankedSourceBuilder'
 import { Aggregator } from '../aggregator/Aggregator'
 import { CollapseConversation } from './TemplateSaver'
-import { CandidateRetriever } from './CandidateRetriever'
+import { CandidateRetriever } from '../source/retrieve/CandidateRetriever'
 import {
 	AssistantMessageMetadata,
 	SynthesisContainer,

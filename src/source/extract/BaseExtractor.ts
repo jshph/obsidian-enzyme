@@ -38,6 +38,17 @@ export abstract class BaseExtractor {
 		evergreen?: string
 	): Promise<any>
 
+	/**
+	 * Substitutes block references within the content.
+	 * This method scans the provided content for block reference markers (e.g., ^blockid)
+	 * and replaces them with Obsidian-style block reference links (![[title#^blockid]]).
+	 * It also generates and substitutes temporary placeholders for these block references
+	 * which can be used for further processing.
+	 *
+	 * @param title The title of the file where the block references are located.
+	 * @param contents The content string containing the block references to be substituted.
+	 * @returns An object containing the array of block reference substitutions and the modified content.
+	 */
 	substituteBlockReferences(
 		title: string,
 		contents: string
@@ -67,6 +78,12 @@ export abstract class BaseExtractor {
 		}
 	}
 
+	/**
+	 * Cleans the contents of a file by removing frontmatter, code blocks, and other irrelevant content.
+	 *
+	 * @param contents The content string to be cleaned.
+	 * @returns The cleaned content string.
+	 */
 	cleanContents(contents: string): string {
 		// Get what's after frontmatter
 		const frontmatterRegex = /---\n(.*?)\n---/s
@@ -81,6 +98,12 @@ export abstract class BaseExtractor {
 		return contents
 	}
 
+	/**
+	 * Retrieves the content of an embedded block or section from a file.
+	 *
+	 * @param reference The reference cache object containing the link to the embedded content.
+	 * @returns A Promise that resolves to the content of the embedded block or section.
+	 */
 	async getEmbedContent(reference: ReferenceCache) {
 		try {
 			const pathOfEmbed = parseLinktext(reference.link)
@@ -115,6 +138,18 @@ export abstract class BaseExtractor {
 		}
 	}
 
+	/**
+	 * Replaces embed references in the content with the actual embedded content.
+	 *
+	 * This method iterates over each embed reference found in the metadata, retrieves the content
+	 * for that reference, and replaces the reference in the original content with the retrieved content.
+	 * It adjusts the offset for each subsequent replacement to account for the change in content length
+	 * after each replacement.
+	 *
+	 * @param contents The original content containing embed references.
+	 * @param metadata The metadata object containing embeds and their positions.
+	 * @returns A Promise that resolves to the content with embed references replaced by actual content.
+	 */
 	async replaceEmbeds(
 		contents: string,
 		metadata: CachedMetadata

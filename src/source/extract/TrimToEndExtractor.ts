@@ -6,6 +6,14 @@ export class TrimToEndExtractor extends BaseExtractor {
 	constructor(public app: App) {
 		super()
 	}
+
+	/**
+	 * Extracts the last part of the file, starting from the last 5 sections.
+	 *
+	 * @param file - The file to extract from.
+	 * @param metadata - The cached metadata of the file.
+	 * @returns A promise resolving to an array of FileContents, each representing the contents of a file.
+	 */
 	async extract(
 		file: TFile,
 		metadata: CachedMetadata

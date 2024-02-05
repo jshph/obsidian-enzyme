@@ -1,5 +1,9 @@
 import { CachedMetadata, Pos } from 'obsidian'
 
+/**
+ * The `LassoFromOffsetExtractor` class extracts content from a file based on a given offset.
+ * It can be used to extract content around a specific position in a file.
+ */
 export class LassoFromOffsetExtractor {
 	// need a new method that parses the metadata out of a string... because dql will produce string output
 
