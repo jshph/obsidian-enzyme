@@ -1,13 +1,13 @@
 {
-  "id": "reason",
-  "name": "Reason",
-  "version": "0.1.2",
-  "minAppVersion": "1.1.10",
-  "description": "REASON: Retrieve, Extract, And Synthesize Obsidian Notes",
-  "author": "Joshua Pham",
-  "authorUrl": "https://jpham.space",
-  "isDesktopOnly": true,
-  "fundingUrl": {
-    "Buy Me a Coffee": "https://www.buymeacoffee.com/jpham"
-  }
+	"id": "reason",
+	"name": "Reason",
+	"version": "0.1.3",
+	"minAppVersion": "1.1.10",
+	"description": "REASON: Retrieve, Extract, And Synthesize Obsidian Notes",
+	"author": "Joshua Pham",
+	"authorUrl": "https://jpham.space",
+	"isDesktopOnly": true,
+	"fundingUrl": {
+		"Buy Me a Coffee": "https://www.buymeacoffee.com/jpham"
+	}
 }
