@@ -63,7 +63,7 @@ const context = await esbuild.context({
 	sourcemap: false,
 	treeShaking: true,
 	outdir: './',
-	plugins: [sassPlugin(), moveStylesPlugin(), injectEnvPlugin()]
+	plugins: [sassPlugin(), moveStylesPlugin()]
 })
 
 if (prod) {
