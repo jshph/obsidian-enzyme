@@ -20,7 +20,7 @@ import { App, Notice, TFile } from 'obsidian'
 import { CanvasLoader, DEFAULT_CANVAS_PATH } from '../notebook/CanvasLoader'
 import { ChatCompletionMessage } from '../types'
 import { RegistrationManager } from './RegistrationManager'
-import { BaseReasonNodeBuilder } from '../../reasonNode/BaseReasonNodeBuilder'
+import { BaseReasonNodeBuilder } from '../reason-node/BaseReasonNodeBuilder'
 import { AIClient } from './AIClient'
 // @ts-ignore
 import { API_BASE_URL, USE_LOCAL } from 'env'

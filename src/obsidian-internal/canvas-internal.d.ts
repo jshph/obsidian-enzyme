@@ -1,6 +1,6 @@
-import { TFile, ItemView } from 'obsidianInternal'
+import { TFile, ItemView } from 'obsidian-internal'
 
-import { App } from 'obsidianInternal'
+import { App } from 'obsidian-internal'
 import { AllCanvasNodeData, CanvasData } from 'obsidian/canvas'
 
 export interface CanvasNode {

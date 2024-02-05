@@ -1,5 +1,5 @@
 import { BaseReasonNodeBuilder } from '.'
-import { ReasonNodeSpec, ReasonNodeType } from '..//types'
+import { ReasonNodeSpec, ReasonNodeType } from '../types'
 import dedent from 'dedent-js'
 
 export type SourceReasonNodeSpec = ReasonNodeSpec & {

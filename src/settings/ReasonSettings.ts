@@ -1,4 +1,4 @@
-import { ModelConfig } from '..//notebook'
+import { ModelConfig } from '../notebook'
 
 export interface ReasonSettings {
 	models: { [key: string]: ModelConfig }

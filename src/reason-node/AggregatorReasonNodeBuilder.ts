@@ -1,5 +1,5 @@
 import { BaseReasonNodeBuilder } from '.'
-import { ReasonNodeSpec, ReasonNodeType } from '..//types'
+import { ReasonNodeSpec, ReasonNodeType } from '../types'
 
 type AggregatorReasonNodeSpec = ReasonNodeSpec & {
 	schedule?: string

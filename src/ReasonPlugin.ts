@@ -1,8 +1,8 @@
 import { Plugin, App, PluginManifest, Notice, ItemView } from 'obsidian'
 import { ReasonSettings, DEFAULT_SETTINGS } from './settings/ReasonSettings'
 import SettingsTab from './settings/SettingsTab'
-import { CodeBlockRenderer } from './/render'
-import { Canvas, CanvasView } from './/obsidian'
+import { CodeBlockRenderer } from './render'
+import { Canvas, CanvasView } from './obsidian-internal'
 import {
 	ReasonAgent,
 	CanvasLoader,
@@ -10,9 +10,9 @@ import {
 	AIClient,
 	SystemPrompts,
 	getSystemPrompts
-} from './/notebook'
-import { SourceReasonNodeBuilder } from './reasonNode/SourceReasonNodeBuilder'
-import { AggregatorReasonNodeBuilder } from './reasonNode/AggregatorReasonNodeBuilder'
+} from './notebook'
+import { SourceReasonNodeBuilder } from './reason-node/SourceReasonNodeBuilder'
+import { AggregatorReasonNodeBuilder } from './reason-node/AggregatorReasonNodeBuilder'
 import { DataviewApi, getAPI } from 'obsidian-dataview'
 import { DataviewCandidateRetriever } from './source/retrieve/DataviewCandidateRetriever'
 

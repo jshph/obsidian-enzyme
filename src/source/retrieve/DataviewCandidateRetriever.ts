@@ -1,10 +1,10 @@
 import { App, TFile } from 'obsidian'
 import { FileRenderer, FileContents } from './FileRenderer'
 import { ReasonSettings } from '../../settings/ReasonSettings'
-import { ReasonNodeType } from '../..//types'
-import { SourceReasonNodeSpec } from '../../reasonNode/SourceReasonNodeBuilder'
+import { ReasonNodeType } from '../../types'
+import { SourceReasonNodeSpec } from '../../reason-node/SourceReasonNodeBuilder'
 import { DataviewApi, getAPI } from 'obsidian-dataview'
-import { CandidateRetriever } from '../..//notebook'
+import { CandidateRetriever } from '../../notebook'
 
 export class DataviewCandidateRetriever implements CandidateRetriever {
 	fileRenderer: FileRenderer
