@@ -1,129 +1,110 @@
 import { Plugin, App, PluginManifest, Notice, ItemView } from 'obsidian'
 import { ReasonSettings, DEFAULT_SETTINGS } from './settings/ReasonSettings'
 import SettingsTab from './settings/SettingsTab'
-import { CodeBlockRenderer } from './obsidian-reason-core/render'
-import { Canvas, CanvasView } from './obsidian-reason-core/obsidian'
+import { CodeBlockRenderer } from './render'
+import { Canvas, CanvasView } from './obsidian-internal'
 import {
-  ReasonAgent,
-  CanvasLoader,
-  RegistrationManager,
-  AIClient,
-  SystemPrompts,
-  getSystemPrompts
-} from './obsidian-reason-core/notebook'
-import { SourceReasonNodeBuilder } from './reasonNode/SourceReasonNodeBuilder'
-import { AggregatorReasonNodeBuilder } from './reasonNode/AggregatorReasonNodeBuilder'
+	ReasonAgent,
+	CanvasLoader,
+	AIClient,
+	getSystemPrompts
+} from './notebook'
+import { SourceReasonNodeBuilder } from './reason-node/SourceReasonNodeBuilder'
+import { AggregatorReasonNodeBuilder } from './reason-node/AggregatorReasonNodeBuilder'
 import { DataviewApi, getAPI } from 'obsidian-dataview'
 import { DataviewCandidateRetriever } from './source/retrieve/DataviewCandidateRetriever'
 
 export class ReasonPlugin extends Plugin {
-  settings: ReasonSettings
-  registrationManager: RegistrationManager
-  reasonAgent: ReasonAgent
-  noteRenderer: CodeBlockRenderer
-  sourceReasonNodeBuilder: SourceReasonNodeBuilder
-  aggregatorReasonNodeBuilder: AggregatorReasonNodeBuilder
-  canvasLoader: CanvasLoader
-  aiClient: AIClient
-  dataview: DataviewApi
-  candidateRetriever: DataviewCandidateRetriever
+	settings: ReasonSettings
+	reasonAgent: ReasonAgent
+	noteRenderer: CodeBlockRenderer
+	sourceReasonNodeBuilder: SourceReasonNodeBuilder
+	aggregatorReasonNodeBuilder: AggregatorReasonNodeBuilder
+	canvasLoader: CanvasLoader
+	aiClient: AIClient
+	dataview: DataviewApi
+	candidateRetriever: DataviewCandidateRetriever
 
-  constructor(app: App, pluginManifest: PluginManifest) {
-    super(app, pluginManifest)
-    this.settings = DEFAULT_SETTINGS
-    this.dataview = getAPI(this.app)
-    this.registrationManager = new RegistrationManager(this.app)
-    this.aiClient = new AIClient(this.registrationManager)
-  }
+	constructor(app: App, pluginManifest: PluginManifest) {
+		super(app, pluginManifest)
+		this.settings = DEFAULT_SETTINGS
+		this.dataview = getAPI(this.app)
+		this.aiClient = new AIClient()
+	}
 
-  async validateLicense(): Promise<boolean> {
-    return await this.registrationManager.validateLicense()
-  }
+	getActiveCanvas(): Canvas {
+		this.app.workspace.setActiveLeaf(
+			this.app.workspace.getLeavesOfType('canvas')[0],
+			{ focus: true }
+		)
+		const maybeCanvasView = this.app.workspace.getActiveViewOfType(
+			ItemView
+		) as CanvasView | null
 
-  async activateLicense(): Promise<boolean> {
-    return await this.registrationManager.activateLicense()
-  }
+		if (!maybeCanvasView) {
+			throw new Error('No canvas view found')
+		}
 
-  async openRegisterModal() {
-    return await this.registrationManager.openRegisterModal()
-  }
+		return maybeCanvasView['canvas']
+	}
 
-  getActiveCanvas(): Canvas {
-    this.app.workspace.setActiveLeaf(
-      this.app.workspace.getLeavesOfType('canvas')[0],
-      { focus: true }
-    )
-    const maybeCanvasView = this.app.workspace.getActiveViewOfType(
-      ItemView
-    ) as CanvasView | null
+	async initAIClient() {
+		await this.aiClient.initAIClient(
+			this.settings.models[this.settings.selectedModel]
+		)
+	}
 
-    if (!maybeCanvasView) {
-      throw new Error('No canvas view found')
-    }
+	getModel(): string {
+		return this.settings.models[this.settings.selectedModel].model
+	}
 
-    return maybeCanvasView['canvas']
-  }
+	async onload() {
+		await this.loadSettings()
 
-  async initAIClient() {
-    await this.aiClient.initAIClient(
-      this.settings.models[this.settings.selectedModel]
-    )
-  }
+		this.canvasLoader = new CanvasLoader(this.app)
 
-  getModel(): string {
-    return this.settings.models[this.settings.selectedModel].model
-  }
+		this.sourceReasonNodeBuilder = new SourceReasonNodeBuilder()
+		this.aggregatorReasonNodeBuilder = new AggregatorReasonNodeBuilder()
 
-  async onload() {
-    await this.loadSettings()
+		this.candidateRetriever = new DataviewCandidateRetriever(
+			this.settings,
+			this.app
+		)
 
-    this.canvasLoader = new CanvasLoader(this.app)
+		await this.initAIClient()
 
-    this.sourceReasonNodeBuilder = new SourceReasonNodeBuilder()
-    this.aggregatorReasonNodeBuilder = new AggregatorReasonNodeBuilder()
+		const prompts = await getSystemPrompts()
 
-    this.candidateRetriever = new DataviewCandidateRetriever(
-      this.settings,
-      this.app
-    )
+		this.reasonAgent = new ReasonAgent(
+			this.app,
+			this.canvasLoader,
+			this.aiClient,
+			this.candidateRetriever,
+			() => (() => this.settings.models[this.settings.selectedModel].model)(),
+			() =>
+				(() =>
+					this.settings.models[this.settings.selectedModel].apiKey?.length >
+					0)(),
+			this.sourceReasonNodeBuilder,
+			this.aggregatorReasonNodeBuilder,
+			prompts
+		)
 
-    this.registrationManager.setLicense(this.settings.reasonLicenseKey)
+		this.addSettingTab(new SettingsTab(this.app, this))
 
-    await this.initAIClient()
+		this.noteRenderer = new CodeBlockRenderer(
+			this.app,
+			this.canvasLoader,
+			this.reasonAgent,
+			this.registerMarkdownCodeBlockProcessor.bind(this)
+		)
+	}
 
-    const prompts = await getSystemPrompts()
+	async loadSettings() {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
+	}
 
-    this.reasonAgent = new ReasonAgent(
-      this.registrationManager,
-      this.app,
-      this.canvasLoader,
-      this.aiClient,
-      this.candidateRetriever,
-      () => (() => this.settings.models[this.settings.selectedModel].model)(),
-      () =>
-        (() =>
-          this.settings.models[this.settings.selectedModel].apiKey?.length >
-          0)(),
-      this.sourceReasonNodeBuilder,
-      this.aggregatorReasonNodeBuilder,
-      prompts
-    )
-
-    this.addSettingTab(new SettingsTab(this.app, this))
-
-    this.noteRenderer = new CodeBlockRenderer(
-      this.app,
-      this.canvasLoader,
-      this.reasonAgent,
-      this.registerMarkdownCodeBlockProcessor.bind(this)
-    )
-  }
-
-  async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
-  }
-
-  async saveSettings() {
-    await this.saveData(this.settings)
-  }
+	async saveSettings() {
+		await this.saveData(this.settings)
+	}
 }

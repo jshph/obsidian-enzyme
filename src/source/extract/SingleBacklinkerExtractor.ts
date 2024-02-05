@@ -2,7 +2,6 @@ import { App, CachedMetadata, TFile } from 'obsidian'
 import { BaseExtractor, FileContents } from './BaseExtractor'
 import { DataviewApi } from 'obsidian-dataview'
 import { LassoFromOffsetExtractor } from './LassoFromOffsetExtractor'
-import { DQLStrategy } from 'src/reasonNode/SourceReasonNodeBuilder'
 
 export class SingleBacklinkerExtractor extends BaseExtractor {
 	constructor(
@@ -13,6 +12,15 @@ export class SingleBacklinkerExtractor extends BaseExtractor {
 		super()
 	}
 
+	/**
+	 * Extracts content snippets from a file that reference a specific evergreen note or tag.
+	 *
+	 * @param file - The file to extract from.
+	 * @param metadata - The cached metadata of the file.
+	 * @param strategy - The strategy to use for extraction.
+	 * @param evergreen - The evergreen note or tag to find references to.
+	 * @returns A promise resolving to an array of content snippets with backlink references.
+	 */
 	async extract(
 		file: TFile,
 		metadata: CachedMetadata,

@@ -4,9 +4,6 @@ import { DataviewApi } from 'obsidian-dataview'
 import { BaseExtractor, FileContents } from './BaseExtractor'
 
 export class AllBacklinkersExtractor extends BaseExtractor {
-	/*
-	 * This extractor looks for references of the evergreen note/tag across all files. If it finds them, it fetches all recent blocks that referenced it. If not, it just returns the whole file
-	 */
 	constructor(
 		public app: App,
 		public lassoExtractor: LassoFromOffsetExtractor,
@@ -15,6 +12,15 @@ export class AllBacklinkersExtractor extends BaseExtractor {
 		super()
 	}
 
+	/**
+	 * Extracts content based on references to an evergreen note/tag.
+	 * If references are found, it retrieves the most recent blocks that mentioned the evergreen note/tag.
+	 * If no references are found, it returns the entire content of the file.
+	 *
+	 * @param file - The file to search for backlinks.
+	 * @param metadata - The cached metadata of the file.
+	 * @returns A promise that resolves to an array of FileContents, each representing a backlinker's content.
+	 */
 	async extract(
 		file: TFile,
 		metadata: CachedMetadata
