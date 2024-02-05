@@ -21,10 +21,7 @@ import { CanvasLoader, DEFAULT_CANVAS_PATH } from '../notebook/CanvasLoader'
 import { ChatCompletionMessage } from '../types'
 import { BaseReasonNodeBuilder } from '../reason-node/BaseReasonNodeBuilder'
 import { AIClient } from './AIClient'
-// @ts-ignore
-import { API_BASE_URL, USE_LOCAL } from 'env'
-import * as fs from 'fs'
-import path from 'path'
+import { prompts } from './prompts'
 
 export type DataviewSource = {
 	id?: string
@@ -41,34 +38,7 @@ export type SystemPrompts = {
 }
 
 export async function getSystemPrompts(): Promise<SystemPrompts> {
-	// TODO make this cached
-	if (USE_LOCAL !== 'false') {
-		const systemPrompts = {
-			templateSaver: '',
-			ranker: '',
-			aggregatorSystemPrompt: '',
-			aggregatorInstructions: ''
-		}
-		const promptFields = Object.keys(systemPrompts) as (keyof SystemPrompts)[]
-
-		for (const field of promptFields) {
-			systemPrompts[field] = await fs.promises.readFile(
-				path.join(USE_LOCAL, `${field}.txt`),
-				'utf8'
-			)
-		}
-
-		return systemPrompts as SystemPrompts
-	} else {
-		const prompts: SystemPrompts = (await fetch(API_BASE_URL + '/initialize', {
-			method: 'GET',
-			headers: {
-				'Content-Type': 'application/json'
-			}
-		}).then((response) => response.json())) as SystemPrompts
-
-		return prompts
-	}
+	return prompts as SystemPrompts
 }
 
 export type SynthesisPlan = {

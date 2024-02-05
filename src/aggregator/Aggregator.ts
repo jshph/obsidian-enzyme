@@ -62,7 +62,7 @@ export class Aggregator {
 	): Promise<AsyncIterable<string>> {
 		messages.unshift({
 			role: 'system',
-			content: this.systemPrompt.replace('${instructions}', this.instructions)
+			content: this.systemPrompt.replace('{instructions}', this.instructions)
 		})
 
 		const generated = await this.aiClient.createCompletion({
