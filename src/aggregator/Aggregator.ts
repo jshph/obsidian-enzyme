@@ -41,13 +41,6 @@ export class Aggregator {
 		useLegacy: boolean = true
 	): Promise<AsyncIterable<string>> {
 		try {
-			// TODO we don't support node-llama-cpp yet
-			// if (this.plugin.settings.localModelPath) {
-			// 	return this.localAI.generate(messages, {
-			// 		streaming: true,
-			// 		systemPrompt: systemPrompt
-			// 	})
-			// }
 			if (useLegacy) {
 				console.log(messages)
 				return this.generateFromMessagesLegacy(

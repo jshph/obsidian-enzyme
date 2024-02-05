@@ -23,9 +23,6 @@ dependencies:
   dedent-js:
     specifier: ^1.0.1
     version: 1.0.1
-  dotenv:
-    specifier: ^16.3.2
-    version: 16.3.2
   esbuild:
     specifier: 0.19.11
     version: 0.19.11
@@ -1362,11 +1359,6 @@ packages:
     engines: {node: '>=6.0.0'}
     dependencies:
       esutils: 2.0.3
-    dev: false
-
-  /dotenv@16.3.2:
-    resolution: {integrity: sha512-HTlk5nmhkm8F6JcdXvHIzaorzCoziNQT9mGxLPVXW8wJF1TiGSL60ZGB4gHWabHOaMmWmhvk2/lPHfnBiT78AQ==}
-    engines: {node: '>=12'}
     dev: false
 
   /eastasianwidth@0.2.0:

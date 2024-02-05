@@ -8,8 +8,6 @@ export interface ReasonSettings {
 	 */
 	debug: boolean
 
-	reasonLicenseKey: string
-
 	localModelPath?: string
 }
 
@@ -23,6 +21,5 @@ export const DEFAULT_SETTINGS: ReasonSettings = {
 	},
 	selectedModel: 'GPT-3.5 Turbo',
 	debug: false,
-	reasonLicenseKey: '',
 	localModelPath: undefined
 }

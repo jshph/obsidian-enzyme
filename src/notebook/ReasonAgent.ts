@@ -19,7 +19,6 @@ import { ReasonNodeType } from '../types'
 import { App, Notice, TFile } from 'obsidian'
 import { CanvasLoader, DEFAULT_CANVAS_PATH } from '../notebook/CanvasLoader'
 import { ChatCompletionMessage } from '../types'
-import { RegistrationManager } from './RegistrationManager'
 import { BaseReasonNodeBuilder } from '../reason-node/BaseReasonNodeBuilder'
 import { AIClient } from './AIClient'
 // @ts-ignore
@@ -88,7 +87,6 @@ export class ReasonAgent {
 	collapseConversation: CollapseConversation
 
 	constructor(
-		public registrationManager: RegistrationManager,
 		public app: App,
 		public canvasLoader: CanvasLoader,
 		public aiClient: AIClient,
@@ -107,7 +105,6 @@ export class ReasonAgent {
 			this.systemPrompts.aggregatorInstructions
 		)
 		this.collapseConversation = new CollapseConversation(
-			this.registrationManager,
 			this.getModel,
 			this.app,
 			this.aiClient,

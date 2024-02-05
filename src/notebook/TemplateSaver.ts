@@ -10,8 +10,7 @@ import {
 import { DEFAULT_BASE_REASON_PATH } from './CanvasLoader'
 import localforage from 'localforage'
 import { ChatCompletionMessage } from '../types'
-import { RegistrationManager } from './RegistrationManager'
-import { BaseReasonNodeBuilder } from '../../reasonNode/BaseReasonNodeBuilder'
+import { BaseReasonNodeBuilder } from '../reason-node/BaseReasonNodeBuilder'
 import { AIClient } from './AIClient'
 
 export type SynthesisConstruction = {
@@ -41,7 +40,6 @@ export class CollapseConversation {
 	cache: LocalForage
 
 	constructor(
-		public registrationManager: RegistrationManager,
 		public getModel: () => string,
 		// public createSourceReasonNodeFile: (
 		// 	sourceReasonNode: SourceReasonNode
@@ -58,36 +56,6 @@ export class CollapseConversation {
 	}
 
 	/**
-	 * Checks if the user is allowed to save a template.
-	 * Users are allowed to save up to two templates without a registered license.
-	 * If the user has already saved two templates, a modal is displayed prompting
-	 * them to register for a license. If the user has a valid license or has not
-	 * reached the limit, they are allowed to save additional templates.
-	 *
-	 * @returns {Promise<boolean>} A promise that resolves to a boolean indicating
-	 * whether the user is allowed to save a template.
-	 */
-	async checkAllowedToSave(): Promise<boolean> {
-		// Check the license key
-		if (await this.registrationManager.validateLicense()) {
-			return true
-		}
-
-		const numSavedTemplates: number =
-			(await this.cache.getItem<number>('num-saved-templates')) || 0
-		if (numSavedTemplates >= 2) {
-			this.registrationManager.openRegisterModal()
-			return false
-		} else {
-			await this.cache.setItem<number>(
-				'num-saved-templates',
-				numSavedTemplates + 1
-			)
-			return true
-		}
-	}
-
-	/**
 	 * Collapses a conversation by synthesizing the user prompts and sources from the message history.
 	 * It first checks if the user is allowed to save more templates. If not, it aborts the operation.
 	 * Otherwise, it proceeds to create a condensed string of user prompts and sources, which is then
@@ -99,11 +67,6 @@ export class CollapseConversation {
 	async collapse(
 		messageHistory: ChatMessageWithMetadata[]
 	): Promise<SynthesisConstruction> {
-		// Check whether user has saved 2 templates yet and show a modal to register if so
-		if (!(await this.checkAllowedToSave())) {
-			return
-		}
-
 		let messages: ChatCompletionMessage[] = [
 			{
 				role: 'system',
@@ -140,12 +103,6 @@ export class CollapseConversation {
 		})
 
 		let response
-		// if (this.settings.localModelPath) {
-		// 	response = await this.localAI.generate(messages, {
-		// 		streaming: false,
-		// 		grammar: undefined
-		// 	})
-		// } else {
 		let openAIResponse = await this.aiClient.createCompletion({
 			model: this.getModel(),
 			messages: messages

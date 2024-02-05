@@ -4,7 +4,6 @@ import process from 'process'
 import { fileURLToPath } from 'url'
 import { sassPlugin } from 'esbuild-sass-plugin'
 import fs from 'fs'
-import * as dotenv from 'dotenv'
 import path from 'path'
 
 const banner = `/*
@@ -18,35 +17,6 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const prod = process.argv[2] === 'production'
-
-// Load environment variables
-dotenv.config({
-	path: path.resolve(__dirname, `./src//.env${prod ? '.production' : ''}`)
-})
-
-// Custom plugin to inject environment variables
-function injectEnvPlugin() {
-	return {
-		name: 'inject-env',
-		setup(build) {
-			build.onResolve({ filter: /^env$/ }, (args) => {
-				return { path: args.path, namespace: 'env-ns' }
-			})
-
-			build.onLoad({ filter: /.*/, namespace: 'env-ns' }, () => {
-				return {
-					contents: Object.keys(process.env).reduce((envContents, key) => {
-						envContents += `export const ${key} = ${JSON.stringify(
-							process.env[key]
-						)};\n`
-						return envContents
-					}, ''),
-					loader: 'js'
-				}
-			})
-		}
-	}
-}
 
 function moveStylesPlugin() {
 	return {
@@ -65,16 +35,6 @@ function moveStylesPlugin() {
 }
 
 const context = await esbuild.context({
-	...(prod
-		? {
-				minify: true,
-				minifySyntax: true,
-				minifyWhitespace: true,
-				minifyIdentifiers: true,
-				mangleQuoted: true,
-				mangleProps: /^_\$/
-			}
-		: {}),
 	platform: 'node',
 	banner: {
 		js: banner

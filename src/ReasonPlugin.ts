@@ -6,9 +6,7 @@ import { Canvas, CanvasView } from './obsidian-internal'
 import {
 	ReasonAgent,
 	CanvasLoader,
-	RegistrationManager,
 	AIClient,
-	SystemPrompts,
 	getSystemPrompts
 } from './notebook'
 import { SourceReasonNodeBuilder } from './reason-node/SourceReasonNodeBuilder'
@@ -18,7 +16,6 @@ import { DataviewCandidateRetriever } from './source/retrieve/DataviewCandidateR
 
 export class ReasonPlugin extends Plugin {
 	settings: ReasonSettings
-	registrationManager: RegistrationManager
 	reasonAgent: ReasonAgent
 	noteRenderer: CodeBlockRenderer
 	sourceReasonNodeBuilder: SourceReasonNodeBuilder
@@ -32,20 +29,7 @@ export class ReasonPlugin extends Plugin {
 		super(app, pluginManifest)
 		this.settings = DEFAULT_SETTINGS
 		this.dataview = getAPI(this.app)
-		this.registrationManager = new RegistrationManager(this.app)
-		this.aiClient = new AIClient(this.registrationManager)
-	}
-
-	async validateLicense(): Promise<boolean> {
-		return await this.registrationManager.validateLicense()
-	}
-
-	async activateLicense(): Promise<boolean> {
-		return await this.registrationManager.activateLicense()
-	}
-
-	async openRegisterModal() {
-		return await this.registrationManager.openRegisterModal()
+		this.aiClient = new AIClient()
 	}
 
 	getActiveCanvas(): Canvas {
@@ -87,14 +71,11 @@ export class ReasonPlugin extends Plugin {
 			this.app
 		)
 
-		this.registrationManager.setLicense(this.settings.reasonLicenseKey)
-
 		await this.initAIClient()
 
 		const prompts = await getSystemPrompts()
 
 		this.reasonAgent = new ReasonAgent(
-			this.registrationManager,
 			this.app,
 			this.canvasLoader,
 			this.aiClient,
