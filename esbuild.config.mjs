@@ -21,97 +21,94 @@ const prod = process.argv[2] === 'production'
 
 // Load environment variables
 dotenv.config({
-  path: path.resolve(
-    __dirname,
-    `./src/obsidian-reason-core/.env${prod ? '.production' : ''}`
-  )
+	path: path.resolve(__dirname, `./src//.env${prod ? '.production' : ''}`)
 })
 
 // Custom plugin to inject environment variables
 function injectEnvPlugin() {
-  return {
-    name: 'inject-env',
-    setup(build) {
-      build.onResolve({ filter: /^env$/ }, (args) => {
-        return { path: args.path, namespace: 'env-ns' }
-      })
+	return {
+		name: 'inject-env',
+		setup(build) {
+			build.onResolve({ filter: /^env$/ }, (args) => {
+				return { path: args.path, namespace: 'env-ns' }
+			})
 
-      build.onLoad({ filter: /.*/, namespace: 'env-ns' }, () => {
-        return {
-          contents: Object.keys(process.env).reduce((envContents, key) => {
-            envContents += `export const ${key} = ${JSON.stringify(
-              process.env[key]
-            )};\n`
-            return envContents
-          }, ''),
-          loader: 'js'
-        }
-      })
-    }
-  }
+			build.onLoad({ filter: /.*/, namespace: 'env-ns' }, () => {
+				return {
+					contents: Object.keys(process.env).reduce((envContents, key) => {
+						envContents += `export const ${key} = ${JSON.stringify(
+							process.env[key]
+						)};\n`
+						return envContents
+					}, ''),
+					loader: 'js'
+				}
+			})
+		}
+	}
 }
 
 function moveStylesPlugin() {
-  return {
-    name: 'move-styles',
-    setup(build) {
-      build.onEnd(async () => {
-        const oldPath = 'styles/styles.css'
-        const newPath = 'styles.css'
-        if (fs.existsSync(oldPath)) {
-          fs.renameSync(oldPath, newPath)
-          fs.rmdirSync('styles')
-        }
-      })
-    }
-  }
+	return {
+		name: 'move-styles',
+		setup(build) {
+			build.onEnd(async () => {
+				const oldPath = 'styles/styles.css'
+				const newPath = 'styles.css'
+				if (fs.existsSync(oldPath)) {
+					fs.renameSync(oldPath, newPath)
+					fs.rmdirSync('styles')
+				}
+			})
+		}
+	}
 }
 
 const context = await esbuild.context({
-  ...(prod
-    ? {
-        minify: true,
-        minifySyntax: true,
-        minifyWhitespace: true,
-        minifyIdentifiers: true,
-        mangleQuoted: true,
-        mangleProps: /^_\$/
-      }
-    : {}),
-  platform: 'node',
-  banner: {
-    js: banner
-  },
-  entryPoints: ['src/main.ts', 'src/styles/styles.scss'],
-  bundle: true,
-  external: [
-    'obsidian',
-    'electron',
-    '@codemirror/autocomplete',
-    '@codemirror/collab',
-    '@codemirror/commands',
-    '@codemirror/language',
-    '@codemirror/lint',
-    '@codemirror/search',
-    '@codemirror/state',
-    '@codemirror/view',
-    '@lezer/common',
-    '@lezer/highlight',
-    '@lezer/lr',
-    ...builtins
-  ],
-  format: 'cjs',
-  target: 'es2020',
-  logLevel: 'info',
-  sourcemap: false,
-  treeShaking: true,
-  outdir: './',
-  plugins: [sassPlugin(), moveStylesPlugin(), injectEnvPlugin()]
+	...(prod
+		? {
+				minify: true,
+				minifySyntax: true,
+				minifyWhitespace: true,
+				minifyIdentifiers: true,
+				mangleQuoted: true,
+				mangleProps: /^_\$/
+			}
+		: {}),
+	platform: 'node',
+	banner: {
+		js: banner
+	},
+	entryPoints: ['src/main.ts', 'src/styles/styles.scss'],
+	bundle: true,
+	external: [
+		'obsidian',
+		'electron',
+		'@codemirror/autocomplete',
+		'@codemirror/collab',
+		'@codemirror/commands',
+		'@codemirror/language',
+		'@codemirror/lint',
+		'@codemirror/search',
+		'@codemirror/state',
+		'@codemirror/view',
+		'@lezer/common',
+		'@lezer/highlight',
+		'@lezer/lr',
+		...builtins
+	],
+	format: 'cjs',
+	target: 'es2020',
+	logLevel: 'info',
+	sourcemap: false,
+	treeShaking: true,
+	outdir: './',
+	plugins: [sassPlugin(), moveStylesPlugin(), injectEnvPlugin()]
 })
 
 if (prod) {
-  await context.rebuild()
-  process.exit(0)
+	await context.rebuild()
+	process.exit(0)
 } else {
-  await context.watch()
+	await context.watch()
 }

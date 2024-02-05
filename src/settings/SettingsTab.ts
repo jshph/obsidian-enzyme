@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting } from 'obsidian'
+import { App, Notice, PluginSettingTab, Setting, requestUrl } from 'obsidian'
 import { ReasonPlugin } from '../ReasonPlugin'
 import { DEFAULT_SETTINGS } from './ReasonSettings'
 
@@ -57,6 +57,40 @@ export class SettingsTab extends PluginSettingTab {
             this.plugin.settings.debug = value
             await this.plugin.saveSettings()
           })
+      })
+
+    new Setting(containerEl)
+      .setName('Local model')
+      .setDesc('First, install and run Nitro: https://nitro.jan.ai/install')
+      .addText((text) => {
+        text
+          .setPlaceholder('Local model path')
+          .setValue(
+            this.plugin.settings.localModelPath ||
+              DEFAULT_SETTINGS.localModelPath
+          )
+          .onChange(async (value) => {
+            this.plugin.settings.localModelPath = value
+            await this.plugin.saveSettings()
+            await this.plugin.initAIClient()
+          })
+      })
+      .addButton((button) => {
+        button.setButtonText('Load model with Nitro').onClick(async () => {
+          await requestUrl({
+            url: 'http://localhost:3928/inferences/llamacpp/loadModel',
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              llama_model_path: this.plugin.settings.localModelPath,
+              ctx_len: 32768,
+              embedding: false,
+              ngl: -1
+            })
+          })
+        })
       })
 
     new Setting(containerEl)
