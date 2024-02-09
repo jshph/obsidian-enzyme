@@ -15,7 +15,7 @@ export class SettingsTab extends PluginSettingTab {
 		containerEl.empty()
 
 		new Setting(containerEl)
-			.setName('Model Config')
+			.setName('Model config')
 			.setDesc('Select the model configuration to use.')
 			.addDropdown((dropdown) => {
 				Object.entries(this.plugin.settings.models).forEach(([key, value]) => {
@@ -33,7 +33,7 @@ export class SettingsTab extends PluginSettingTab {
 				})
 			})
 
-		new Setting(containerEl).setName('OpenAI API Key').addText((text) => {
+		new Setting(containerEl).setName('OpenAI API key').addText((text) => {
 			text
 				.setPlaceholder('API Key')
 				.setValue(
@@ -49,18 +49,6 @@ export class SettingsTab extends PluginSettingTab {
 					await this.plugin.initAIClient()
 				})
 		})
-
-		new Setting(containerEl)
-			.setName('Debug output')
-			.setDesc('Enable debug output in the console')
-			.addToggle((component) => {
-				component
-					.setValue(this.plugin.settings.debug || DEFAULT_SETTINGS.debug)
-					.onChange(async (value) => {
-						this.plugin.settings.debug = value
-						await this.plugin.saveSettings()
-					})
-			})
 
 		new Setting(containerEl)
 			.setName('Local model')
@@ -94,6 +82,18 @@ export class SettingsTab extends PluginSettingTab {
 						})
 					})
 				})
+			})
+
+		new Setting(containerEl)
+			.setName('Debug output')
+			.setDesc('Enable debug output in the console')
+			.addToggle((component) => {
+				component
+					.setValue(this.plugin.settings.debug || DEFAULT_SETTINGS.debug)
+					.onChange(async (value) => {
+						this.plugin.settings.debug = value
+						await this.plugin.saveSettings()
+					})
 			})
 	}
 }

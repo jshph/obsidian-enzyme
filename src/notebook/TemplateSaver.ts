@@ -154,7 +154,11 @@ export class CollapseConversation {
 	 */
 	async save(synthesisConstruction: SynthesisConstruction, canvasPath: string) {
 		// TODO handling existing sources / nodes, need to pass the filepath
-		let canvasFile = this.app.vault.getAbstractFileByPath(canvasPath) as TFile
+		let canvasFile = this.app.vault.getAbstractFileByPath(canvasPath)
+		if (!(canvasFile instanceof TFile)) {
+			throw new Error(`Canvas file not found: ${canvasPath}`)
+		}
+
 		let canvasData: CanvasData
 		if (!canvasFile) {
 			canvasData = {
@@ -168,8 +172,11 @@ export class CollapseConversation {
 			)
 			return
 		} else {
+			if (!(canvasFile instanceof TFile)) {
+				throw new Error(`Canvas file not found: ${canvasPath}`)
+			}
 			canvasData = JSON.parse(
-				await this.app.vault.cachedRead(canvasFile as TFile)
+				await this.app.vault.cachedRead(canvasFile)
 			) as CanvasData
 			if (!canvasData.nodes || !canvasData.edges) {
 				canvasData = {
@@ -308,6 +315,6 @@ export class CollapseConversation {
 		)
 
 		// Write the contents of the canvas back to the file
-		await this.app.vault.modify(canvasFile as TFile, JSON.stringify(canvasData))
+		await this.app.vault.modify(canvasFile, JSON.stringify(canvasData))
 	}
 }

@@ -98,12 +98,18 @@ export class ReasonAgent {
 		await this.canvasLoader.reload()
 		const canvasData = this.canvasLoader.canvasData
 		const aggregators: AggregatorMetadata[] = canvasData.nodes
-			.filter(
-				(node) =>
-					this.app.metadataCache.getFileCache(
-						this.app.metadataCache.getFirstLinkpathDest(node.file, '/') as TFile
-					)?.frontmatter?.role === ReasonNodeType[ReasonNodeType.Aggregator]
-			)
+			.filter((node) => {
+				const file = this.app.metadataCache.getFirstLinkpathDest(node.file, '/')
+
+				if (!(file instanceof TFile)) {
+					return false
+				}
+
+				return (
+					this.app.metadataCache.getFileCache(file)?.frontmatter?.role ===
+					ReasonNodeType[ReasonNodeType.Aggregator]
+				)
+			})
 			.map((node) => {
 				return getAggregatorMetadata(
 					node.file.match(/\/([^\.]+).md/)?.[1],

@@ -3,7 +3,7 @@ import { FileRenderer, FileContents } from './FileRenderer'
 import { ReasonSettings } from '../../settings/ReasonSettings'
 import { ReasonNodeType } from '../../types'
 import { SourceReasonNodeSpec } from '../../reason-node/SourceReasonNodeBuilder'
-import { DataviewApi, getAPI } from 'obsidian-dataview'
+import { DataviewApi, getAPI } from '../../obsidian-internal/dataview-handler'
 import { CandidateRetriever } from './CandidateRetriever'
 
 /**
@@ -86,13 +86,18 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 	 * @param nodeFile - The node file to retrieve contents from.
 	 * @returns A Promise that resolves to an array of objects containing the contents of the node file.
 	 */
-	async getNodeContents(nodeFile: any): Promise<any[]> {
+	async getNodeContents(nodeFileOrPath: string | TFile): Promise<any[]> {
 		let fileContents: string
-		if (typeof nodeFile === 'string') {
-			nodeFile = this.app.vault.getAbstractFileByPath(nodeFile)
-			fileContents = await this.app.vault.read(nodeFile)
+		let nodeFile: TFile
+		if (typeof nodeFileOrPath === 'string') {
+			const file = this.app.vault.getAbstractFileByPath(nodeFileOrPath)
+			if (file instanceof TFile) {
+				fileContents = await this.app.vault.read(nodeFile)
+			} else {
+				throw new Error(`File not found: ${nodeFile}`)
+			}
 		} else {
-			fileContents = await this.app.vault.read(nodeFile)
+			fileContents = await this.app.vault.read(nodeFileOrPath)
 		}
 
 		const frontmatter = this.app.metadataCache.getFileCache(nodeFile)

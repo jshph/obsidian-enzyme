@@ -11,7 +11,7 @@ import {
 } from './notebook'
 import { SourceReasonNodeBuilder } from './reason-node/SourceReasonNodeBuilder'
 import { AggregatorReasonNodeBuilder } from './reason-node/AggregatorReasonNodeBuilder'
-import { DataviewApi, getAPI } from 'obsidian-dataview'
+import { DataviewApi, getAPI } from './obsidian-internal/dataview-handler'
 import { DataviewCandidateRetriever } from './source/retrieve/DataviewCandidateRetriever'
 
 export class ReasonPlugin extends Plugin {

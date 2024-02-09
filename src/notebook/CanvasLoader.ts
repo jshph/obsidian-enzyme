@@ -27,23 +27,33 @@ export class CanvasLoader {
 		if (!canvasFile) {
 			this.canvasData = { nodes: [], edges: [] }
 		} else {
+			if (!(canvasFile instanceof TFile)) {
+				throw new Error(`Canvas file not found: ${DEFAULT_CANVAS_PATH}`)
+			}
 			this.canvasData = JSON.parse(
-				await this.app.vault.read(canvasFile as TFile)
+				await this.app.vault.read(canvasFile)
 			) as CanvasData
 		}
 
+		let reasonPath: TFolder | undefined = this.app.vault.getAbstractFileByPath(
+			DEFAULT_BASE_REASON_PATH
+		) as TFolder
+
+		if (!reasonPath) {
+			reasonPath = await this.app.vault.createFolder(DEFAULT_BASE_REASON_PATH)
+		} else if (!(reasonPath instanceof TFolder)) {
+			throw new Error(`Expected ${DEFAULT_BASE_REASON_PATH} to be a folder.`)
+		}
+
 		// Read the base path and remove any files which are no longer nodes in the canvas
-		Vault.recurseChildren(
-			this.app.vault.getAbstractFileByPath(DEFAULT_BASE_REASON_PATH) as TFolder,
-			async (file) => {
-				if (
-					file.path !== DEFAULT_BASE_REASON_PATH &&
-					!file.path.contains('.canvas') &&
-					!this.canvasData.nodes.find((node) => node.file === file.path)
-				) {
-					await this.app.vault.delete(file)
-				}
+		Vault.recurseChildren(reasonPath, async (file) => {
+			if (
+				file.path !== DEFAULT_BASE_REASON_PATH &&
+				!file.path.contains('.canvas') &&
+				!this.canvasData.nodes.find((node) => node.file === file.path)
+			) {
+				await this.app.vault.delete(file)
 			}
-		)
+		})
 	}
 }
