@@ -1,5 +1,5 @@
 import { TFile, CachedMetadata, App } from 'obsidian'
-import { DataviewApi, getAPI } from '../../obsidian-internal/dataview-handler'
+import { DataviewApi, getAPI } from '../../obsidian-modules/dataview-handler'
 import { ExtractorDelegator } from '../extract/ExtractorDelegator'
 import { ReasonSettings } from '../../settings/ReasonSettings'
 import { BlockRefSubstitution } from '../../types'

@@ -2,7 +2,7 @@ import { Plugin, App, PluginManifest, Notice, ItemView } from 'obsidian'
 import { ReasonSettings, DEFAULT_SETTINGS } from './settings/ReasonSettings'
 import SettingsTab from './settings/SettingsTab'
 import { CodeBlockRenderer } from './render'
-import { Canvas, CanvasView } from './obsidian-internal'
+import { Canvas, CanvasView } from './obsidian-modules'
 import {
 	ReasonAgent,
 	CanvasLoader,
@@ -11,7 +11,7 @@ import {
 } from './notebook'
 import { SourceReasonNodeBuilder } from './reason-node/SourceReasonNodeBuilder'
 import { AggregatorReasonNodeBuilder } from './reason-node/AggregatorReasonNodeBuilder'
-import { DataviewApi, getAPI } from './obsidian-internal/dataview-handler'
+import { DataviewApi, getAPI } from './obsidian-modules/dataview-handler'
 import { DataviewCandidateRetriever } from './source/retrieve/DataviewCandidateRetriever'
 
 export class ReasonPlugin extends Plugin {

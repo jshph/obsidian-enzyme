@@ -3,7 +3,7 @@ import { FileRenderer, FileContents } from './FileRenderer'
 import { ReasonSettings } from '../../settings/ReasonSettings'
 import { ReasonNodeType } from '../../types'
 import { SourceReasonNodeSpec } from '../../reason-node/SourceReasonNodeBuilder'
-import { DataviewApi, getAPI } from '../../obsidian-internal/dataview-handler'
+import { DataviewApi, getAPI } from '../../obsidian-modules/dataview-handler'
 import { CandidateRetriever } from './CandidateRetriever'
 
 /**
