@@ -13,7 +13,7 @@ const canUseDataview = (app: AppWithPlugins): boolean => {
 	return !!appWithPlugins.plugins.getPlugin('dataview')
 }
 const getAPI = (app: App): DataviewApi => {
-	if (!canUseDataview(app)) {
+	if (!canUseDataview(app as AppWithPlugins)) {
 		new Notice('Dataview plugin is not installed')
 	}
 
