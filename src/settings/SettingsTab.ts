@@ -10,79 +10,181 @@ export class SettingsTab extends PluginSettingTab {
 		super(app, plugin)
 	}
 
+	createNitroModelSetting(containerEl: HTMLElement) {
+		const div = containerEl.createDiv()
+		const topSetting = new Setting(div)
+			.setName('Label')
+			.setDesc('Label for Nitro model')
+			.addText((text) => {
+				text
+					.setPlaceholder('Nitro model name')
+					.setValue('local').inputEl.style.width = '100%'
+			})
+
+		topSetting.settingEl.style.borderTop =
+			'1px solid var(--background-modifier-border)'
+		topSetting.settingEl.style.paddingTop = '12px'
+
+		new Setting(div)
+			.setName('Model name')
+			.setDesc('Name of the model in Nitro')
+			.addText((text) => {
+				text
+					.setPlaceholder('Model name')
+					.setValue('local').inputEl.style.width = '100%'
+			}).settingEl.style.borderTop = 'none'
+
+		new Setting(div)
+			.addButton((button) => {
+				button.setButtonText('Select').onClick(() => {
+					this.display()
+					this.plugin.saveSettings()
+				})
+			})
+			.addButton((button) => {
+				button.setButtonText('X').onClick(() => {
+					div.remove()
+					this.display()
+				})
+			}).settingEl.style.borderTop = 'none'
+	}
+
+	createModelSetting(
+		containerEl: HTMLElement,
+		thisModelConfig: {
+			model: string
+			baseURL: string
+			apiKey: string
+			label: string
+		} = {
+			label: '',
+			model: '',
+			baseURL: '',
+			apiKey: ''
+		}
+	) {
+		const div = containerEl.createDiv()
+		var index = this.plugin.settings.models.indexOf(thisModelConfig)
+		if (index === -1) {
+			this.plugin.settings.models.push(thisModelConfig)
+			index = this.plugin.settings.models.length - 1
+		}
+
+		const topSetting = new Setting(div)
+			.setName('Label')
+			.setDesc('Label for the model config')
+			.addText((text) => {
+				text
+					.setPlaceholder('Label')
+					.onChange(async (value) => {
+						thisModelConfig.label = value
+						this.plugin.settings.models[index] = thisModelConfig
+						this.plugin.saveSettings()
+					})
+					.setValue(thisModelConfig.label).inputEl.style.width = '100%'
+			})
+		topSetting.settingEl.style.borderTop =
+			'1px solid var(--background-modifier-border)'
+		topSetting.settingEl.style.paddingTop = '12px'
+
+		new Setting(div)
+			.setName('Model name')
+			.setDesc('Name of the model from the provider')
+			.addText((text) => {
+				text
+					.setPlaceholder('Model name')
+					.onChange(async (value) => {
+						thisModelConfig.model = value
+						this.plugin.settings.models[index] = thisModelConfig
+						this.plugin.saveSettings()
+					})
+					.setValue(thisModelConfig.model).inputEl.style.width = '100%'
+			}).settingEl.style.borderTop = 'none'
+
+		new Setting(div)
+			.setName('Base URL')
+			.setDesc('Base URL for the model provider; OpenAI can be empty')
+			.addText((text) => {
+				text
+					.setPlaceholder('Base URL')
+					.onChange(async (value) => {
+						thisModelConfig.baseURL = value
+						this.plugin.settings.models[index] = thisModelConfig
+						this.plugin.saveSettings()
+					})
+					.setValue(thisModelConfig.baseURL).inputEl.style.width = '100%'
+			}).settingEl.style.borderTop = 'none'
+
+		new Setting(div)
+			.setName('API Key')
+			.setDesc('API Key for a given model provider')
+			.addText((text) => {
+				text
+					.setPlaceholder('API Key')
+					.onChange(async (value) => {
+						thisModelConfig.apiKey = value
+						this.plugin.settings.models[index] = thisModelConfig
+						this.plugin.saveSettings()
+					})
+					.setValue(thisModelConfig.apiKey).inputEl.style.width = '100%'
+			}).settingEl.style.borderTop = 'none'
+
+		new Setting(div)
+			.addButton((button) => {
+				if (this.plugin.settings.selectedModel === thisModelConfig.label) {
+					button.setButtonText('Selected')
+					button.setDisabled(true)
+				} else {
+					button.setButtonText('Select').onClick(() => {
+						this.plugin.settings.selectedModel = thisModelConfig.label
+						this.display()
+						this.plugin.saveSettings()
+					})
+				}
+			})
+			.addButton((button) => {
+				button.setButtonText('X').onClick(() => {
+					div.remove()
+					if (this.plugin.settings.selectedModel === thisModelConfig.label) {
+						this.plugin.settings.selectedModel = DEFAULT_SETTINGS.selectedModel
+					}
+					this.plugin.settings.models.remove(thisModelConfig)
+					this.plugin.saveSettings()
+					this.display()
+				})
+			}).settingEl.style.borderTop = 'none'
+	}
+
 	async display(): Promise<void> {
 		const { containerEl } = this
 		containerEl.empty()
 
-		new Setting(containerEl)
-			.setName('Model config')
-			.setDesc('Select the model configuration to use.')
-			.addDropdown((dropdown) => {
-				Object.entries(this.plugin.settings.models).forEach(([key, value]) => {
-					dropdown
-						.addOption(key, key)
-						.setValue(
-							this.plugin.settings.selectedModel ||
-								DEFAULT_SETTINGS.selectedModel
-						)
-				})
-				dropdown.onChange(async (value) => {
-					this.plugin.settings.selectedModel = value
-					await this.plugin.saveSettings()
-					await this.plugin.initAIClient()
-				})
-			})
+		const modelConfigsSetting = new Setting(containerEl).setName(
+			'Model configs'
+		)
 
-		new Setting(containerEl).setName('OpenAI API key').addText((text) => {
-			text
-				.setPlaceholder('API Key')
-				.setValue(
-					this.plugin.settings.models['GPT-3.5 Turbo'].apiKey ||
-						DEFAULT_SETTINGS.models['GPT-3.5 Turbo'].apiKey
-				)
-				.onChange(async (value) => {
-					if (value === '') {
-						return
-					}
-					this.plugin.settings.models['GPT-3.5 Turbo'].apiKey = value
-					await this.plugin.saveSettings()
-					await this.plugin.initAIClient()
-				})
+		modelConfigsSetting.settingEl.style.display = 'block'
+		modelConfigsSetting.infoEl.style.paddingBottom = '20px'
+
+		modelConfigsSetting.controlEl.style.display = 'block'
+		modelConfigsSetting.controlEl.style.textAlign = 'left'
+		const modelConfigsContainer = modelConfigsSetting.controlEl.createDiv()
+
+		Object.values(this.plugin.settings.models).forEach((value) => {
+			this.createModelSetting(modelConfigsContainer, value)
 		})
 
-		new Setting(containerEl)
-			.setName('Local model')
-			.setDesc('First, install and run Nitro: https://nitro.jan.ai/install')
-			.addText((text) => {
-				text
-					.setPlaceholder('Local model path')
-					.setValue(
-						this.plugin.settings.localModelPath ||
-							DEFAULT_SETTINGS.localModelPath
-					)
-					.onChange(async (value) => {
-						this.plugin.settings.localModelPath = value
-						await this.plugin.saveSettings()
-						await this.plugin.initAIClient()
-					})
+		modelConfigsSetting.addButton((button) => {
+			button.setButtonText('Add model').onClick(() => {
+				this.createModelSetting(modelConfigsContainer)
 			})
-			.addButton((button) => {
-				button.setButtonText('Load model with Nitro').onClick(async () => {
-					await requestUrl({
-						url: 'http://localhost:3928/inferences/llamacpp/loadModel',
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify({
-							llama_model_path: this.plugin.settings.localModelPath,
-							ctx_len: 32768,
-							embedding: false,
-							ngl: -1
-						})
-					})
-				})
+		})
+
+		modelConfigsSetting.addButton((button) => {
+			button.setButtonText('Add local model (Nitro)').onClick(() => {
+				this.createNitroModelSetting(modelConfigsContainer)
 			})
+		})
 
 		new Setting(containerEl)
 			.setName('Debug output')

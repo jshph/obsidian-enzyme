@@ -9,6 +9,7 @@ import { APIPromise } from 'openai/core'
 import { Stream } from 'openai/streaming'
 
 export type ModelConfig = {
+	label: string
 	model: string
 	baseURL: string
 	apiKey: string

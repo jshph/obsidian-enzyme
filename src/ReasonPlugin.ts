@@ -50,12 +50,16 @@ export class ReasonPlugin extends Plugin {
 
 	async initAIClient() {
 		await this.aiClient.initAIClient(
-			this.settings.models[this.settings.selectedModel]
+			this.settings.models.find(
+				(model) => model.label === this.settings.selectedModel
+			)
 		)
 	}
 
 	getModel(): string {
-		return this.settings.models[this.settings.selectedModel].model
+		return this.settings.models.find(
+			(model) => model.label === this.settings.selectedModel
+		).model
 	}
 
 	async onload() {
@@ -80,11 +84,16 @@ export class ReasonPlugin extends Plugin {
 			this.canvasLoader,
 			this.aiClient,
 			this.candidateRetriever,
-			() => (() => this.settings.models[this.settings.selectedModel].model)(),
 			() =>
 				(() =>
-					this.settings.models[this.settings.selectedModel].apiKey?.length >
-					0)(),
+					this.settings.models.find(
+						(model) => model.label === this.settings.selectedModel
+					).model)(),
+			() =>
+				(() =>
+					this.settings.models.find(
+						(model) => model.label === this.settings.selectedModel
+					).apiKey?.length > 0)(),
 			this.sourceReasonNodeBuilder,
 			this.aggregatorReasonNodeBuilder,
 			prompts
