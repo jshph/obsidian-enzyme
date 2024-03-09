@@ -100,6 +100,7 @@ export class SettingsTab extends PluginSettingTab {
 						this.plugin.settings.selectedModel = thisModelConfig.label
 						this.display()
 						this.plugin.saveSettings()
+						this.plugin.initAIClient()
 					})
 				}
 			})
