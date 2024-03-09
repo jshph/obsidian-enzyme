@@ -10,45 +10,6 @@ export class SettingsTab extends PluginSettingTab {
 		super(app, plugin)
 	}
 
-	createNitroModelSetting(containerEl: HTMLElement) {
-		const div = containerEl.createDiv()
-		const topSetting = new Setting(div)
-			.setName('Label')
-			.setDesc('Label for Nitro model')
-			.addText((text) => {
-				text
-					.setPlaceholder('Nitro model name')
-					.setValue('local').inputEl.style.width = '100%'
-			})
-
-		topSetting.settingEl.style.borderTop =
-			'1px solid var(--background-modifier-border)'
-		topSetting.settingEl.style.paddingTop = '12px'
-
-		new Setting(div)
-			.setName('Model name')
-			.setDesc('Name of the model in Nitro')
-			.addText((text) => {
-				text
-					.setPlaceholder('Model name')
-					.setValue('local').inputEl.style.width = '100%'
-			}).settingEl.style.borderTop = 'none'
-
-		new Setting(div)
-			.addButton((button) => {
-				button.setButtonText('Select').onClick(() => {
-					this.display()
-					this.plugin.saveSettings()
-				})
-			})
-			.addButton((button) => {
-				button.setButtonText('X').onClick(() => {
-					div.remove()
-					this.display()
-				})
-			}).settingEl.style.borderTop = 'none'
-	}
-
 	createModelSetting(
 		containerEl: HTMLElement,
 		thisModelConfig: {
@@ -177,12 +138,6 @@ export class SettingsTab extends PluginSettingTab {
 		modelConfigsSetting.addButton((button) => {
 			button.setButtonText('Add model').onClick(() => {
 				this.createModelSetting(modelConfigsContainer)
-			})
-		})
-
-		modelConfigsSetting.addButton((button) => {
-			button.setButtonText('Add local model (Nitro)').onClick(() => {
-				this.createNitroModelSetting(modelConfigsContainer)
 			})
 		})
 
