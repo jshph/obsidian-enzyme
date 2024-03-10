@@ -90,10 +90,17 @@ export class ReasonPlugin extends Plugin {
 						(model) => model.label === this.settings.selectedModel
 					).model)(),
 			() =>
-				(() =>
-					this.settings.models.find(
+				(() => {
+					const selectedModel = this.settings.models.find(
 						(model) => model.label === this.settings.selectedModel
-					).apiKey?.length > 0)(),
+					)
+
+					if (selectedModel.baseURL.contains('localhost')) {
+						return true
+					} else {
+						return selectedModel.apiKey?.length > 0
+					}
+				})(),
 			this.sourceReasonNodeBuilder,
 			this.aggregatorReasonNodeBuilder,
 			prompts

@@ -70,6 +70,7 @@ export class Aggregator {
 			messages: messages as any,
 			temperature: 0.3,
 			max_tokens: 1000,
+			logit_bias: { 4: 1 },
 			stream: true
 		})
 		return (async function* () {

@@ -1,0 +1,19 @@
+{
+	"name": "Mistral Instruct (Reason)",
+	"inference_params": {
+		"input_prefix": "[INST]",
+		"input_suffix": "[/INST]",
+		"antiprompt": ["[INST]"],
+		"pre_prompt_prefix": "",
+		"pre_prompt_suffix": "",
+		"logit_bias": {
+			"4": 10
+		}
+	},
+	"load_params": {
+		"rope_freq_scale": 0,
+		"rope_freq_base": 0,
+		"n_ctx": 32768,
+		"n_gpu_layers": -1
+	}
+}
