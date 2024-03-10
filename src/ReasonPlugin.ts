@@ -95,7 +95,10 @@ export class ReasonPlugin extends Plugin {
 						(model) => model.label === this.settings.selectedModel
 					)
 
-					if (selectedModel.baseURL.contains('localhost')) {
+					if (
+						selectedModel.baseURL &&
+						selectedModel.baseURL.contains('localhost')
+					) {
 						return true
 					} else {
 						return selectedModel.apiKey?.length > 0
