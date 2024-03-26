@@ -1,3 +1,3 @@
 import { DataviewCandidateRetriever } from './DataviewCandidateRetriever'
-import { FileRenderer } from './FileRenderer'
-export { DataviewCandidateRetriever, FileRenderer }
+import { ContentRenderer } from './ContentRenderer'
+export { DataviewCandidateRetriever, ContentRenderer as FileRenderer }

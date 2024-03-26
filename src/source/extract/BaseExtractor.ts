@@ -27,14 +27,15 @@ export type FileContents = {
 	last_modified_date: string
 	contents: string
 	substitutions: BlockRefSubstitution[]
+	tags?: string[]
 }
 
 export abstract class BaseExtractor {
 	app: App
 	abstract extract(
-		file: TFile,
-		metadata: CachedMetadata,
-		strategy: string,
+		file?: TFile,
+		metadata?: CachedMetadata,
+		strategy?: string,
 		evergreen?: string
 	): Promise<any>
 
@@ -128,8 +129,10 @@ export abstract class BaseExtractor {
 					block.position.start.offset,
 					block.position.end.offset
 				)
+			} else if (!pathOfEmbed.subpath || pathOfEmbed.subpath === '') {
+				// Return the full content if no subpath is provided
+				return fullContent
 			} else {
-				// Shouldn't happen... this function is passed an embed reference
 				return ''
 			}
 		} catch (exception) {
@@ -143,27 +146,57 @@ export abstract class BaseExtractor {
 	 *
 	 * This method iterates over each embed reference found in the metadata, retrieves the content
 	 * for that reference, and replaces the reference in the original content with the retrieved content.
+	 * Block references within the embed content are also substituted for markers.
 	 * It adjusts the offset for each subsequent replacement to account for the change in content length
 	 * after each replacement.
 	 *
 	 * @param contents The original content containing embed references.
 	 * @param metadata The metadata object containing embeds and their positions.
-	 * @returns A Promise that resolves to the content with embed references replaced by actual content.
+	 * @returns A Promise that resolves to an object containing the modified content and an array of block reference substitutions.
 	 */
 	async replaceEmbeds(
 		contents: string,
 		metadata: CachedMetadata
-	): Promise<string> {
+	): Promise<{ contents: string; substitutions: BlockRefSubstitution[] }> {
 		let newOffset = 0
+		const allSubstitutions: BlockRefSubstitution[] = []
 		for (let embed of metadata?.embeds || []) {
-			const referenceContent = await this.getEmbedContent(embed)
-			contents =
-				contents.slice(0, embed.position.start.offset + newOffset) +
-				referenceContent +
-				contents.slice(newOffset + embed.position.end.offset)
-			newOffset += referenceContent.length - (embed.original?.length || 0)
-		}
+			if (
+				embed.original.includes('.jpg') ||
+				embed.original.includes('.excalidraw')
+			) {
+				continue
+			}
 
-		return contents
+			var embedContent = await this.getEmbedContent(embed)
+
+			if (embedContent === '') {
+				continue
+			}
+
+			const basename = embed.link.split('#')[0]
+
+			// If there are block references in the embed, we need to substitute them
+			// before adding the embed to the content
+			const { contents: substitutedEmbedContent, substitutions } =
+				this.substituteBlockReferences(basename, embedContent)
+
+			const renderedEmbed = `\nExcerpt from: ${basename} -- \n\n> ${substitutedEmbedContent.split('\n').join('\n> ')}\n`
+
+			// contents =
+			// 	contents.slice(0, newOffset + embed.position.start.offset) +
+			// 	renderedContent +
+			// 	contents.slice(newOffset + embed.position.end.offset)
+
+			contents =
+				contents.slice(0, newOffset) +
+				renderedEmbed +
+				contents.slice(newOffset + embed.original?.length)
+
+			newOffset += renderedEmbed.length - (embed.original?.length || 0)
+
+			allSubstitutions.push(...substitutions)
+		}
+		return { contents, substitutions: allSubstitutions }
 	}
 }

@@ -7,6 +7,11 @@ import { ReasonSettings } from '../../settings/ReasonSettings'
 import { DQLStrategy } from '../../reason-node/SourceReasonNodeBuilder'
 import { DataviewApi } from 'obsidian-dataview'
 import { SingleBacklinkerExtractor } from './SingleBacklinkerExtractor'
+import {
+	RecentMentionsExtractor,
+	RecentMentionsMetadata
+} from './RecentMentionsExtractor'
+import { BasicExtractor } from './BasicExtractor'
 
 /**
  * The `ExtractorDelegator` class manages the delegation of content extraction to specific extractors. It itself is an extractor.
@@ -16,6 +21,8 @@ export class ExtractorDelegator extends BaseExtractor {
 	allBacklinkersExtractor: AllBacklinkersExtractor
 	trimToEndExtractor: TrimToEndExtractor
 	singleBacklinkerExtractor: SingleBacklinkerExtractor
+	recentMentionsExtractor: RecentMentionsExtractor
+	basicExtractor: BasicExtractor
 
 	constructor(
 		public app: App,
@@ -35,6 +42,13 @@ export class ExtractorDelegator extends BaseExtractor {
 			dataviewAPI,
 			this.lassoExtractor
 		)
+		this.basicExtractor = new BasicExtractor(app, dataviewAPI)
+		this.recentMentionsExtractor = new RecentMentionsExtractor(
+			app,
+			dataviewAPI,
+			this.singleBacklinkerExtractor,
+			this.basicExtractor
+		)
 	}
 
 	/**
@@ -50,8 +64,8 @@ export class ExtractorDelegator extends BaseExtractor {
 	 * @returns A Promise that resolves to an array of FileContents objects.
 	 */
 	async extract(
-		file: TFile,
-		metadata: CachedMetadata,
+		file?: TFile,
+		metadata?: CachedMetadata,
 		strategy?: string,
 		evergreen?: string
 	): Promise<FileContents[]> {
@@ -69,24 +83,10 @@ export class ExtractorDelegator extends BaseExtractor {
 					strategy,
 					evergreen
 				)
+			case DQLStrategy[DQLStrategy.RecentMentions]:
+				return this.recentMentionsExtractor.extract()
 			default:
-				let rawContents = await this.app.vault.cachedRead(file)
-				rawContents = await this.replaceEmbeds(rawContents, metadata)
-				rawContents = this.cleanContents(rawContents)
-
-				let { substitutions, contents } = this.substituteBlockReferences(
-					file.basename,
-					rawContents
-				)
-
-				return [
-					{
-						file: file.basename,
-						last_modified_date: new Date(file.stat.mtime).toLocaleDateString(),
-						contents: contents,
-						substitutions: substitutions
-					}
-				]
+				return this.basicExtractor.extract(file, metadata)
 		}
 	}
 }

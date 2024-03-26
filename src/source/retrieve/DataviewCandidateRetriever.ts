@@ -1,5 +1,5 @@
 import { App, TFile } from 'obsidian'
-import { FileRenderer, FileContents } from './FileRenderer'
+import { ContentRenderer, FileContents } from './ContentRenderer'
 import { ReasonSettings } from '../../settings/ReasonSettings'
 import { ReasonNodeType } from '../../types'
 import { SourceReasonNodeSpec } from '../../reason-node/SourceReasonNodeBuilder'
@@ -11,13 +11,13 @@ import { CandidateRetriever } from './CandidateRetriever'
  * It provides methods to retrieve source information, file contents, and node contents.
  */
 export class DataviewCandidateRetriever implements CandidateRetriever {
-	fileRenderer: FileRenderer
+	contentRenderer: ContentRenderer
 	dataviewAPI: DataviewApi
 	constructor(
 		settings: ReasonSettings,
 		public app: App
 	) {
-		this.fileRenderer = new FileRenderer(app, settings)
+		this.contentRenderer = new ContentRenderer(app, settings)
 		this.dataviewAPI = getAPI(app)
 	}
 
@@ -54,10 +54,15 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 	 * @returns A Promise that resolves to an array of FileContents, each representing the contents of a file.
 	 */
 	async retrieve(parameters: {
-		dql: string
-		strategy: string
+		dql?: string
+		strategy?: string
 		evergreen?: string
 	}): Promise<FileContents[]> {
+		if (parameters.dql === undefined) {
+			// Handle higher level extraction where the strategy does its querying independently from the user
+			return [await this.contentRenderer.prepareContents(parameters.strategy)]
+		}
+
 		const dqlResults = await this.dataviewAPI.tryQuery(parameters.dql)
 		const paths = dqlResults.values
 		const realPaths = [...new Set(paths.map((path: any) => path.path))]
@@ -66,7 +71,7 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 		)
 		const bodies: FileContents[] = await Promise.all(
 			files.map((file: TFile) =>
-				this.fileRenderer.prepareContents(
+				this.contentRenderer.prepareFileContents(
 					file,
 					parameters.strategy,
 					parameters.evergreen

@@ -31,10 +31,10 @@ export class SingleBacklinkerExtractor extends BaseExtractor {
 
 		rawReferrerContents = this.cleanContents(rawReferrerContents)
 
-		const referrerContentsReplacedEmbeds = await this.replaceEmbeds(
-			rawReferrerContents,
-			metadata
-		)
+		const {
+			contents: referrerContentsReplacedEmbeds,
+			substitutions: embedSubstitutions
+		} = await this.replaceEmbeds(rawReferrerContents, metadata)
 
 		const referenceContentWindows =
 			await this.lassoExtractor.extractReferenceWindows(
@@ -53,9 +53,10 @@ export class SingleBacklinkerExtractor extends BaseExtractor {
 			contents: substitutions
 				.map((substitution) => substitution.contents)
 				.join('\n\n'),
-			substitutions: substitutions.flatMap(
-				(substitution) => substitution.substitutions
-			)
+			substitutions: [
+				...substitutions.flatMap((substitution) => substitution.substitutions),
+				...embedSubstitutions
+			]
 		}
 
 		return [contents]

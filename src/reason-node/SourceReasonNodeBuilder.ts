@@ -11,8 +11,19 @@ export type SourceReasonNodeSpec = ReasonNodeSpec & {
 export enum DQLStrategy {
 	SingleEvergreenReferrer,
 	AllEvergreenReferrers,
-	LongContent
+	LongContent,
+	RecentMentions,
+	Basic
 }
+
+export const DQLStrategyDescriptions = {
+	SingleEvergreenReferrer: undefined,
+	AllEvergreenReferrers: undefined,
+	LongContent: undefined,
+	RecentMentions:
+		'Identify the top most recent tags and links, and extract the content surrounding their mentions.'
+}
+
 export class SourceReasonNodeBuilder extends BaseReasonNodeBuilder<SourceReasonNodeSpec> {
 	type: ReasonNodeType = ReasonNodeType.Source
 	endpoint: string = 'create-source-node'

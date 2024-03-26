@@ -44,14 +44,14 @@ export class AllBacklinkersExtractor extends BaseExtractor {
 				const referrerMetadata: CachedMetadata =
 					this.app.metadataCache.getFileCache(referrerFile)
 
-				const referrerContentsReplacedEmbeds = await this.replaceEmbeds(
-					rawReferrerContents,
-					referrerMetadata
-				)
+				const {
+					contents: embedReplacedContents,
+					substitutions: embedSubstitutions
+				} = await this.replaceEmbeds(rawReferrerContents, referrerMetadata)
 
 				const referenceContentWindows =
 					await this.lassoExtractor.extractReferenceWindows(
-						referrerContentsReplacedEmbeds,
+						embedReplacedContents,
 						referrerMetadata,
 						[`[[${file.basename}]]`]
 					)
@@ -66,9 +66,12 @@ export class AllBacklinkersExtractor extends BaseExtractor {
 						referrerFile.stat.mtime
 					).toLocaleDateString(),
 					references: substituted.map((substitution) => substitution.contents),
-					substitutions: substituted.flatMap(
-						(substitution) => substitution.substitutions
-					)
+					substitutions: [
+						...substituted.flatMap(
+							(substitution) => substitution.substitutions
+						),
+						...embedSubstitutions
+					]
 				}
 			})
 		)

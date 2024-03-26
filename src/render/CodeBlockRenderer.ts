@@ -10,6 +10,7 @@ import { getAggregatorMetadata } from '../notebook/RankedSourceBuilder'
 import { CanvasLoader } from '../notebook/CanvasLoader'
 import * as yaml from 'yaml'
 import { Notice } from 'obsidian'
+import { DQLStrategyDescriptions } from 'reason-node/SourceReasonNodeBuilder'
 
 type ReasonBlockContents = {
 	prompt: string
@@ -84,45 +85,40 @@ export class CodeBlockRenderer {
 		let renderedString: string
 		let sources: DataviewSource[]
 		let prompt: string
-		let dqlString: string
-
-		// An execution lock
 		const executionLock = { isExecuting: false }
 		if (blockContents.length > 0) {
-			switch (type) {
-				case 'source':
-					sources = (parsedContents as SourceReasonBlockContents).sources
-					let dqlstring = sources
-						.map((source) => {
-							return '### Source:\n```dataview\n' + source.dql + '\n```'
-						})
-						.join('\n\n')
-					prompt = (parsedContents as SourceReasonBlockContents).prompt
+			let sourceStringParts: string[] = []
+			prompt = (parsedContents as any).prompt
 
-					renderedString =
-						dqlstring +
-						'\n---\n### Guidance:\n> ' +
-						prompt.split('\n').join('\n> ')
-					break
-				case 'aggregator':
-					sources = (parsedContents as AggregatorReasonBlockContents).sources
-					dqlString = sources
-						.map((source) => {
-							return '### Source:\n```dataview\n' + source.dql + '\n```'
-						})
-						.join('\n\n')
-					prompt = (parsedContents as AggregatorReasonBlockContents).prompt
-
-					renderedString =
-						dqlString +
-						'\n---\n### Guidance:\n> ' +
-						prompt.split('\n').join('\n> ')
-					break
-				case 'plaintext':
-					prompt = (parsedContents as PlainTextReasonBlockContents).prompt
-					renderedString = prompt
-					break
+			// Handle different types of code blocks: aggregator, source, and plaintext
+			if (type === 'source' || type === 'aggregator') {
+				// For 'source' and 'aggregator' types, extract sources and generate markdown sections
+				sources = (parsedContents as any).sources
+				sourceStringParts = sources.map((source) => {
+					// If a DQL query is present, format it as a code block
+					const dqlPart = source.dql
+						? `\`\`\`dataview\n${source.dql}\n\`\`\`\n`
+						: ''
+					// If a strategy is specified (only for 'source' type), add a description
+					const strategyPart =
+						type === 'source' &&
+						source.strategy &&
+						DQLStrategyDescriptions[source.strategy] !== undefined
+							? `**Strategy**: ${DQLStrategyDescriptions[source.strategy]}\n`
+							: ''
+					return `### Source:\n${dqlPart}${strategyPart}`
+				})
+			} else {
+				// For plaintext blocks, simply use the block contents as the rendered string
+				renderedString = blockContents
 			}
+
+			// If a prompt is provided, format it as a blockquote section
+			const guidanceString = prompt
+				? `\n---\n### Guidance:\n> ${prompt.split('\n').join('\n> ')}`
+				: ''
+			// Combine the source sections and guidance string to form the final rendered string
+			renderedString = sourceStringParts.join('\n\n') + guidanceString
 
 			MarkdownRenderer.render(this.app, renderedString, s, '/', new Component())
 

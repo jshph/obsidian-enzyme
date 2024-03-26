@@ -22,7 +22,8 @@ export class TrimToEndExtractor extends BaseExtractor {
 
 		rawContents = this.cleanContents(rawContents)
 
-		rawContents = await this.replaceEmbeds(rawContents, metadata)
+		let { contents: embedReplacedContents, substitutions: embedSubstitutions } =
+			await this.replaceEmbeds(rawContents, metadata)
 
 		const startSectionBoundary = Math.max(
 			0,
@@ -30,11 +31,11 @@ export class TrimToEndExtractor extends BaseExtractor {
 		)
 		const fiveSectionBoundary =
 			metadata.sections[startSectionBoundary].position.start.offset
-		rawContents = rawContents.substring(fiveSectionBoundary)
+		embedReplacedContents = embedReplacedContents.substring(fiveSectionBoundary)
 
 		let { substitutions, contents } = this.substituteBlockReferences(
 			file.basename,
-			rawContents
+			embedReplacedContents
 		)
 
 		return [
@@ -42,7 +43,7 @@ export class TrimToEndExtractor extends BaseExtractor {
 				file: file.basename,
 				last_modified_date: new Date(file.stat.mtime).toLocaleDateString(),
 				contents: contents,
-				substitutions: substitutions
+				substitutions: [...substitutions, ...embedSubstitutions]
 			}
 		]
 	}

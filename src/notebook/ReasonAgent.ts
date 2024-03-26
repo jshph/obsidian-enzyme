@@ -25,8 +25,8 @@ import { prompts } from './prompts'
 
 export type DataviewSource = {
 	id?: string
-	dql: string
-	strategy: string
+	dql?: string
+	strategy?: string
 	evergreen?: string
 }
 
@@ -226,30 +226,25 @@ export class ReasonAgent {
 		})
 
 		// Fetch contents from raw sources to feed as a "user message"
-
 		let sourceContents: string[] = (
 			await Promise.all(
 				sources.map(async (source) => {
-					if ((source as DataviewSource).dql) {
-						source = source as DataviewSource
-						const fileContents = await this.candidateRetriever.retrieve({
-							dql: source.dql,
-							strategy: source.strategy,
-							evergreen: source.evergreen
-						})
-						const contents = fileContents.flat().map((content) => {
-							return {
-								role: 'user',
-								content: content.contents,
-								substitutions: content.substitutions
-							}
-						})
-
-						contents.forEach((content) => {
-							allSubstitutions = allSubstitutions.concat(content.substitutions)
-						})
-						return contents.map((content) => content.content)
+					source = source as DataviewSource
+					const retrievalParams = {
+						dql: source.dql,
+						strategy: source.strategy,
+						evergreen: source.evergreen
 					}
+					const fileContents =
+						await this.candidateRetriever.retrieve(retrievalParams)
+					const contents = fileContents.flat().map((content) => {
+						allSubstitutions = allSubstitutions.concat(content.substitutions)
+						return {
+							role: 'user',
+							content: content.contents
+						}
+					})
+					return contents.map((content) => content.content)
 				})
 			)
 		).flat()
