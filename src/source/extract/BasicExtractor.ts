@@ -16,18 +16,17 @@ export class BasicExtractor extends BaseExtractor {
 		strategy?: string,
 		evergreen?: string
 	): Promise<FileContents[]> {
-		let rawContents = await this.app.vault.cachedRead(file)
-		const {
-			contents: embedReplacedContents,
-			substitutions: embedSubstitutions
-		} = await this.replaceEmbeds(rawContents, metadata)
+		let contents = await this.app.vault.cachedRead(file)
 
-		let cleanContents = this.cleanContents(embedReplacedContents)
+		const replaced = await this.replaceEmbeds(contents, metadata)
+		contents = replaced.contents
+		let substitutions = replaced.substitutions
 
-		let { substitutions, contents } = this.substituteBlockReferences(
-			file.basename,
-			cleanContents
-		)
+		contents = this.cleanContents(contents)
+
+		let substituted = this.substituteBlockReferences(file.basename, contents)
+		contents = substituted.contents
+		substitutions = [...substitutions, ...substituted.substitutions]
 
 		const tags = []
 		if (
@@ -41,9 +40,9 @@ export class BasicExtractor extends BaseExtractor {
 			{
 				file: file.basename,
 				last_modified_date: new Date(file.stat.mtime).toLocaleDateString(),
-				contents: contents,
-				substitutions: [...substitutions, ...embedSubstitutions],
-				tags: tags
+				contents,
+				substitutions,
+				tags
 			}
 		]
 	}

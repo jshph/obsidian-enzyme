@@ -18,12 +18,13 @@ export class TrimToEndExtractor extends BaseExtractor {
 		file: TFile,
 		metadata: CachedMetadata
 	): Promise<FileContents[]> {
-		let rawContents = await this.app.vault.cachedRead(file)
+		let contents = await this.app.vault.cachedRead(file)
 
-		rawContents = this.cleanContents(rawContents)
+		const replaced = await this.replaceEmbeds(contents, metadata)
+		contents = replaced.contents
+		let substitutions = replaced.substitutions
 
-		let { contents: embedReplacedContents, substitutions: embedSubstitutions } =
-			await this.replaceEmbeds(rawContents, metadata)
+		contents = this.cleanContents(contents)
 
 		const startSectionBoundary = Math.max(
 			0,
@@ -31,19 +32,18 @@ export class TrimToEndExtractor extends BaseExtractor {
 		)
 		const fiveSectionBoundary =
 			metadata.sections[startSectionBoundary].position.start.offset
-		embedReplacedContents = embedReplacedContents.substring(fiveSectionBoundary)
+		contents = contents.substring(fiveSectionBoundary)
 
-		let { substitutions, contents } = this.substituteBlockReferences(
-			file.basename,
-			embedReplacedContents
-		)
+		const substituted = this.substituteBlockReferences(file.basename, contents)
+		contents = substituted.contents
+		substitutions = [...substitutions, ...substituted.substitutions]
 
 		return [
 			{
 				file: file.basename,
 				last_modified_date: new Date(file.stat.mtime).toLocaleDateString(),
-				contents: contents,
-				substitutions: [...substitutions, ...embedSubstitutions]
+				contents,
+				substitutions
 			}
 		]
 	}

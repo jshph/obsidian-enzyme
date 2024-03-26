@@ -105,7 +105,7 @@ export abstract class BaseExtractor {
 	 * @param reference The reference cache object containing the link to the embedded content.
 	 * @returns A Promise that resolves to the content of the embedded block or section.
 	 */
-	async getEmbedContent(reference: ReferenceCache) {
+	async getEmbedContent(reference: ReferenceCache): Promise<string> {
 		try {
 			const pathOfEmbed = parseLinktext(reference.link)
 			const tfile: TFile = this.app.metadataCache.getFirstLinkpathDest(
@@ -160,6 +160,14 @@ export abstract class BaseExtractor {
 	): Promise<{ contents: string; substitutions: BlockRefSubstitution[] }> {
 		let newOffset = 0
 		const allSubstitutions: BlockRefSubstitution[] = []
+
+		// Sort embeds by start position (if not already)
+		if (metadata.embeds) {
+			metadata.embeds = metadata.embeds.sort(
+				(a, b) => a.position.start.offset - b.position.start.offset
+			)
+		}
+
 		for (let embed of metadata?.embeds || []) {
 			if (
 				embed.original.includes('.jpg') ||
@@ -181,19 +189,24 @@ export abstract class BaseExtractor {
 			const { contents: substitutedEmbedContent, substitutions } =
 				this.substituteBlockReferences(basename, embedContent)
 
-			const renderedEmbed = `\nExcerpt from: ${basename} -- \n\n> ${substitutedEmbedContent.split('\n').join('\n> ')}\n`
+			let renderedEmbed = `\nExcerpt from: ${basename} -- \n\n> ${substitutedEmbedContent.split('\n').join('\n> ')}\n`
+			const markerHash = Math.random().toString(16).substring(4, 8)
+			const marker = `%${markerHash}%` // TODO this may lead to a lot of stale markers if there are multiple references to the same file, but that's okay for now
+			renderedEmbed += `${marker}\n`
 
-			// contents =
-			// 	contents.slice(0, newOffset + embed.position.start.offset) +
-			// 	renderedContent +
-			// 	contents.slice(newOffset + embed.position.end.offset)
+			substitutions.push({
+				template: marker,
+				block_reference: embed.original
+			})
 
 			contents =
-				contents.slice(0, newOffset) +
+				contents.slice(0, newOffset + embed.position.start.offset) +
 				renderedEmbed +
-				contents.slice(newOffset + embed.original?.length)
+				contents.slice(newOffset + embed.position.end.offset)
 
-			newOffset += renderedEmbed.length - (embed.original?.length || 0)
+			newOffset +=
+				renderedEmbed.length -
+				(embed.position.end.offset - embed.position.start.offset)
 
 			allSubstitutions.push(...substitutions)
 		}

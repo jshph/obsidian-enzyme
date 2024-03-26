@@ -27,38 +27,35 @@ export class SingleBacklinkerExtractor extends BaseExtractor {
 		strategy: string,
 		evergreen: string
 	): Promise<FileContents[]> {
-		let rawReferrerContents = await this.app.vault.cachedRead(file)
+		let contents = await this.app.vault.cachedRead(file)
 
-		rawReferrerContents = this.cleanContents(rawReferrerContents)
+		const replaced = await this.replaceEmbeds(contents, metadata)
+		contents = replaced.contents
+		let substitutions = replaced.substitutions
 
-		const {
-			contents: referrerContentsReplacedEmbeds,
-			substitutions: embedSubstitutions
-		} = await this.replaceEmbeds(rawReferrerContents, metadata)
+		const cleanedContents = this.cleanContents(contents)
 
 		const referenceContentWindows =
 			await this.lassoExtractor.extractReferenceWindows(
-				referrerContentsReplacedEmbeds,
+				cleanedContents,
 				metadata,
 				[evergreen]
 			)
 
-		const substitutions = referenceContentWindows.map((window) => {
+		const referenceContents = referenceContentWindows.map((window) => {
 			return this.substituteBlockReferences(file.basename, window)
 		})
 
-		let contents = {
+		let allContents = {
 			file: file.basename,
 			last_modified_date: new Date(file.stat.mtime).toLocaleDateString(),
-			contents: substitutions
-				.map((substitution) => substitution.contents)
-				.join('\n\n'),
+			contents: referenceContents.map((c) => c.contents).join('\n\n'),
 			substitutions: [
-				...substitutions.flatMap((substitution) => substitution.substitutions),
-				...embedSubstitutions
+				...referenceContents.flatMap((c) => c.substitutions),
+				...substitutions
 			]
 		}
 
-		return [contents]
+		return [allContents]
 	}
 }

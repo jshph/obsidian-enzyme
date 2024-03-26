@@ -37,26 +37,25 @@ export class AllBacklinkersExtractor extends BaseExtractor {
 
 		let allReferenceContents = await Promise.all(
 			backlinkers.map(async (referrerFile: TFile) => {
-				let rawReferrerContents = await this.app.vault.cachedRead(referrerFile)
-
-				rawReferrerContents = this.cleanContents(rawReferrerContents)
+				let contents = await this.app.vault.cachedRead(referrerFile)
 
 				const referrerMetadata: CachedMetadata =
 					this.app.metadataCache.getFileCache(referrerFile)
 
-				const {
-					contents: embedReplacedContents,
-					substitutions: embedSubstitutions
-				} = await this.replaceEmbeds(rawReferrerContents, referrerMetadata)
+				const replaced = await this.replaceEmbeds(contents, referrerMetadata)
+				contents = replaced.contents
+				let substitutions = replaced.substitutions
+
+				contents = this.cleanContents(contents)
 
 				const referenceContentWindows =
 					await this.lassoExtractor.extractReferenceWindows(
-						embedReplacedContents,
+						contents,
 						referrerMetadata,
 						[`[[${file.basename}]]`]
 					)
 
-				const substituted = referenceContentWindows.map((window) => {
+				const referenceContents = referenceContentWindows.map((window) => {
 					return this.substituteBlockReferences(referrerFile.basename, window)
 				})
 
@@ -65,12 +64,10 @@ export class AllBacklinkersExtractor extends BaseExtractor {
 					referrer_last_modified_date: new Date(
 						referrerFile.stat.mtime
 					).toLocaleDateString(),
-					references: substituted.map((substitution) => substitution.contents),
+					references: referenceContents.map((c) => c.contents),
 					substitutions: [
-						...substituted.flatMap(
-							(substitution) => substitution.substitutions
-						),
-						...embedSubstitutions
+						...referenceContents.flatMap((c) => c.substitutions),
+						...substitutions
 					]
 				}
 			})
