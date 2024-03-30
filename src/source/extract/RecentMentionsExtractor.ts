@@ -10,6 +10,10 @@ export type RecentMentionsMetadata = {
 	numOtherFiles: number
 }
 
+const NUM_READWISE_FILES = 10
+const NUM_OTHER_FILES = 100
+const NUM_TAGS = 25
+const MAX_NUM_FILES_PER_TAG = 10
 export class RecentMentionsExtractor extends BaseExtractor {
 	constructor(
 		public app: App,
@@ -21,7 +25,7 @@ export class RecentMentionsExtractor extends BaseExtractor {
 	}
 
 	/**
-	 * Extracts the most recently modified files for the most common tags / mentioned links. They're are sorted by the
+	 * Extracts the most recently modified files for the most common tags / mentioned links. They're sorted by the
 	 * number of files and then by the most recently modified file.
 	 *
 	 * Each file is then passed to the SingleBacklinkerExtractor along with the mentioned entity.
@@ -32,14 +36,14 @@ export class RecentMentionsExtractor extends BaseExtractor {
 	async extract(): Promise<FileContents[]> {
 		// Get 10 most recently modified files from Readwise
 		const files = await this.dataviewAPI.tryQuery(`
-      TABLE WITHOUT ID file.link, file.mtime, file.tags, file.outlinks FROM "Readwise" SORT file.mtime DESC LIMIT 10
+      TABLE WITHOUT ID file.link, file.mtime, file.tags, file.outlinks FROM "Readwise" SORT file.mtime DESC LIMIT ${NUM_READWISE_FILES}
     `)
 
 		// Get 40 most recently created files from the rest of the vault
 		const files2 = await this.dataviewAPI.tryQuery(`
       TABLE WITHOUT ID file.link, file.mtime, file.tags, file.outlinks FROM ""
       WHERE !contains(file.path, "Readwise")
-      SORT file.ctime DESC LIMIT 40
+      SORT file.ctime DESC LIMIT ${NUM_OTHER_FILES}
     `)
 
 		const flattenedFiles: {
@@ -104,13 +108,13 @@ export class RecentMentionsExtractor extends BaseExtractor {
 		console.log('Top mentions', sortedMentions)
 
 		const topPromises = sortedMentions
-			.slice(0, 25)
-			.flatMap((mention) =>
-				groupedFiles[mention]
+			.slice(0, NUM_TAGS)
+			.flatMap((mention, index) => {
+				return groupedFiles[mention]
 					.sort((a, b) => b.mtime - a.mtime)
-					.slice(0, 5)
+					.slice(0, MAX_NUM_FILES_PER_TAG)
 					.map((file) => ({ mention, file }))
-			)
+			})
 			.map(async ({ mention, file }) => {
 				const tfile = this.app.vault.getAbstractFileByPath(file.filepath)
 				if (!tfile || !(tfile instanceof TFile)) {
