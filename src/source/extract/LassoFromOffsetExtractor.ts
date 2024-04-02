@@ -78,7 +78,7 @@ export class LassoFromOffsetExtractor {
 					for (let tag of metadata.tags || []) {
 						if (tag.tag === topic) {
 							referenceWindows.push(
-								this.lassoContentFromOffset(contents, tag.position, 1, 200)
+								this.lassoContentFromOffset(contents, tag.position, 1, 500)
 							)
 						}
 					}
@@ -86,7 +86,7 @@ export class LassoFromOffsetExtractor {
 					for (let link of metadata.links || []) {
 						if (link.original === topic) {
 							referenceWindows.push(
-								this.lassoContentFromOffset(contents, link.position, 1, 200)
+								this.lassoContentFromOffset(contents, link.position, 1, 500)
 							)
 						}
 					}
@@ -94,9 +94,9 @@ export class LassoFromOffsetExtractor {
 			}
 		}
 
-		// If this is a book, there may be LOTS of the same ref mentioned. Grab the most recent 4.
+		// If this is a book, there may be LOTS of the same ref mentioned. Grab the most recent 8.
 		referenceWindows = referenceWindows.slice(
-			Math.max(0, referenceWindows.length - 4)
+			Math.max(0, referenceWindows.length - 8)
 		)
 
 		return referenceWindows

@@ -5,6 +5,7 @@ import {
 } from './CodeBlockRenderer'
 import { AggregatorMetadata } from '../notebook/RankedSourceBuilder'
 import { DataviewSource } from '../notebook/ReasonAgent'
+import { DQLStrategy } from 'reason-node/SourceReasonNodeBuilder'
 
 export type ChatMessageWithMetadata = {
 	role: string
@@ -201,13 +202,13 @@ export class SynthesisContainer {
 	): ChatMessageWithMetadata[] {
 		const rawContent = this.editor.getRange(
 			{ ch: 0, line: 0 },
-			{ ch: curCh, line: curLine }
+			{ ch: curCh, line: this.endOfCodeFenceLine }
 		)
 
 		const combinedBlocks = rawContent.match(
 			/```reason\n([\s\S]*?)\n```|> \[!💭\]\+\n> ([\s\S]*?)(?=\n[^>])/g
 		)
-		const messages = combinedBlocks.map((block) => {
+		const messages = combinedBlocks.map((block, index) => {
 			const role = block.includes('```reason') ? 'user' : 'assistant'
 
 			let displayedContent =
@@ -221,6 +222,15 @@ export class SynthesisContainer {
 			if (role === 'user') {
 				let { type, ...parsedContents } =
 					this.renderer.parseReasonBlockContents(displayedContent)
+
+				// Mirror the logic in CodeBlockRenderer.ts
+				if (index === 0 && parsedContents.sources.length === 0) {
+					parsedContents.sources = [
+						{
+							strategy: DQLStrategy[DQLStrategy.RecentMentions]
+						}
+					]
+				}
 
 				switch (type) {
 					case 'source':

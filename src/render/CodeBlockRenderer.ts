@@ -10,7 +10,10 @@ import { getAggregatorMetadata } from '../notebook/RankedSourceBuilder'
 import { CanvasLoader } from '../notebook/CanvasLoader'
 import * as yaml from 'yaml'
 import { Notice } from 'obsidian'
-import { DQLStrategyDescriptions } from 'reason-node/SourceReasonNodeBuilder'
+import {
+	DQLStrategy,
+	DQLStrategyDescriptions
+} from 'reason-node/SourceReasonNodeBuilder'
 
 type ReasonBlockContents = {
 	prompt: string
@@ -76,49 +79,83 @@ export class CodeBlockRenderer {
 		const s = body.createSpan()
 
 		await this.canvasLoader.reload()
-		let { type, ...parsedContents } =
-			this.parseReasonBlockContents(blockContents)
+
+		// check if there are messages before this code block
+		const tempSynthesisContainer = new SynthesisContainer(
+			this.app.workspace.activeEditor.editor,
+			context.getSectionInfo(el).lineStart,
+			0,
+			context.getSectionInfo(el).lineEnd + 1,
+			this
+		)
 
 		const button = body.createEl('button')
 		button.addClass('reason-generate-button')
 
-		let renderedString: string
+		let renderedString: string = ''
 		let sources: DataviewSource[]
 		let prompt: string
 		const executionLock = { isExecuting: false }
+
 		if (blockContents.length > 0) {
+			let { type, ...parsedContents } =
+				this.parseReasonBlockContents(blockContents)
+
 			let sourceStringParts: string[] = []
-			prompt = (parsedContents as any).prompt
+			prompt = (
+				parsedContents as
+					| AggregatorReasonBlockContents
+					| SourceReasonBlockContents
+			).prompt
 
 			// Handle different types of code blocks: aggregator, source, and plaintext
 			if (type === 'source' || type === 'aggregator') {
 				// For 'source' and 'aggregator' types, extract sources and generate markdown sections
-				sources = (parsedContents as any).sources
-				sourceStringParts = sources.map((source) => {
-					// If a DQL query is present, format it as a code block
-					const dqlPart = source.dql
-						? `\`\`\`dataview\n${source.dql}\n\`\`\`\n`
-						: ''
-					// If a strategy is specified (only for 'source' type), add a description
-					const strategyPart =
-						type === 'source' &&
-						source.strategy &&
-						DQLStrategyDescriptions[source.strategy] !== undefined
-							? `**Strategy**: ${DQLStrategyDescriptions[source.strategy]}\n`
+				sources = (
+					parsedContents as
+						| AggregatorReasonBlockContents
+						| SourceReasonBlockContents
+				).sources
+
+				// Default to RecentMentions if no sources are provided and this is the first message
+				if (
+					sources.length === 0 &&
+					tempSynthesisContainer.getMessagesToHere().length === 1
+				) {
+					sources.push({
+						strategy: DQLStrategy[DQLStrategy.RecentMentions]
+					})
+				}
+
+				if (sources.length > 0) {
+					sourceStringParts = sources.map((source) => {
+						// If a DQL query is present, format it as a code block
+						const dqlPart = source.dql
+							? `\`\`\`dataview\n${source.dql}\n\`\`\`\n`
 							: ''
-					return `### Source:\n${dqlPart}${strategyPart}`
-				})
-			} else {
-				// For plaintext blocks, simply use the block contents as the rendered string
-				renderedString = blockContents
+						// If a strategy is specified (only for 'source' type), add a description
+						const strategyPart =
+							type === 'source' &&
+							source.strategy &&
+							DQLStrategyDescriptions[source.strategy] !== undefined
+								? `**Strategy**: ${DQLStrategyDescriptions[source.strategy]}\n`
+								: ''
+						const preamblePart =
+							type === 'source' && source.sourcePreamble
+								? `**Preamble**: ${source.sourcePreamble}\n`
+								: ''
+						return `### Source:\n${dqlPart}${strategyPart}${preamblePart}`
+					})
+
+					// Encase sources as collapsible Markdown block
+					renderedString =
+						'> [!Sources]-\n> ' +
+						sourceStringParts.join('\n\n').split('\n').join('\n> ') +
+						'\n\n'
+				}
 			}
 
-			// If a prompt is provided, format it as a blockquote section
-			const guidanceString = prompt
-				? `\n---\n### Guidance:\n> ${prompt.split('\n').join('\n> ')}`
-				: ''
-			// Combine the source sections and guidance string to form the final rendered string
-			renderedString = sourceStringParts.join('\n\n') + guidanceString
+			renderedString += prompt
 
 			MarkdownRenderer.render(this.app, renderedString, s, '/', new Component())
 
@@ -135,55 +172,32 @@ export class CodeBlockRenderer {
 					context,
 					executionLock,
 					async (synthesisContainerEl) => {
-						if (sources?.length > 0) {
-							await this.reasonAgent.synthesize(synthesisContainerEl)
-						} else {
-							await this.reasonAgent.execute(synthesisContainerEl)
-						}
+						// if (sources?.length > 0) {
+						await this.reasonAgent.synthesize(synthesisContainerEl)
+						// }
+						// TODO unclear if "synthesisPlan execution" is something to support anymore
+						// else {
+						// 	await this.reasonAgent.execute(synthesisContainerEl)
+						// }
 					}
 				)
 			})
-		} else {
-			button.setText('Continue')
-			button.addEventListener('click', async () => {
-				if (!this.reasonAgent.checkSetup()) {
-					new Notice(
-						'Please check that Reason is set up properly (i.e. API Key, etc.)'
-					)
-					return
-				}
+		} else if (
+			blockContents.trim().length === 0 &&
+			tempSynthesisContainer.getMessagesToHere().length > 0
+		) {
+			const saveButton = body.createEl('button')
+			saveButton.addClass('reason-generate-button')
+			saveButton.setText('Save')
+			saveButton.addEventListener('click', async () => {
 				this.createSynthesisContainerAction(
 					el,
 					context,
 					executionLock,
 					async (synthesisContainerEl) =>
-						await this.reasonAgent.synthesize(synthesisContainerEl)
+						await this.reasonAgent.collapseAndPersist(synthesisContainerEl)
 				)
 			})
-
-			// check if there are messages before this code block
-			const tempSynthesisContainer = new SynthesisContainer(
-				this.app.workspace.activeEditor.editor,
-				context.getSectionInfo(el).lineEnd,
-				0,
-				context.getSectionInfo(el).lineEnd,
-				this
-			)
-
-			if (tempSynthesisContainer.getMessagesToHere().length > 0) {
-				const saveButton = body.createEl('button')
-				saveButton.addClass('reason-generate-button')
-				saveButton.setText('Save')
-				saveButton.addEventListener('click', async () => {
-					this.createSynthesisContainerAction(
-						el,
-						context,
-						executionLock,
-						async (synthesisContainerEl) =>
-							await this.reasonAgent.collapseAndPersist(synthesisContainerEl)
-					)
-				})
-			}
 		}
 	}
 
@@ -227,7 +241,7 @@ export class CodeBlockRenderer {
 		codeblockEl: HTMLElement,
 		context: MarkdownPostProcessorContext
 	): SynthesisContainer {
-		const endOfCodeFenceLine = context.getSectionInfo(codeblockEl).lineEnd
+		let endOfCodeFenceLine = context.getSectionInfo(codeblockEl).lineEnd
 		let editor = this.app.workspace.activeEditor.editor
 		editor.replaceRange('\n> [!💭]+\n> ', {
 			ch: 0,
@@ -235,13 +249,14 @@ export class CodeBlockRenderer {
 		})
 
 		let curLine = endOfCodeFenceLine + 3
+		endOfCodeFenceLine += 3
 		let curCh = 2
 
 		return new SynthesisContainer(
 			editor,
 			curLine,
 			curCh,
-			endOfCodeFenceLine,
+			endOfCodeFenceLine + 1,
 			this
 		)
 	}
@@ -254,10 +269,7 @@ export class CodeBlockRenderer {
 	 */
 	parseReasonBlockContents(
 		contents: string
-	):
-		| AggregatorReasonBlockContents
-		| SourceReasonBlockContents
-		| PlainTextReasonBlockContents {
+	): AggregatorReasonBlockContents | SourceReasonBlockContents {
 		let prompt
 		let sources
 
@@ -281,7 +293,8 @@ export class CodeBlockRenderer {
 					return {
 						dql: source.dql,
 						strategy: source.strategy,
-						evergreen: source.evergreen
+						evergreen: source.evergreen,
+						sourcePreamble: source.sourcePreamble
 					} as DataviewSource
 				})
 				prompt = parsedYaml.guidance
@@ -290,18 +303,26 @@ export class CodeBlockRenderer {
 					prompt,
 					sources
 				}
+			} else if (parsedYaml?.guidance) {
+				return {
+					type: 'source',
+					prompt: parsedYaml.guidance,
+					sources: []
+				}
 			} else {
 				return {
-					type: 'plaintext',
-					prompt: contents
-				} as PlainTextReasonBlockContents
+					type: 'source',
+					prompt: contents,
+					sources: []
+				}
 			}
 		} catch (e) {
-			// it wasn't yaml, just a plaintext prompt
+			// By default return empty sources. Currently the caller sets this to RecentMentions; needs to be differentiated from valid YAML
 			return {
-				type: 'plaintext',
-				prompt: contents
-			} as PlainTextReasonBlockContents
+				type: 'source',
+				prompt: contents,
+				sources: []
+			}
 		}
 	}
 }

@@ -5,6 +5,7 @@ import { ReasonNodeType } from '../../types'
 import { SourceReasonNodeSpec } from '../../reason-node/SourceReasonNodeBuilder'
 import { DataviewApi, getAPI } from '../../obsidian-modules/dataview-handler'
 import { CandidateRetriever } from './CandidateRetriever'
+import { DataviewSource } from 'notebook/ReasonAgent'
 
 /**
  * The `DataviewCandidateRetriever` class manages the retrieval of candidate information from Dataview.
@@ -50,14 +51,10 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 	 * Each file is then processed to prepare its contents according to the specified strategy and evergreen status.
 	 * The resulting array of FileContents is flattened before being returned.
 	 *
-	 * @param parameters - An object containing the DQL query, strategy, and optional evergreen status.
+	 * @param parameters - An object containing the DQL query, strategy, and optional evergreen status
 	 * @returns A Promise that resolves to an array of FileContents, each representing the contents of a file.
 	 */
-	async retrieve(parameters: {
-		dql?: string
-		strategy?: string
-		evergreen?: string
-	}): Promise<FileContents[]> {
+	async retrieve(parameters: DataviewSource): Promise<FileContents[]> {
 		if (parameters.dql === undefined) {
 			// Handle higher level extraction where the strategy does its querying independently from the user
 			return [await this.contentRenderer.prepareContents(parameters.strategy)]
@@ -74,7 +71,8 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 				this.contentRenderer.prepareFileContents(
 					file,
 					parameters.strategy,
-					parameters.evergreen
+					parameters.evergreen,
+					parameters.sourcePreamble
 				)
 			)
 		)

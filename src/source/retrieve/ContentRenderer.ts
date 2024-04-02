@@ -47,7 +47,10 @@ export class ContentRenderer {
 		}
 	}
 
-	renderFileContents(contentsData: ExtractorFileContents[]): FileContents[] {
+	renderFileContents(
+		contentsData: ExtractorFileContents[],
+		sourcePreamble?: string
+	): FileContents[] {
 		return contentsData.map((contents) => {
 			let substitutions = contents.substitutions
 
@@ -70,7 +73,7 @@ export class ContentRenderer {
 
 			let contentsDisplay = `## File: ${contents.file}
 * Folder: ${path.substring(0, path.lastIndexOf('/'))}
-* Last modified date: ${contents.last_modified_date}${mainMarkerDisplay}${tags ? `\n* Tags: ${tags}` : ''}
+* Last modified date: ${contents.last_modified_date}${mainMarkerDisplay}${tags ? `\n* Tags: ${tags}` : ''}${sourcePreamble ? `\n* Notes about this content: ${sourcePreamble}` : ''}
 
 ### Contents:
 \`\`\`
@@ -99,7 +102,8 @@ ${contents.contents}
 	async prepareFileContents(
 		file?: TFile,
 		strategy?: string,
-		evergreen?: string
+		evergreen?: string,
+		sourcePreamble?: string
 	): Promise<FileContents> {
 		// Should use this to ingest dataview lists as well. And rerender markdown.
 
@@ -112,7 +116,10 @@ ${contents.contents}
 			evergreen
 		)
 
-		const renderedContentsData = this.renderFileContents(contentsData)
+		const renderedContentsData = this.renderFileContents(
+			contentsData,
+			sourcePreamble
+		)
 
 		return {
 			title: file.name,

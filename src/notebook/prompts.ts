@@ -1,7 +1,6 @@
 export const prompts = {
 	aggregatorInstructions: `
-	  Relate note excerpts to each other. Limit your response to 500 words. Use  %marker% from different sources to support a point. You MUST avoid repeating the same %marker% twice.
-	  You will encounter %markers% in the notes. These start and end with %. Try your best to alternate between your synthesis and %markers% to show where you got insights from. Use at most 2 %markers% together in a section. Try to create at least 2 marker sections. Avoid placing all markers at the end. For example:
+	  Relate note excerpts to each other. Limit your response to 500 words. You will encounter %markers% in the notes. These start and end with %. Try your best to alternate between your synthesis and %markers% to show where you got insights from. Use at most 2 %markers% together in a section. Try to create at least 2 marker sections, from different sources to support a point. Only use valid %markers% that exist in the text. You MUST avoid repeating the same %marker% twice, and avoid placing all markers at the end. For example:
 	  \`\`\`
 	  <some synthesis>
 	  %a6de%
@@ -9,8 +8,8 @@ export const prompts = {
 	  <some more synthesis>: %0d22%. <continuing with the point>
 	  \`\`\`
 	  Markers are NOT [[links]] or #tags.
-	  Only use valid %markers% that exist in the text. Only use "Main marker" if you can't find a %marker% within the \`\`\`codefence\`\`\`.
-	  The user does not know what %markers% are; do NOT mention your use of them in output.
+	  Only use "Main marker" if you can't find a %marker% within the \`\`\`codefence\`\`\`.
+	  Do NOT mention the word %marker% in your response to the user.
 	  %markers% appear in the frontmatter of a document, or after the text they reference. Think carefully about using a %marker% to extract the excerpts most related to your ideas.
 	`,
 	aggregatorSystemPrompt: `

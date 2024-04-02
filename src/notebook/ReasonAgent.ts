@@ -28,6 +28,7 @@ export type DataviewSource = {
 	dql?: string
 	strategy?: string
 	evergreen?: string
+	sourcePreamble?: string
 }
 
 export type SystemPrompts = {
@@ -145,6 +146,42 @@ export class ReasonAgent {
 		return ranked
 	}
 
+	private async retrieve(sources: DataviewSource[]): Promise<{
+		sourceContents: string[]
+		substitutions: BlockRefSubstitution[]
+	}> {
+		let results = (
+			await Promise.all(
+				sources.map(async (source) => {
+					source = source as DataviewSource
+					const retrievalParams = {
+						dql: source.dql,
+						strategy: source.strategy,
+						evergreen: source.evergreen,
+						sourcePreamble: source.sourcePreamble
+					}
+					const fileContents =
+						await this.candidateRetriever.retrieve(retrievalParams)
+					const flatContents = fileContents.flat().map((content) => {
+						return {
+							content: content.contents,
+							substitutions: content.substitutions
+						}
+					})
+					return flatContents
+				})
+			)
+		).flat()
+
+		let sourceContents = results.map((result) => result.content)
+		let substitutions = results.map((result) => result.substitutions).flat()
+
+		return {
+			sourceContents,
+			substitutions
+		}
+	}
+
 	/**
 	 * Processes the synthesis of content based on user interactions and synthesis plans.
 	 * It appends generated content to the editor and handles user feedback.
@@ -153,15 +190,6 @@ export class ReasonAgent {
 	 * @returns {Promise<void>} - A promise that resolves when the synthesis process is complete.
 	 */
 	async synthesize(synthesisContainer: SynthesisContainer): Promise<void> {
-		const recentMessages = synthesisContainer.getMessagesToHere()
-
-		let mostRecentMessage = recentMessages[recentMessages.length - 1]
-
-		if (mostRecentMessage.role === 'user' && !mostRecentMessage.metadata) {
-			// in this scenario the user is pressing "Continue" from an empty user message
-			mostRecentMessage = recentMessages[recentMessages.length - 2]
-		}
-
 		synthesisContainer.renderMetadata([
 			{
 				id: Math.random().toString(16).slice(6),
@@ -169,53 +197,40 @@ export class ReasonAgent {
 			} as SynthesisMessageMetadata
 		])
 
-		let sources
-
-		// Find the most recent SynthesisPlan message
-		const synthesisPlanMessage = recentMessages
-			.slice()
-			.reverse()
-			.find(
-				(msg) =>
-					msg.metadata?.length > 0 &&
-					msg.metadata[0].assistantMessageType === 'synthesisPlan'
-			)
-
-		if (synthesisPlanMessage) {
-			sources = (
-				synthesisPlanMessage.metadata[0] as SynthesisPlanMessageMetadata
-			).sources
-		} else {
-			new Notice('No synthesis plan found.')
-			return
-		}
-
 		let allSubstitutions: BlockRefSubstitution[] = []
 
 		// Get all user and synthesis turns as context
-		let userPrompts: string[] = []
 		let messages = [] as ChatCompletionMessage[]
-		let curUserPrompt = ''
 
-		synthesisContainer.getMessagesToHere().forEach((msg) => {
+		const messagesToHere = synthesisContainer.getMessagesToHere()
+		for (const msg of messagesToHere) {
 			if (msg.role === 'user' && msg.content.length > 0) {
 				if (msg.metadata) {
-					curUserPrompt = (msg.metadata[0] as SynthesisPlanMessageMetadata)
+					let curUserPrompt = (msg.metadata[0] as SynthesisPlanMessageMetadata)
 						.prompt
-				} else {
-					curUserPrompt = msg.content
+					let sources = (msg.metadata[0] as SynthesisPlanMessageMetadata)
+						.sources
+					let retrieval = await this.retrieve(sources)
+					let sourceContents = retrieval.sourceContents
+					let concatenatedContents = sourceContents.join('\n\n').trim()
+
+					allSubstitutions = allSubstitutions.concat(retrieval.substitutions)
+
+					let message = ''
+					if (concatenatedContents.length > 0) {
+						message = `Sources:\n${concatenatedContents}\n\n`
+					}
+					message += `Guidance: ${curUserPrompt}`
+
+					messages.push({
+						role: 'user',
+						content: message
+					})
 				}
-				userPrompts.push(curUserPrompt)
 			} else if (
 				msg.role === 'assistant' &&
 				msg.metadata[0].assistantMessageType === 'synthesis'
 			) {
-				// Don't push the user prompt unless there is a corresponding synthesis; i.e. there was a prior user-synthesis turn
-				messages.push({
-					role: 'user',
-					content: curUserPrompt
-				})
-
 				let { contents, substitutions } = substituteBlockEmbeds(msg.content)
 				allSubstitutions = allSubstitutions.concat(substitutions)
 				messages.push({
@@ -223,43 +238,10 @@ export class ReasonAgent {
 					content: contents
 				})
 			}
-		})
-
-		// Fetch contents from raw sources to feed as a "user message"
-		let sourceContents: string[] = (
-			await Promise.all(
-				sources.map(async (source) => {
-					source = source as DataviewSource
-					const retrievalParams = {
-						dql: source.dql,
-						strategy: source.strategy,
-						evergreen: source.evergreen
-					}
-					const fileContents =
-						await this.candidateRetriever.retrieve(retrievalParams)
-					const contents = fileContents.flat().map((content) => {
-						allSubstitutions = allSubstitutions.concat(content.substitutions)
-						return {
-							role: 'user',
-							content: content.contents
-						}
-					})
-					return contents.map((content) => content.content)
-				})
-			)
-		).flat()
-
-		messages.push({
-			role: 'user',
-			content: `New sources:
-${sourceContents.join('\n\n')}
-
-Remember the rules:
-${this.systemPrompts.aggregatorInstructions}
-
-Guidance: ${userPrompts.join('. ')}
-`
-		})
+		}
+		// Append reminder instructions to the last user prompt (assume the last message is a user message)
+		messages[messages.length - 1].content +=
+			`\n\nRemember the rules:\n${this.systemPrompts.aggregatorInstructions}`
 
 		const cancelPlaceholderFn =
 			synthesisContainer.waitPlaceholder('🧠 Synthesizing...')
