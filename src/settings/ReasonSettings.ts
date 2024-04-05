@@ -14,6 +14,12 @@ export interface ReasonSettings {
 export const DEFAULT_SETTINGS: ReasonSettings = {
 	models: [
 		{
+			label: 'Haiku',
+			model: 'claude-3-haiku-20240307',
+			baseURL: null,
+			apiKey: null
+		},
+		{
 			label: 'GPT-3.5 Turbo',
 			model: 'gpt-3.5-turbo-0125',
 			apiKey: null,
@@ -32,7 +38,7 @@ export const DEFAULT_SETTINGS: ReasonSettings = {
 			apiKey: ''
 		}
 	],
-	selectedModel: 'GPT-3.5 Turbo',
+	selectedModel: 'Haiku',
 	debug: false,
 	localModelPath: undefined
 }
