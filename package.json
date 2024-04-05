@@ -33,7 +33,7 @@
 		"node-machine-id": "^1.1.12",
 		"obsidian": "^1.5.7",
 		"obsidian-dataview": "latest",
-		"openai": "^4.29.2",
+		"openai": "4.25.0",
 		"path": "^0.12.7",
 		"prettier": "^3.2.5",
 		"react": "^18.2.0",

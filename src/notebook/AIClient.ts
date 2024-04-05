@@ -1,4 +1,3 @@
-import * as http from 'http'
 import {
 	ChatCompletion,
 	ChatCompletionChunk,
@@ -16,8 +15,14 @@ export type ModelConfig = {
 	apiKey: string
 }
 
+// TODO hacky, but to handle llm-polyglot
+interface LLMClientWithBase extends LLMClient<'anthropic' | 'openai'> {
+	baseURL: string
+	chat: any
+}
 export class AIClient {
-	llmClient: LLMClient<'openai' | 'anthropic'>
+	llmClient: LLMClientWithBase
+
 	private server: ProxyServer
 
 	constructor() {}
@@ -44,7 +49,6 @@ export class AIClient {
 			provider
 		})
 
-		// TODO???
 		this.llmClient.baseURL = 'http://localhost:3000'
 	}
 
