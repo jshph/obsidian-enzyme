@@ -49,6 +49,16 @@ export class ReasonPlugin extends Plugin {
 	}
 
 	async initAIClient() {
+		// Check if API key is set for the selected model
+		const selectedModel = this.settings.models.find(
+			(model) => model.label === this.settings.selectedModel
+		)
+
+		if (!selectedModel.apiKey) {
+			new Notice('No API key provided for selected model')
+			return
+		}
+
 		await this.aiClient.initAIClient(
 			this.settings.models.find(
 				(model) => model.label === this.settings.selectedModel
