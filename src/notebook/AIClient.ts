@@ -15,7 +15,7 @@ export type ModelConfig = {
 	apiKey: string
 }
 
-const proxyPort = 3000
+const proxyPort = 3011
 const localBaseURL = `http://localhost:${proxyPort}`
 
 // TODO hacky, but to handle llm-polyglot

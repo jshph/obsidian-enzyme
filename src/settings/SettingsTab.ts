@@ -90,36 +90,44 @@ export class SettingsTab extends PluginSettingTab {
 					.setValue(thisModelConfig.apiKey).inputEl.style.width = '100%'
 			}).settingEl.style.borderTop = 'none'
 
-		new Setting(div)
-			.addButton((button) => {
+		new Setting(div).addButton((button) => {
+			button.setButtonText('X').onClick(() => {
+				div.remove()
 				if (this.plugin.settings.selectedModel === thisModelConfig.label) {
-					button.setButtonText('Selected')
-					button.setDisabled(true)
-				} else {
-					button.setButtonText('Select').onClick(() => {
-						this.plugin.settings.selectedModel = thisModelConfig.label
-						this.display()
-						this.plugin.saveSettings()
-						this.plugin.initAIClient()
-					})
+					this.plugin.settings.selectedModel = DEFAULT_SETTINGS.selectedModel
 				}
+				this.plugin.settings.models.remove(thisModelConfig)
+				this.plugin.saveSettings()
+				this.display()
 			})
-			.addButton((button) => {
-				button.setButtonText('X').onClick(() => {
-					div.remove()
-					if (this.plugin.settings.selectedModel === thisModelConfig.label) {
-						this.plugin.settings.selectedModel = DEFAULT_SETTINGS.selectedModel
-					}
-					this.plugin.settings.models.remove(thisModelConfig)
-					this.plugin.saveSettings()
-					this.display()
-				})
-			}).settingEl.style.borderTop = 'none'
+		}).settingEl.style.borderTop = 'none'
 	}
 
 	async display(): Promise<void> {
 		const { containerEl } = this
 		containerEl.empty()
+
+		const loaderSettings = new Setting(containerEl).setName('Set model')
+
+		loaderSettings.addDropdown((dropdown) => {
+			this.plugin.settings.models.forEach((model, index) => {
+				dropdown.addOption(index.toString(), model.label)
+			})
+			dropdown.setValue(this.plugin.settings.selectedModel)
+			dropdown.onChange(async (value) => {
+				this.plugin.settings.selectedModel =
+					this.plugin.settings.models[parseInt(value)].label
+				this.plugin.saveSettings()
+				this.plugin.initAIClient()
+			})
+		})
+
+		loaderSettings.addButton((button) => {
+			button.setButtonText('Reload Settings').onClick(() => {
+				this.display()
+				this.plugin.initAIClient()
+			}).buttonEl.style.marginLeft = '10px'
+		})
 
 		const modelConfigsSetting = new Setting(containerEl).setName(
 			'Model configs'
