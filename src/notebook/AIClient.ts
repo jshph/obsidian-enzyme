@@ -40,7 +40,7 @@ export class AIClient {
 			this.server = new ProxyServer('https://api.anthropic.com/v1', proxyPort)
 			baseURL = localBaseURL
 		} else if (modelConfig.model.includes('gpt')) {
-			this.server = new ProxyServer('https://api.openai.com', proxyPort)
+			this.server = new ProxyServer('https://api.openai.com/v1', proxyPort)
 			baseURL = localBaseURL
 		} else {
 			baseURL = modelConfig.baseURL
