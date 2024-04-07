@@ -52,7 +52,9 @@ export class RecentMentionsExtractor extends BaseExtractor {
 		const formattedMentions = '- ' + sortedMentions.join('\n- ')
 		const mentionPart = `**Top mentioned entities**:\n${formattedMentions}`
 
-		return super.renderSourceBlock(strategy, sourcePreamble) + mentionPart
+		return (
+			(await super.renderSourceBlock(strategy, sourcePreamble)) + mentionPart
+		)
 	}
 
 	private async getTopMentions(

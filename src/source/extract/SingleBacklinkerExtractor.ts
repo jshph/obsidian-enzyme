@@ -27,7 +27,7 @@ export class SingleBacklinkerExtractor extends BaseExtractor {
 		// If a DQL query is present, format it as a code block
 		const dqlPart = `\`\`\`dataview\n${strategy.dql}\n\`\`\`\n`
 
-		return super.renderSourceBlock(strategy, sourcePreamble) + dqlPart
+		return (await super.renderSourceBlock(strategy, sourcePreamble)) + dqlPart
 	}
 
 	/**

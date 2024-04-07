@@ -31,15 +31,20 @@ export class AIClient {
 	constructor() {}
 
 	async initAIClient(modelConfig: ModelConfig) {
-		const baseURL = modelConfig.model.includes('claude')
-			? 'https://api.anthropic.com/v1'
-			: 'https://api.openai.com'
-
 		// start proxy server
 		if (this.server) {
 			this.server.stop()
 		}
-		this.server = new ProxyServer(baseURL, proxyPort)
+		let baseURL
+		if (modelConfig.model.includes('claude')) {
+			this.server = new ProxyServer('https://api.anthropic.com/v1', proxyPort)
+			baseURL = localBaseURL
+		} else if (modelConfig.model.includes('gpt')) {
+			this.server = new ProxyServer('https://api.openai.com', proxyPort)
+			baseURL = localBaseURL
+		} else {
+			baseURL = modelConfig.baseURL
+		}
 
 		const provider = modelConfig.model.includes('claude')
 			? 'anthropic'
@@ -48,11 +53,11 @@ export class AIClient {
 		this.llmClient = createLLMClient({
 			...modelConfig,
 			dangerouslyAllowBrowser: true,
-			baseURL: localBaseURL,
+			baseURL,
 			provider
 		})
 
-		this.llmClient.baseURL = localBaseURL
+		this.llmClient.baseURL = baseURL
 	}
 
 	createCompletion(

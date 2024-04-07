@@ -58,29 +58,29 @@ export class ExtractorDelegator extends BaseExtractor {
 		)
 	}
 
-	override renderSourceBlock(
+	override async renderSourceBlock(
 		strategy: StrategyMetadata,
 		sourcePreamble?: string
 	): Promise<string> {
 		// Switch between different strategies
 		switch (strategy.name) {
 			case DQLStrategy[DQLStrategy.AllEvergreenReferrers]:
-				return this.allBacklinkersExtractor.renderSourceBlock(
+				return await this.allBacklinkersExtractor.renderSourceBlock(
 					strategy,
 					sourcePreamble
 				)
 			case DQLStrategy[DQLStrategy.LongContent]:
-				return this.trimToEndExtractor.renderSourceBlock(
+				return await this.trimToEndExtractor.renderSourceBlock(
 					strategy,
 					sourcePreamble
 				)
 			case DQLStrategy[DQLStrategy.SingleEvergreenReferrer]:
-				return this.singleBacklinkerExtractor.renderSourceBlock(
+				return await this.singleBacklinkerExtractor.renderSourceBlock(
 					strategy as SingleBacklinkerStrategyMetadata,
 					sourcePreamble
 				)
 			case DQLStrategy[DQLStrategy.RecentMentions]:
-				return this.recentMentionsExtractor.renderSourceBlock(
+				return await this.recentMentionsExtractor.renderSourceBlock(
 					strategy as RecentMentionsStrategyMetadata,
 					sourcePreamble
 				)

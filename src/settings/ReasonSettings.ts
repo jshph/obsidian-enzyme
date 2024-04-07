@@ -33,7 +33,8 @@ export const DEFAULT_SETTINGS: ReasonSettings = {
 		},
 		{
 			label: 'LM Studio',
-			model: '',
+			model:
+				'TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q8_0.gguf',
 			baseURL: 'http://localhost:1234/v1',
 			apiKey: ''
 		}
