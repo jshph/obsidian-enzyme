@@ -1,11 +1,11 @@
+import { StrategyMetadata } from 'notebook/ReasonAgent'
 import { BaseReasonNodeBuilder } from '.'
 import { ReasonNodeSpec, ReasonNodeType } from '../types'
 import dedent from 'dedent-js'
 
 export type SourceReasonNodeSpec = ReasonNodeSpec & {
-	strategy: string
-	evergreen: string
-	dql?: string
+	strategy: StrategyMetadata
+	sourcePreamble: string
 }
 
 export enum DQLStrategy {
@@ -16,10 +16,17 @@ export enum DQLStrategy {
 	Basic
 }
 
+// Handle higher level extraction where the strategy does its querying independently from the user
+export const isHighLevelStrategy = (strategy: StrategyMetadata): boolean => {
+	return [DQLStrategy.RecentMentions].includes(DQLStrategy[strategy.name])
+}
+
 export const DQLStrategyDescriptions = {
-	SingleEvergreenReferrer: undefined,
-	AllEvergreenReferrers: undefined,
-	LongContent: undefined,
+	SingleEvergreenReferrer:
+		'Extract content snippets from a file that reference a specific evergreen note or tag.',
+	AllEvergreenReferrers:
+		'Extract all content snippets from a file that reference any evergreen note or tag that is the result of a DQL query',
+	LongContent: 'Extract the last few paragraphs of a file.',
 	RecentMentions:
 		'Identify the top most recent tags and links, and extract the content surrounding their mentions.'
 }
@@ -34,7 +41,7 @@ export class SourceReasonNodeBuilder extends BaseReasonNodeBuilder<SourceReasonN
 
 		return dedent(`
     \`\`\`dataview
-    ${sourceSpec.dql}
+    ${sourceSpec.strategy.dql}
     \`\`\`
     `)
 	}

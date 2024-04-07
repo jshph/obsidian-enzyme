@@ -12,6 +12,7 @@ import localforage from 'localforage'
 import { ChatCompletionMessage } from '../types'
 import { BaseReasonNodeBuilder } from '../reason-node/BaseReasonNodeBuilder'
 import { AIClient } from './AIClient'
+import { StrategyMetadata } from './ReasonAgent'
 
 export type SynthesisConstruction = {
 	synthesis_constructions: {
@@ -19,8 +20,8 @@ export type SynthesisConstruction = {
 		guidance: string
 		source_material: {
 			id: string
-			dql: string
-			strategy: string
+			strategy: StrategyMetadata
+			sourcePreamble: string
 		}[]
 	}[]
 }
@@ -132,7 +133,7 @@ export class CollapseConversation {
 							...new Map(
 								synthesisConstruction.synthesis_constructions
 									.flatMap((sc) => sc.source_material)
-									.map((sm) => [sm.dql, sm])
+									.map((sm) => [sm.strategy.dql, sm])
 							).values()
 						]
 					}
@@ -215,7 +216,7 @@ export class CollapseConversation {
 									{
 										role: ReasonNodeType[ReasonNodeType.Source],
 										guidance: '',
-										dql: sourceMaterial.dql,
+										dql: sourceMaterial.strategy.dql,
 										id: sourceMaterial.id
 									},
 									async (contents: string) => {

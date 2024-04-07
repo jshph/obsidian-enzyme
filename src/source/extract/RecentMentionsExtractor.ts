@@ -1,20 +1,33 @@
 import { DataviewApi } from 'obsidian-dataview'
 import { BaseExtractor, FileContents } from './BaseExtractor'
-import { App, TFile } from 'obsidian'
+import { App, CachedMetadata, TFile } from 'obsidian'
 import { SingleBacklinkerExtractor } from './SingleBacklinkerExtractor'
 import { DQLStrategy } from 'reason-node/SourceReasonNodeBuilder'
 import { BasicExtractor } from './BasicExtractor'
+import { StrategyMetadata } from 'notebook/ReasonAgent'
 
-export type RecentMentionsMetadata = {
+export type RecentMentionsStrategyMetadata = StrategyMetadata & {
 	numReadwiseFiles: number
 	numOtherFiles: number
 }
 
 const NUM_READWISE_FILES = 10
-const NUM_OTHER_FILES = 100
+const NUM_OTHER_FILES = 40
 const NUM_TAGS = 25
 const MAX_NUM_FILES_PER_TAG = 10
+const DQL_READWISE =
+	'TABLE WITHOUT ID file.link, file.mtime, file.tags, file.outlinks FROM "Readwise" SORT file.mtime DESC LIMIT {numReadwiseFiles}'
+const DQL_OTHER = `
+TABLE WITHOUT ID file.link, file.mtime, file.tags, file.outlinks FROM ""
+WHERE !contains(file.path, "Readwise")
+SORT file.ctime DESC LIMIT {numOtherFiles}`
+
+type KeyedFile = {
+	[key: string]: { mention: string; filepath: string; mtime: number }[]
+}
+
 export class RecentMentionsExtractor extends BaseExtractor {
+	strategy = DQLStrategy.RecentMentions
 	constructor(
 		public app: App,
 		public dataviewAPI: DataviewApi,
@@ -24,27 +37,40 @@ export class RecentMentionsExtractor extends BaseExtractor {
 		super()
 	}
 
-	/**
-	 * Extracts the most recently modified files for the most common tags / mentioned links. They're sorted by the
-	 * number of files and then by the most recently modified file.
-	 *
-	 * Each file is then passed to the SingleBacklinkerExtractor along with the mentioned entity.
-	 * That extractor then extracts the neighboring context of the mentioned entity in the file.
-	 *
-	 * @returns A promise resolving to an array of FileContents, each representing the contents of a file.
-	 */
-	async extract(): Promise<FileContents[]> {
-		// Get 10 most recently modified files from Readwise
-		const files = await this.dataviewAPI.tryQuery(`
-      TABLE WITHOUT ID file.link, file.mtime, file.tags, file.outlinks FROM "Readwise" SORT file.mtime DESC LIMIT ${NUM_READWISE_FILES}
-    `)
+	override async renderSourceBlock(
+		strategy: RecentMentionsStrategyMetadata,
+		sourcePreamble?: string
+	): Promise<string> {
+		strategy.numReadwiseFiles = strategy.numReadwiseFiles ?? NUM_READWISE_FILES
+		strategy.numOtherFiles = strategy.numOtherFiles ?? NUM_OTHER_FILES
 
-		// Get 40 most recently created files from the rest of the vault
-		const files2 = await this.dataviewAPI.tryQuery(`
-      TABLE WITHOUT ID file.link, file.mtime, file.tags, file.outlinks FROM ""
-      WHERE !contains(file.path, "Readwise")
-      SORT file.ctime DESC LIMIT ${NUM_OTHER_FILES}
-    `)
+		const { sortedMentions } = await this.getTopMentions(
+			strategy.numReadwiseFiles,
+			strategy.numOtherFiles
+		)
+
+		const formattedMentions = '- ' + sortedMentions.join('\n- ')
+		const mentionPart = `**Top mentioned entities**:\n${formattedMentions}`
+
+		return super.renderSourceBlock(strategy, sourcePreamble) + mentionPart
+	}
+
+	private async getTopMentions(
+		numReadwiseFiles: number,
+		numOtherFiles: number
+	): Promise<{
+		sortedMentions: string[]
+		groupedFiles: KeyedFile
+	}> {
+		// Get most recently modified files from Readwise
+		const files = await this.dataviewAPI.tryQuery(
+			DQL_READWISE.replace('{numReadwiseFiles}', numReadwiseFiles.toString())
+		)
+
+		// Get most recently created files from the rest of the vault
+		const files2 = await this.dataviewAPI.tryQuery(
+			DQL_OTHER.replace('{numOtherFiles}', numOtherFiles.toString())
+		)
 
 		const flattenedFiles: {
 			mention: string
@@ -83,9 +109,7 @@ export class RecentMentionsExtractor extends BaseExtractor {
 		)
 
 		// Group by mentioned entity and get the most recently modified file for each mentioned entity
-		const groupedFiles: {
-			[key: string]: { mention: string; filepath: string; mtime: number }[]
-		} = {}
+		const groupedFiles: KeyedFile = {}
 		const groupedFilesMTime = {}
 		flattenedFiles.forEach((file) => {
 			if (!groupedFiles[file.mention]) {
@@ -105,7 +129,29 @@ export class RecentMentionsExtractor extends BaseExtractor {
 				groupedFilesMTime[b] - groupedFilesMTime[a]
 		)
 
-		console.log('Top mentions', sortedMentions)
+		return { sortedMentions, groupedFiles }
+	}
+
+	/**
+	 * Extracts the most recently modified files for the most common tags / mentioned links. They're sorted by the
+	 * number of files and then by the most recently modified file.
+	 *
+	 * Each file is then passed to the SingleBacklinkerExtractor along with the mentioned entity.
+	 * That extractor then extracts the neighboring context of the mentioned entity in the file.
+	 *
+	 * @param strategy - Metadata for the strategy, including the number of Readwise files and other files to consider.
+	 *
+	 * @returns A promise resolving to an array of FileContents, each representing the contents of a file.
+	 */
+	async extract(
+		file: TFile,
+		metadata: CachedMetadata,
+		strategy: RecentMentionsStrategyMetadata
+	): Promise<FileContents[]> {
+		const { sortedMentions, groupedFiles } = await this.getTopMentions(
+			strategy.numReadwiseFiles ?? NUM_READWISE_FILES,
+			strategy.numOtherFiles ?? NUM_OTHER_FILES
+		)
 
 		const topPromises = sortedMentions
 			.slice(0, NUM_TAGS)
@@ -129,19 +175,18 @@ export class RecentMentionsExtractor extends BaseExtractor {
 					metadataCache?.frontmatter?.tags?.includes(mention.slice(1))
 				) {
 					// Extract entire contents
-					return this.basicExtractor.extract(
-						tfile,
-						metadataCache,
-						DQLStrategy[DQLStrategy.Basic],
-						undefined
-					)
+					return await this.basicExtractor.extract(tfile, metadataCache, {
+						name: DQLStrategy[DQLStrategy.Basic]
+					} as StrategyMetadata)
 				} else {
 					// Extract the neighboring context of the mention in the file
-					return this.singleBacklinkerExtractor.extract(
+					return await this.singleBacklinkerExtractor.extract(
 						tfile,
 						metadataCache,
-						DQLStrategy[DQLStrategy.SingleEvergreenReferrer],
-						mention
+						{
+							name: DQLStrategy[DQLStrategy.SingleEvergreenReferrer],
+							evergreen: mention
+						}
 					)
 				}
 			})
@@ -163,6 +208,7 @@ export class RecentMentionsExtractor extends BaseExtractor {
 						for (let existing of acc[key]) {
 							const existingContent = existing.contents
 							const newContent = fileContent.contents
+							existing.substitutions.push(...fileContent.substitutions)
 							// Handle edge case where file contents are empty
 							if (!newContent.trim()) {
 								hasOverlap = true

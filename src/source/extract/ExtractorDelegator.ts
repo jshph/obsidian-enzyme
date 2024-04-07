@@ -4,14 +4,21 @@ import { AllBacklinkersExtractor } from './AllBacklinkersExtractor'
 import { TrimToEndExtractor } from './TrimToEndExtractor'
 import { BaseExtractor, FileContents } from './BaseExtractor'
 import { ReasonSettings } from '../../settings/ReasonSettings'
-import { DQLStrategy } from '../../reason-node/SourceReasonNodeBuilder'
+import {
+	DQLStrategy,
+	DQLStrategyDescriptions
+} from '../../reason-node/SourceReasonNodeBuilder'
 import { DataviewApi } from 'obsidian-dataview'
-import { SingleBacklinkerExtractor } from './SingleBacklinkerExtractor'
+import {
+	SingleBacklinkerExtractor,
+	SingleBacklinkerStrategyMetadata
+} from './SingleBacklinkerExtractor'
 import {
 	RecentMentionsExtractor,
-	RecentMentionsMetadata
+	RecentMentionsStrategyMetadata
 } from './RecentMentionsExtractor'
 import { BasicExtractor } from './BasicExtractor'
+import { StrategyMetadata } from 'notebook/ReasonAgent'
 
 /**
  * The `ExtractorDelegator` class manages the delegation of content extraction to specific extractors. It itself is an extractor.
@@ -51,6 +58,35 @@ export class ExtractorDelegator extends BaseExtractor {
 		)
 	}
 
+	override renderSourceBlock(
+		strategy: StrategyMetadata,
+		sourcePreamble?: string
+	): Promise<string> {
+		// Switch between different strategies
+		switch (strategy.name) {
+			case DQLStrategy[DQLStrategy.AllEvergreenReferrers]:
+				return this.allBacklinkersExtractor.renderSourceBlock(
+					strategy,
+					sourcePreamble
+				)
+			case DQLStrategy[DQLStrategy.LongContent]:
+				return this.trimToEndExtractor.renderSourceBlock(
+					strategy,
+					sourcePreamble
+				)
+			case DQLStrategy[DQLStrategy.SingleEvergreenReferrer]:
+				return this.singleBacklinkerExtractor.renderSourceBlock(
+					strategy as SingleBacklinkerStrategyMetadata,
+					sourcePreamble
+				)
+			case DQLStrategy[DQLStrategy.RecentMentions]:
+				return this.recentMentionsExtractor.renderSourceBlock(
+					strategy as RecentMentionsStrategyMetadata,
+					sourcePreamble
+				)
+		}
+	}
+
 	/**
 	 * Extracts content from a file based on the specified strategy and evergreen status.
 	 * This method delegates to specific extractors depending on the strategy provided.
@@ -60,17 +96,15 @@ export class ExtractorDelegator extends BaseExtractor {
 	 * @param file - The file from which to extract content.
 	 * @param metadata - The cached metadata of the file.
 	 * @param strategy - The strategy to use for content extraction (optional).
-	 * @param evergreen - The evergreen status to consider during extraction (optional).
 	 * @returns A Promise that resolves to an array of FileContents objects.
 	 */
 	async extract(
 		file?: TFile,
 		metadata?: CachedMetadata,
-		strategy?: string,
-		evergreen?: string
+		strategy?: StrategyMetadata
 	): Promise<FileContents[]> {
 		switch (
-			strategy // TODO put the block reference in the json itself so the small model can use it
+			strategy.name // TODO put the block reference in the json itself so the small model can use it
 		) {
 			case DQLStrategy[DQLStrategy.AllEvergreenReferrers]:
 				return this.allBacklinkersExtractor.extract(file, metadata)
@@ -80,11 +114,14 @@ export class ExtractorDelegator extends BaseExtractor {
 				return this.singleBacklinkerExtractor.extract(
 					file,
 					metadata,
-					strategy,
-					evergreen
+					strategy as SingleBacklinkerStrategyMetadata
 				)
 			case DQLStrategy[DQLStrategy.RecentMentions]:
-				return this.recentMentionsExtractor.extract()
+				return this.recentMentionsExtractor.extract(
+					null,
+					null,
+					strategy as RecentMentionsStrategyMetadata
+				)
 			default:
 				return this.basicExtractor.extract(file, metadata)
 		}

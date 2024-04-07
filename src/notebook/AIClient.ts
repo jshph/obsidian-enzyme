@@ -15,6 +15,9 @@ export type ModelConfig = {
 	apiKey: string
 }
 
+const proxyPort = 3000
+const localBaseURL = `http://localhost:${proxyPort}`
+
 // TODO hacky, but to handle llm-polyglot
 interface LLMClientWithBase extends LLMClient<'anthropic' | 'openai'> {
 	baseURL: string
@@ -36,7 +39,7 @@ export class AIClient {
 		if (this.server) {
 			this.server.stop()
 		}
-		this.server = new ProxyServer(baseURL, 3000)
+		this.server = new ProxyServer(baseURL, proxyPort)
 
 		const provider = modelConfig.model.includes('claude')
 			? 'anthropic'
@@ -45,11 +48,11 @@ export class AIClient {
 		this.llmClient = createLLMClient({
 			...modelConfig,
 			dangerouslyAllowBrowser: true,
-			baseURL: 'http://localhost:3000',
+			baseURL: localBaseURL,
 			provider
 		})
 
-		this.llmClient.baseURL = 'http://localhost:3000'
+		this.llmClient.baseURL = localBaseURL
 	}
 
 	createCompletion(

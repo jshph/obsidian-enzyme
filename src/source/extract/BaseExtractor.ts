@@ -8,13 +8,17 @@ import {
 } from 'obsidian'
 import * as _path from 'path'
 import { BlockRefSubstitution } from '../../types'
+import { StrategyMetadata } from 'notebook/ReasonAgent'
+import {
+	DQLStrategy,
+	DQLStrategyDescriptions
+} from 'reason-node/SourceReasonNodeBuilder'
 
 export type ParsedContent = {
 	title: string
 	path: string
 	mtime: number
 	referenceWindows: string[]
-	// promptContext?: string
 }
 
 export type PreparedContents = {
@@ -32,12 +36,30 @@ export type FileContents = {
 
 export abstract class BaseExtractor {
 	app: App
+	strategy: DQLStrategy
 	abstract extract(
 		file?: TFile,
 		metadata?: CachedMetadata,
-		strategy?: string,
-		evergreen?: string
+		strategy?: StrategyMetadata
 	): Promise<any>
+
+	/**
+	 * Renders the source block for a given strategy.
+	 * @param strategy
+	 */
+	async renderSourceBlock(
+		strategy: StrategyMetadata,
+		sourcePreamble?: string
+	): Promise<string> {
+		const preamblePart = sourcePreamble
+			? `\n**Preamble**: ${sourcePreamble}\n`
+			: ''
+		return `### Source:\n**Strategy**: ${this.description()}${preamblePart}\n`
+	}
+
+	description() {
+		return DQLStrategyDescriptions[DQLStrategy[this.strategy]]
+	}
 
 	/**
 	 * Substitutes block references within the content.
@@ -189,12 +211,14 @@ export abstract class BaseExtractor {
 			const { contents: substitutedEmbedContent, substitutions } =
 				this.substituteBlockReferences(basename, embedContent)
 
+			allSubstitutions.push(...substitutions)
+
 			let renderedEmbed = `\nExcerpt from: ${basename} -- \n\n> ${substitutedEmbedContent.split('\n').join('\n> ')}\n`
 			const markerHash = Math.random().toString(16).substring(4, 8)
 			const marker = `%${markerHash}%` // TODO this may lead to a lot of stale markers if there are multiple references to the same file, but that's okay for now
 			renderedEmbed += `${marker}\n`
 
-			substitutions.push({
+			allSubstitutions.push({
 				template: marker,
 				block_reference: embed.original
 			})
@@ -207,8 +231,6 @@ export abstract class BaseExtractor {
 			newOffset +=
 				renderedEmbed.length -
 				(embed.position.end.offset - embed.position.start.offset)
-
-			allSubstitutions.push(...substitutions)
 		}
 		return { contents, substitutions: allSubstitutions }
 	}

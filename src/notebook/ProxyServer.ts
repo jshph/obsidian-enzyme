@@ -3,6 +3,9 @@ import Koa from 'koa'
 import proxy from 'koa-proxies'
 import http from 'http'
 
+/**
+ * Used to proxy requests to the OpenAI API because the calls are being made from the `app://obsidian`
+ */
 export class ProxyServer {
 	private server: http.Server | null = null
 	constructor(

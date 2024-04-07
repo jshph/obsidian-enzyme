@@ -4,6 +4,7 @@ import { ExtractorDelegator } from '../extract/ExtractorDelegator'
 import { ReasonSettings } from '../../settings/ReasonSettings'
 import { BlockRefSubstitution } from '../../types'
 import { FileContents as ExtractorFileContents } from 'source/extract/BaseExtractor'
+import { StrategyMetadata } from 'notebook/ReasonAgent'
 
 export type FileContents = {
 	title: string
@@ -33,8 +34,8 @@ export class ContentRenderer {
 	 * @param strategy - The extraction strategy to be used
 	 * @returns A Promise that resolves to a FileContents object containing the prepared data
 	 */
-	async prepareContents(strategy?: string): Promise<FileContents> {
-		let contentsData = await this.extractor.extract(null, null, strategy, null)
+	async prepareContents(strategy?: StrategyMetadata): Promise<FileContents> {
+		let contentsData = await this.extractor.extract(null, null, strategy)
 		let renderedContentsData = this.renderFileContents(contentsData)
 		return {
 			title: 'Contents surrounding the top most recent tags and links',
@@ -95,26 +96,19 @@ ${contents.contents}
 	 * It then formats this data into a structured object including the title, contents, and any block reference substitutions.
 	 *
 	 * @param file - The file to be processed.
-	 * @param strategy - The extraction strategy to be used (optional).
-	 * @param evergreen - The evergreen status to be considered (optional).
+	 * @param strategy - The extraction strategy metadata to be used.
 	 * @returns A Promise that resolves to a FileContents object containing the prepared data.
 	 */
 	async prepareFileContents(
 		file?: TFile,
-		strategy?: string,
-		evergreen?: string,
+		strategy?: StrategyMetadata,
 		sourcePreamble?: string
 	): Promise<FileContents> {
 		// Should use this to ingest dataview lists as well. And rerender markdown.
 
 		const metadata: CachedMetadata = this.app.metadataCache.getFileCache(file)
 
-		let contentsData = await this.extractor.extract(
-			file,
-			metadata,
-			strategy,
-			evergreen
-		)
+		let contentsData = await this.extractor.extract(file, metadata, strategy)
 
 		const renderedContentsData = this.renderFileContents(
 			contentsData,

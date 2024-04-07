@@ -78,7 +78,7 @@ export class LassoFromOffsetExtractor {
 					for (let tag of metadata.tags || []) {
 						if (tag.tag === topic) {
 							referenceWindows.push(
-								this.lassoContentFromOffset(contents, tag.position, 1, 500)
+								this.lassoContentFromOffset(contents, tag.position, 3, 200)
 							)
 						}
 					}
@@ -86,7 +86,7 @@ export class LassoFromOffsetExtractor {
 					for (let link of metadata.links || []) {
 						if (link.original === topic) {
 							referenceWindows.push(
-								this.lassoContentFromOffset(contents, link.position, 1, 500)
+								this.lassoContentFromOffset(contents, link.position, 3, 200)
 							)
 						}
 					}

@@ -27,13 +27,8 @@ export class Aggregator {
 
 	/**
 	 * Generates responses from a series of chat messages using the AI model.
-	 * This function can operate in two modes: legacy and non-legacy, controlled by the `useLegacy` flag.
-	 * In legacy mode, it uses the `generateFromMessagesLegacy` method to process the messages.
-	 * If not in legacy mode, the function is currently set to fall back to legacy mode as the alternative
-	 * is not yet implemented.
 	 *
 	 * @param {ChatCompletionMessage[]} messages - An array of chat completion messages to be processed.
-	 * @param {boolean} [useLegacy=true] - A flag to determine whether to use the legacy generation method.
 	 * @returns {Promise<AsyncIterable<string>>} - An async iterable that yields generated message strings.
 	 */
 	async generateFromMessages(
@@ -47,10 +42,6 @@ export class Aggregator {
 					messages as ChatCompletionMessage[]
 				)
 			}
-			// else {
-			// 	return this.generateFromMessagesBeta(messages)
-			// }
-			// TODO when the stream is ready, use it
 		} catch (error) {
 			new Notice(`Error calling GPT: ${error.message || error}`)
 			console.error(error.message || error)
@@ -83,45 +74,4 @@ export class Aggregator {
 			}
 		})()
 	}
-
-	// private async generateFromMessagesBeta(
-	// 	messages: ChatCompletionMessage[]
-	// ): Promise<AsyncIterable<string>> {
-	// 	const thread = await this.openai.beta.threads.create(
-	// 		{
-	// 			messages: messages as any
-	// 		},
-	// 		{
-	// 			stream: false
-	// 		}
-	// 	)
-
-	// 	const threadId = thread.id
-
-	// 	const run = await this.openai.beta.threads.runs.create(
-	// 		threadId,
-	// 		{
-	// 			assistant_id: this.assistantId
-	// 		},
-	// 		{
-	// 			stream: false
-	// 		}
-	// 	)
-
-	// 	let status = run.status
-	// 	while (status !== 'completed') {
-	// 		status = (await this.openai.beta.threads.runs.retrieve(threadId, run.id))
-	// 			.status
-	// 		await setTimeout(() => {}, 300)
-	// 	}
-
-	// 	let returnedMessages =
-	// 		await this.openai.beta.threads.messages.list(threadId)
-
-	// 	const messageContent = returnedMessages.data[0]
-	// 		.content[0] as MessageContentText
-	// 	return (async function* () {
-	// 		yield messageContent.text.value
-	// 	})()
-	// }
 }

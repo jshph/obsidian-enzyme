@@ -115,7 +115,8 @@ export class ReasonPlugin extends Plugin {
 			this.app,
 			this.canvasLoader,
 			this.reasonAgent,
-			this.registerMarkdownCodeBlockProcessor.bind(this)
+			this.registerMarkdownCodeBlockProcessor.bind(this),
+			this.candidateRetriever
 		)
 	}
 

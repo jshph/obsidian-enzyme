@@ -1,8 +1,10 @@
 import { App, CachedMetadata, TFile } from 'obsidian'
 import { BaseExtractor, FileContents } from './BaseExtractor'
+import { DQLStrategy } from 'reason-node/SourceReasonNodeBuilder'
 
 // Designed to handle notes that usually long, i.e. because they are append-only, such as Readwise Book notes
 export class TrimToEndExtractor extends BaseExtractor {
+	strategy = DQLStrategy.LongContent
 	constructor(public app: App) {
 		super()
 	}

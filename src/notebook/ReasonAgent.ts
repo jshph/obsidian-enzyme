@@ -23,12 +23,14 @@ import { BaseReasonNodeBuilder } from '../reason-node/BaseReasonNodeBuilder'
 import { AIClient } from './AIClient'
 import { prompts } from './prompts'
 
+export type StrategyMetadata = {
+	name: string
+}
+
 export type DataviewSource = {
 	id?: string
-	dql?: string
-	strategy?: string
-	evergreen?: string
-	sourcePreamble?: string
+	strategy: StrategyMetadata
+	sourcePreamble?: string // Optional -- a preamble to be included about the source
 }
 
 export type SystemPrompts = {
@@ -155,10 +157,8 @@ export class ReasonAgent {
 				sources.map(async (source) => {
 					source = source as DataviewSource
 					const retrievalParams = {
-						dql: source.dql,
-						strategy: source.strategy,
-						evergreen: source.evergreen,
-						sourcePreamble: source.sourcePreamble
+						sourcePreamble: source.sourcePreamble,
+						strategy: source.strategy
 					}
 					const fileContents =
 						await this.candidateRetriever.retrieve(retrievalParams)
@@ -214,7 +214,7 @@ export class ReasonAgent {
 					let sourceContents = retrieval.sourceContents
 					let concatenatedContents = sourceContents.join('\n\n').trim()
 
-					allSubstitutions = allSubstitutions.concat(retrieval.substitutions)
+					allSubstitutions.push(...retrieval.substitutions)
 
 					let message = ''
 					if (concatenatedContents.length > 0) {
@@ -232,7 +232,7 @@ export class ReasonAgent {
 				msg.metadata[0].assistantMessageType === 'synthesis'
 			) {
 				let { contents, substitutions } = substituteBlockEmbeds(msg.content)
-				allSubstitutions = allSubstitutions.concat(substitutions)
+				allSubstitutions.push(...substitutions)
 				messages.push({
 					role: 'assistant',
 					content: contents
@@ -252,6 +252,7 @@ export class ReasonAgent {
 
 		let firstChunkWasSent = false
 		let partialMarker = ''
+		// console.log(allSubstitutions)
 		// TODO refactor / separate
 		for await (const part of await synthesisGenerator) {
 			if (!firstChunkWasSent) {

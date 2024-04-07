@@ -4,7 +4,11 @@ import {
 	MarkdownRenderer,
 	Component
 } from 'obsidian'
-import { DataviewSource, ReasonAgent } from '../notebook/ReasonAgent'
+import {
+	DataviewSource,
+	ReasonAgent,
+	StrategyMetadata
+} from '../notebook/ReasonAgent'
 import { SynthesisContainer } from './SynthesisContainer'
 import { getAggregatorMetadata } from '../notebook/RankedSourceBuilder'
 import { CanvasLoader } from '../notebook/CanvasLoader'
@@ -14,6 +18,9 @@ import {
 	DQLStrategy,
 	DQLStrategyDescriptions
 } from 'reason-node/SourceReasonNodeBuilder'
+import { ExtractorDelegator } from 'source/extract'
+import { CandidateRetriever } from 'source/retrieve/CandidateRetriever'
+import { DataviewCandidateRetriever } from 'source/retrieve'
 
 type ReasonBlockContents = {
 	prompt: string
@@ -49,7 +56,8 @@ export class CodeBlockRenderer {
 		public app: App,
 		public canvasLoader: CanvasLoader,
 		public reasonAgent: ReasonAgent,
-		public registerMarkdownCodeBlockProcessor: any
+		public registerMarkdownCodeBlockProcessor: any,
+		public candidateRetriever: DataviewCandidateRetriever
 	) {
 		this.registerMarkdownCodeBlockProcessor(
 			'reason',
@@ -62,7 +70,7 @@ export class CodeBlockRenderer {
 	 *
 	 * This function is responsible for parsing the contents of a 'reason' code block,
 	 * creating the necessary HTML elements to display the block within the markdown preview,
-	 * and setting up the interaction logic for the 'Generate' button which triggers the reasoning process.
+	 * and setting up the interaction logic for the 'Send' button which triggers the reasoning process.
 	 *
 	 * @param {string} blockContents - The raw text content of the 'reason' code block.
 	 * @param {HTMLElement} el - The parent HTML element where the 'reason' block will be rendered.
@@ -123,29 +131,21 @@ export class CodeBlockRenderer {
 					tempSynthesisContainer.getMessagesToHere().length === 1
 				) {
 					sources.push({
-						strategy: DQLStrategy[DQLStrategy.RecentMentions]
+						strategy: { name: DQLStrategy[DQLStrategy.RecentMentions] }
 					})
 				}
 
 				if (sources.length > 0) {
-					sourceStringParts = sources.map((source) => {
-						// If a DQL query is present, format it as a code block
-						const dqlPart = source.dql
-							? `\`\`\`dataview\n${source.dql}\n\`\`\`\n`
-							: ''
-						// If a strategy is specified (only for 'source' type), add a description
-						const strategyPart =
-							type === 'source' &&
-							source.strategy &&
-							DQLStrategyDescriptions[source.strategy] !== undefined
-								? `**Strategy**: ${DQLStrategyDescriptions[source.strategy]}\n`
-								: ''
-						const preamblePart =
-							type === 'source' && source.sourcePreamble
-								? `**Preamble**: ${source.sourcePreamble}\n`
-								: ''
-						return `### Source:\n${dqlPart}${strategyPart}${preamblePart}`
-					})
+					sourceStringParts = (
+						await Promise.all(
+							sources.map(async (source) =>
+								this.candidateRetriever.contentRenderer.extractor.renderSourceBlock(
+									source.strategy,
+									source.sourcePreamble
+								)
+							)
+						)
+					).flat()
 
 					// Encase sources as collapsible Markdown block
 					renderedString =
@@ -262,9 +262,9 @@ export class CodeBlockRenderer {
 	}
 
 	/**
-	 * Parses the contents of a Reason code block as YAML, producing either an Aggregator or contents to produce
+	 * Parses the contents of a Reason code block as YAML, producing an Aggregator (with guidance + sources, or by ID)
 	 *
-	 * @param contents the raw contents, which we'll try to parse as valid YAML syntax. Otherwise, it will be interpreted as plaintext, i.e. to rank existing sources in the canvas.
+	 * @param contents the raw contents, which we'll try to parse as valid YAML syntax.
 	 * @returns metadata, i.e. Aggregator metadata
 	 */
 	parseReasonBlockContents(
@@ -291,9 +291,7 @@ export class CodeBlockRenderer {
 			} else if (parsedYaml?.sources?.length > 0) {
 				sources = parsedYaml.sources.map((source) => {
 					return {
-						dql: source.dql,
-						strategy: source.strategy,
-						evergreen: source.evergreen,
+						strategy: { ...source.strategy } as StrategyMetadata,
 						sourcePreamble: source.sourcePreamble
 					} as DataviewSource
 				})

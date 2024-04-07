@@ -185,12 +185,10 @@ export class SynthesisContainer {
 	}
 
 	/**
-	 * Retrieves all messages up to the specified cursor position.
-	 * This function extracts the content from the editor up to the given cursor position
-	 * and identifies separate message blocks. It then parses each block to determine if it's
-	 * a user or assistant message, extracts the displayed content, and if necessary, further
-	 * processes user messages to extract metadata. The metadata is used to construct objects
-	 * representing the messages with their associated metadata, which are then returned as an array.
+	 * Retrieves all messages up to the specified cursor position.= This function parses the content
+	 * of the editor up to the specified cursor position and extracts chat messages with metadata.
+	 * It identifies the role of each message (user or assistant) and extracts the content and metadata
+	 * for each message. The messages are then returned as an array of ChatMessageWithMetadata objects.
 	 *
 	 * @param {number} curLine - The current line position of the cursor in the editor (defaults to the current line).
 	 * @param {number} curCh - The current character position of the cursor in the editor (defaults to the current character).
@@ -227,7 +225,7 @@ export class SynthesisContainer {
 				if (index === 0 && parsedContents.sources.length === 0) {
 					parsedContents.sources = [
 						{
-							strategy: DQLStrategy[DQLStrategy.RecentMentions]
+							strategy: { name: DQLStrategy[DQLStrategy.RecentMentions] }
 						}
 					]
 				}

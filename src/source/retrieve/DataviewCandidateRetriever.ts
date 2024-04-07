@@ -2,10 +2,14 @@ import { App, TFile } from 'obsidian'
 import { ContentRenderer, FileContents } from './ContentRenderer'
 import { ReasonSettings } from '../../settings/ReasonSettings'
 import { ReasonNodeType } from '../../types'
-import { SourceReasonNodeSpec } from '../../reason-node/SourceReasonNodeBuilder'
+import {
+	SourceReasonNodeSpec,
+	isHighLevelStrategy
+} from '../../reason-node/SourceReasonNodeBuilder'
 import { DataviewApi, getAPI } from '../../obsidian-modules/dataview-handler'
 import { CandidateRetriever } from './CandidateRetriever'
-import { DataviewSource } from 'notebook/ReasonAgent'
+import { DataviewSource, StrategyMetadata } from 'notebook/ReasonAgent'
+import { SingleBacklinkerStrategyMetadata } from 'source/extract/SingleBacklinkerExtractor'
 
 /**
  * The `DataviewCandidateRetriever` class manages the retrieval of candidate information from Dataview.
@@ -46,21 +50,27 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 	}
 
 	/**
-	 * Retrieves file contents based on the provided DQL query, strategy, and evergreen status.
+	 * Retrieves file contents.
 	 * It ensures that duplicate paths are filtered out by creating a Set from the paths array.
-	 * Each file is then processed to prepare its contents according to the specified strategy and evergreen status.
+	 * Each file is then processed to prepare its contents according to the specified strategy
 	 * The resulting array of FileContents is flattened before being returned.
 	 *
 	 * @param parameters - An object containing the DQL query, strategy, and optional evergreen status
 	 * @returns A Promise that resolves to an array of FileContents, each representing the contents of a file.
 	 */
 	async retrieve(parameters: DataviewSource): Promise<FileContents[]> {
-		if (parameters.dql === undefined) {
-			// Handle higher level extraction where the strategy does its querying independently from the user
+		if (isHighLevelStrategy(parameters.strategy)) {
 			return [await this.contentRenderer.prepareContents(parameters.strategy)]
+		} else if (
+			(parameters.strategy as SingleBacklinkerStrategyMetadata).dql ===
+			undefined
+		) {
+			return []
 		}
 
-		const dqlResults = await this.dataviewAPI.tryQuery(parameters.dql)
+		const dql = (parameters.strategy as SingleBacklinkerStrategyMetadata).dql
+
+		const dqlResults = await this.dataviewAPI.tryQuery(dql)
 		const paths = dqlResults.values
 		const realPaths = [...new Set(paths.map((path: any) => path.path))]
 		const files = realPaths.map((path: string) =>
@@ -71,7 +81,6 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 				this.contentRenderer.prepareFileContents(
 					file,
 					parameters.strategy,
-					parameters.evergreen,
 					parameters.sourcePreamble
 				)
 			)
@@ -110,9 +119,11 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 			case ReasonNodeType[ReasonNodeType.Source]:
 				const dql = fileContents.match(/```dataview\n?([\s\S]*?)\n?```/)[1]
 				const dqlContents = await this.retrieve({
-					dql,
-					strategy: frontmatter.strategy,
-					evergreen: frontmatter.evergreen
+					strategy: {
+						...frontmatter.strategy,
+						dql: dql
+					} as StrategyMetadata,
+					sourcePreamble: frontmatter.sourcePreamble // TODO template functionality is untested
 				})
 
 				return dqlContents.map((contents) => {
