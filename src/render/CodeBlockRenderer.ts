@@ -172,13 +172,7 @@ export class CodeBlockRenderer {
 					context,
 					executionLock,
 					async (synthesisContainerEl) => {
-						// if (sources?.length > 0) {
 						await this.reasonAgent.synthesize(synthesisContainerEl)
-						// }
-						// TODO unclear if "synthesisPlan execution" is something to support anymore
-						// else {
-						// 	await this.reasonAgent.execute(synthesisContainerEl)
-						// }
 					}
 				)
 			})

@@ -22,6 +22,7 @@ export type SynthesisConstruction = {
 			id: string
 			strategy: StrategyMetadata
 			sourcePreamble: string
+			dql?: string
 		}[]
 	}[]
 }

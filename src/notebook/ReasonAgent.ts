@@ -25,6 +25,7 @@ import { prompts } from './prompts'
 
 export type StrategyMetadata = {
 	name: string
+	dql?: string
 }
 
 export type DataviewSource = {
@@ -373,58 +374,6 @@ export class ReasonAgent {
 	}
 
 	/**
-	 * Executes the synthesis process within the provided SynthesisContainer.
-	 * This function is responsible for generating a synthesis plan based on the
-	 * content of the SynthesisContainer, rendering the metadata associated with
-	 * the synthesis plan, appending explanatory text if available, and finalizing
-	 * the container for display in the editor.
-	 *
-	 * @param {SynthesisContainer} synthesisContainer - The container that holds the synthesis context and editor reference.
-	 */
-	async execute(synthesisContainer: SynthesisContainer) {
-		const synthesisPlan = await this.makeSynthesisPlan(synthesisContainer)
-
-		let synthesisPlans = synthesisPlan.rankedAggregators.aggregators.map(
-			(aggregator) => {
-				return {
-					id: aggregator.aggregatorId,
-					assistantMessageType: 'synthesisPlan',
-					sources: aggregator.sources,
-					prompt: aggregator.prompt
-				} as AssistantMessageMetadata
-			}
-		)
-
-		synthesisContainer.renderMetadata(synthesisPlans)
-
-		if (synthesisPlan.rankedAggregators?.explanation?.length > 0) {
-			synthesisContainer.appendText(
-				`\n> [!question]- Details\n${synthesisPlan.rankedAggregators.explanation}\n\n`
-			)
-		}
-
-		synthesisContainer.appendText(
-			`\n\n` +
-				synthesisPlan.rankedAggregators.aggregators.map(
-					(aggregator: AggregatorMetadata) => {
-						return `#### Guidance:
-> ${aggregator.prompt}
-
----
-${aggregator.sources
-	.map((source: DataviewSource) => {
-		return `#### Source:\n\`\`\`dataview\n${source.dql}\n\`\`\``
-	})
-	.join('\n\n')}
-`
-					}
-				)
-		)
-
-		synthesisContainer.finalize()
-	}
-
-	/**
 	 * Collapses and saves the conversation to a canvas.
 	 *
 	 * @param {SynthesisContainer} synthesisContainer - The synthesis context.
@@ -451,7 +400,7 @@ ${aggregator.sources
 						const sourceMaterial = construction.source_material
 							.map((s) => `\`\`\`dataview\n${s.dql}\n\`\`\``)
 							.join('\n')
-						return `${guidance}\n${sourceMaterial}`
+						return `${guidance}${sourceMaterial}`
 					})
 					.join('\n')
 		)
