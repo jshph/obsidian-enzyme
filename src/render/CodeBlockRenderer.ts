@@ -14,12 +14,7 @@ import { getAggregatorMetadata } from '../notebook/RankedSourceBuilder'
 import { CanvasLoader } from '../notebook/CanvasLoader'
 import * as yaml from 'yaml'
 import { Notice } from 'obsidian'
-import {
-	DQLStrategy,
-	DQLStrategyDescriptions
-} from 'reason-node/SourceReasonNodeBuilder'
-import { ExtractorDelegator } from 'source/extract'
-import { CandidateRetriever } from 'source/retrieve/CandidateRetriever'
+import { DQLStrategy } from 'reason-node/SourceReasonNodeBuilder'
 import { DataviewCandidateRetriever } from 'source/retrieve'
 
 type ReasonBlockContents = {

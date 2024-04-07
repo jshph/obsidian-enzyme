@@ -84,6 +84,11 @@ export class ExtractorDelegator extends BaseExtractor {
 					strategy as RecentMentionsStrategyMetadata,
 					sourcePreamble
 				)
+			default:
+				return await this.basicExtractor.renderSourceBlock(
+					strategy,
+					sourcePreamble
+				)
 		}
 	}
 

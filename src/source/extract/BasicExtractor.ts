@@ -2,13 +2,23 @@ import { App, CachedMetadata, TFile } from 'obsidian'
 import { BaseExtractor, FileContents } from './BaseExtractor'
 import { DataviewApi } from 'obsidian-dataview'
 import { StrategyMetadata } from 'notebook/ReasonAgent'
+import { DQLStrategy } from 'reason-node/SourceReasonNodeBuilder'
 
 export class BasicExtractor extends BaseExtractor {
+	strategy = DQLStrategy.Basic
 	constructor(
 		public app: App,
 		public dataviewAPI: DataviewApi
 	) {
 		super()
+	}
+
+	override async renderSourceBlock(
+		strategy: StrategyMetadata,
+		sourcePreamble?: string
+	): Promise<string> {
+		const dqlPart = `\`\`\`dataview\n${strategy.dql}\n\`\`\``
+		return (await super.renderSourceBlock(strategy, sourcePreamble)) + dqlPart
 	}
 
 	async extract(
