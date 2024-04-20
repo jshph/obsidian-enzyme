@@ -59,36 +59,24 @@ export class ExtractorDelegator extends BaseExtractor {
 	}
 
 	override async renderSourceBlock(
-		strategy: StrategyMetadata,
-		sourcePreamble?: string
+		strategy: StrategyMetadata
 	): Promise<string> {
 		// Switch between different strategies
-		switch (strategy.name) {
+		switch (strategy.strategy) {
 			case DQLStrategy[DQLStrategy.AllEvergreenReferrers]:
-				return await this.allBacklinkersExtractor.renderSourceBlock(
-					strategy,
-					sourcePreamble
-				)
+				return await this.allBacklinkersExtractor.renderSourceBlock(strategy)
 			case DQLStrategy[DQLStrategy.LongContent]:
-				return await this.trimToEndExtractor.renderSourceBlock(
-					strategy,
-					sourcePreamble
-				)
+				return await this.trimToEndExtractor.renderSourceBlock(strategy)
 			case DQLStrategy[DQLStrategy.SingleEvergreenReferrer]:
 				return await this.singleBacklinkerExtractor.renderSourceBlock(
-					strategy as SingleBacklinkerStrategyMetadata,
-					sourcePreamble
+					strategy as SingleBacklinkerStrategyMetadata
 				)
 			case DQLStrategy[DQLStrategy.RecentMentions]:
 				return await this.recentMentionsExtractor.renderSourceBlock(
-					strategy as RecentMentionsStrategyMetadata,
-					sourcePreamble
+					strategy as RecentMentionsStrategyMetadata
 				)
 			default:
-				return await this.basicExtractor.renderSourceBlock(
-					strategy,
-					sourcePreamble
-				)
+				return await this.basicExtractor.renderSourceBlock(strategy)
 		}
 	}
 
@@ -109,7 +97,7 @@ export class ExtractorDelegator extends BaseExtractor {
 		strategy?: StrategyMetadata
 	): Promise<FileContents[]> {
 		switch (
-			strategy.name // TODO put the block reference in the json itself so the small model can use it
+			strategy.strategy // TODO put the block reference in the json itself so the small model can use it
 		) {
 			case DQLStrategy[DQLStrategy.AllEvergreenReferrers]:
 				return this.allBacklinkersExtractor.extract(file, metadata)

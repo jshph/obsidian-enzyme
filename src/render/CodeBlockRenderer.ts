@@ -4,11 +4,7 @@ import {
 	MarkdownRenderer,
 	Component
 } from 'obsidian'
-import {
-	DataviewSource,
-	ReasonAgent,
-	StrategyMetadata
-} from '../notebook/ReasonAgent'
+import { ReasonAgent, StrategyMetadata } from '../notebook/ReasonAgent'
 import { SynthesisContainer } from './SynthesisContainer'
 import { getAggregatorMetadata } from '../notebook/RankedSourceBuilder'
 import { CanvasLoader } from '../notebook/CanvasLoader'
@@ -19,7 +15,7 @@ import { DataviewCandidateRetriever } from 'source/retrieve'
 
 type ReasonBlockContents = {
 	prompt: string
-	sources: DataviewSource[]
+	sources: StrategyMetadata[]
 }
 
 export type AggregatorReasonBlockContents = {
@@ -93,7 +89,7 @@ export class CodeBlockRenderer {
 		)
 
 		let renderedString: string = ''
-		let sources: DataviewSource[]
+		let sources: StrategyMetadata[]
 		let prompt: string
 		const executionLock = { isExecuting: false }
 
@@ -118,13 +114,16 @@ export class CodeBlockRenderer {
 				).sources
 
 				// Default to RecentMentions if no sources are provided and this is the first message
+				// need to do this fudging in order to render it properly, but it's not needed for all uses of parseReasonBlockContents
 				if (
 					sources.length === 0 &&
 					tempSynthesisContainer.getMessagesToHere().length === 1
 				) {
 					sources.push({
-						strategy: { name: DQLStrategy[DQLStrategy.RecentMentions] }
+						strategy: DQLStrategy[DQLStrategy.RecentMentions]
 					})
+				} else if (sources.length === 1 && !sources[0].strategy) {
+					sources[0].strategy = DQLStrategy[DQLStrategy.Basic]
 				}
 
 				if (sources.length > 0) {
@@ -132,8 +131,7 @@ export class CodeBlockRenderer {
 						await Promise.all(
 							sources.map(async (source) =>
 								this.candidateRetriever.contentRenderer.extractor.renderSourceBlock(
-									source.strategy,
-									source.sourcePreamble
+									source
 								)
 							)
 						)
@@ -265,10 +263,7 @@ export class CodeBlockRenderer {
 				} as AggregatorReasonBlockContents
 			} else if (parsedYaml?.sources?.length > 0) {
 				sources = parsedYaml.sources.map((source) => {
-					return {
-						strategy: { ...source.strategy } as StrategyMetadata,
-						sourcePreamble: source.sourcePreamble
-					} as DataviewSource
+					return source as StrategyMetadata
 				})
 				prompt = parsedYaml.guidance
 				return {

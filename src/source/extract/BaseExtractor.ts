@@ -47,14 +47,16 @@ export abstract class BaseExtractor {
 	 * Renders the source block for a given strategy.
 	 * @param strategy
 	 */
-	async renderSourceBlock(
-		strategy: StrategyMetadata,
-		sourcePreamble?: string
-	): Promise<string> {
-		const preamblePart = sourcePreamble
-			? `\n**Preamble**: ${sourcePreamble}\n`
+	async renderSourceBlock(strategy: StrategyMetadata): Promise<string> {
+		let dqlPart = ''
+		if (strategy.dql) {
+			dqlPart = `\`\`\`dataview\n${strategy.dql}\n\`\`\`\n`
+		}
+
+		const preamblePart = strategy.sourcePreamble
+			? `\n**Preamble**: ${strategy.sourcePreamble}\n`
 			: ''
-		return `### Source:\n**Strategy**: ${this.description()}${preamblePart}\n`
+		return `### Source:\n${dqlPart}**Strategy**: ${this.description()}${preamblePart}\n`
 	}
 
 	description() {

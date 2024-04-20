@@ -101,8 +101,7 @@ ${contents.contents}
 	 */
 	async prepareFileContents(
 		file?: TFile,
-		strategy?: StrategyMetadata,
-		sourcePreamble?: string
+		strategy?: StrategyMetadata
 	): Promise<FileContents> {
 		// Should use this to ingest dataview lists as well. And rerender markdown.
 
@@ -112,7 +111,7 @@ ${contents.contents}
 
 		const renderedContentsData = this.renderFileContents(
 			contentsData,
-			sourcePreamble
+			strategy.sourcePreamble
 		)
 
 		return {

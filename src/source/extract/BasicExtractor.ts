@@ -13,14 +13,6 @@ export class BasicExtractor extends BaseExtractor {
 		super()
 	}
 
-	override async renderSourceBlock(
-		strategy: StrategyMetadata,
-		sourcePreamble?: string
-	): Promise<string> {
-		const dqlPart = `\`\`\`dataview\n${strategy.dql}\n\`\`\``
-		return (await super.renderSourceBlock(strategy, sourcePreamble)) + dqlPart
-	}
-
 	async extract(
 		file?: TFile,
 		metadata?: CachedMetadata,

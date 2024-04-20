@@ -20,16 +20,6 @@ export class SingleBacklinkerExtractor extends BaseExtractor {
 		super()
 	}
 
-	override async renderSourceBlock(
-		strategy: SingleBacklinkerStrategyMetadata,
-		sourcePreamble: string
-	): Promise<string> {
-		// If a DQL query is present, format it as a code block
-		const dqlPart = `\`\`\`dataview\n${strategy.dql}\n\`\`\`\n`
-
-		return (await super.renderSourceBlock(strategy, sourcePreamble)) + dqlPart
-	}
-
 	/**
 	 * Extracts content snippets from a file that reference a specific evergreen note or tag.
 	 *

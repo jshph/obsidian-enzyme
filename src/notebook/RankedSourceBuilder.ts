@@ -1,7 +1,6 @@
 import { CanvasData } from 'obsidian/canvas'
-import OpenAI from 'openai'
 import { App } from 'obsidian'
-import { DataviewSource } from './ReasonAgent'
+import { StrategyMetadata } from './ReasonAgent'
 import { AIClient } from './AIClient'
 
 type RankedSourceResponse = {
@@ -17,7 +16,7 @@ export type RankedAggregators = {
 
 export type AggregatorMetadata = {
 	aggregatorId?: string
-	sources: DataviewSource[]
+	sources: StrategyMetadata[]
 	prompt: string
 }
 
@@ -56,7 +55,7 @@ export function getAggregatorMetadata(
 				dql: frontmatter.dql,
 				strategy: frontmatter.strategy,
 				evergreen: frontmatter.evergreen
-			} as DataviewSource
+			} as StrategyMetadata
 		})
 
 	return {

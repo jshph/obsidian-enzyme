@@ -4,7 +4,7 @@ import {
 	SourceReasonBlockContents
 } from './CodeBlockRenderer'
 import { AggregatorMetadata } from '../notebook/RankedSourceBuilder'
-import { DataviewSource } from '../notebook/ReasonAgent'
+import { StrategyMetadata } from '../notebook/ReasonAgent'
 import { DQLStrategy } from 'reason-node/SourceReasonNodeBuilder'
 
 export type ChatMessageWithMetadata = {
@@ -21,7 +21,7 @@ export type SynthesisMessageMetadata = {
 export type SynthesisPlanMessageMetadata = {
 	id: string
 	assistantMessageType: 'synthesisPlan'
-	sources: DataviewSource[]
+	sources: StrategyMetadata[]
 	prompt: string
 }
 
@@ -225,7 +225,7 @@ export class SynthesisContainer {
 				if (index === 0 && parsedContents.sources.length === 0) {
 					parsedContents.sources = [
 						{
-							strategy: { name: DQLStrategy[DQLStrategy.RecentMentions] }
+							strategy: DQLStrategy[DQLStrategy.RecentMentions]
 						}
 					]
 				}

@@ -8,7 +8,7 @@ import {
 } from '../../reason-node/SourceReasonNodeBuilder'
 import { DataviewApi, getAPI } from '../../obsidian-modules/dataview-handler'
 import { CandidateRetriever } from './CandidateRetriever'
-import { DataviewSource, StrategyMetadata } from 'notebook/ReasonAgent'
+import { StrategyMetadata } from 'notebook/ReasonAgent'
 import { SingleBacklinkerStrategyMetadata } from 'source/extract/SingleBacklinkerExtractor'
 
 /**
@@ -58,17 +58,14 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 	 * @param parameters - An object containing the DQL query, strategy, and optional evergreen status
 	 * @returns A Promise that resolves to an array of FileContents, each representing the contents of a file.
 	 */
-	async retrieve(parameters: DataviewSource): Promise<FileContents[]> {
-		if (isHighLevelStrategy(parameters.strategy)) {
-			return [await this.contentRenderer.prepareContents(parameters.strategy)]
-		} else if (
-			(parameters.strategy as SingleBacklinkerStrategyMetadata).dql ===
-			undefined
-		) {
+	async retrieve(parameters: StrategyMetadata): Promise<FileContents[]> {
+		if (isHighLevelStrategy(parameters)) {
+			return [await this.contentRenderer.prepareContents(parameters)]
+		} else if (parameters.dql === undefined) {
 			return []
 		}
 
-		const dql = (parameters.strategy as SingleBacklinkerStrategyMetadata).dql
+		const dql = parameters.dql
 
 		const dqlResults = await this.dataviewAPI.tryQuery(dql)
 		const paths = dqlResults.values
@@ -78,11 +75,7 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 		)
 		const bodies: FileContents[] = await Promise.all(
 			files.map((file: TFile) =>
-				this.contentRenderer.prepareFileContents(
-					file,
-					parameters.strategy,
-					parameters.sourcePreamble
-				)
+				this.contentRenderer.prepareFileContents(file, parameters)
 			)
 		)
 
@@ -117,14 +110,7 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 
 		switch (frontmatter.role) {
 			case ReasonNodeType[ReasonNodeType.Source]:
-				const dql = fileContents.match(/```dataview\n?([\s\S]*?)\n?```/)[1]
-				const dqlContents = await this.retrieve({
-					strategy: {
-						...frontmatter.strategy,
-						dql: dql
-					} as StrategyMetadata,
-					sourcePreamble: frontmatter.sourcePreamble // TODO template functionality is untested
-				})
+				const dqlContents = await this.retrieve(frontmatter.strategy)
 
 				return dqlContents.map((contents) => {
 					return {

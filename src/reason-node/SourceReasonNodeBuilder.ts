@@ -18,7 +18,7 @@ export enum DQLStrategy {
 
 // Handle higher level extraction where the strategy does its querying independently from the user
 export const isHighLevelStrategy = (strategy: StrategyMetadata): boolean => {
-	return [DQLStrategy.RecentMentions].includes(DQLStrategy[strategy.name])
+	return [DQLStrategy.RecentMentions].includes(DQLStrategy[strategy.strategy])
 }
 
 export const DQLStrategyDescriptions = {
@@ -28,7 +28,8 @@ export const DQLStrategyDescriptions = {
 		'Extract all content snippets from a file that reference any evergreen note or tag that is the result of a DQL query',
 	LongContent: 'Extract the last few paragraphs of a file.',
 	RecentMentions:
-		'Identify the top most recent tags and links, and extract the content surrounding their mentions.'
+		'Identify the top most recent tags and links, and extract the content surrounding their mentions.',
+	Basic: 'Extract the entire contents of a file.'
 }
 
 export class SourceReasonNodeBuilder extends BaseReasonNodeBuilder<SourceReasonNodeSpec> {

@@ -23,13 +23,9 @@ import { AIClient } from './AIClient'
 import { prompts } from './prompts'
 
 export type StrategyMetadata = {
-	name: string
+	strategy: string
 	dql?: string
-}
-
-export type DataviewSource = {
 	id?: string
-	strategy: StrategyMetadata
 	sourcePreamble?: string // Optional -- a preamble to be included about the source
 }
 
@@ -138,20 +134,14 @@ export class ReasonAgent {
 		return ranked
 	}
 
-	private async retrieve(sources: DataviewSource[]): Promise<{
+	private async retrieve(sources: StrategyMetadata[]): Promise<{
 		sourceContents: string[]
 		substitutions: BlockRefSubstitution[]
 	}> {
 		let results = (
 			await Promise.all(
 				sources.map(async (source) => {
-					source = source as DataviewSource
-					const retrievalParams = {
-						sourcePreamble: source.sourcePreamble,
-						strategy: source.strategy
-					}
-					const fileContents =
-						await this.candidateRetriever.retrieve(retrievalParams)
+					const fileContents = await this.candidateRetriever.retrieve(source)
 					const flatContents = fileContents.flat().map((content) => {
 						return {
 							content: content.contents,
