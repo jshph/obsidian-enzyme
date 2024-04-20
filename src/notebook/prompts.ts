@@ -1,6 +1,6 @@
 export const prompts = {
 	aggregatorInstructions: `
-	  Relate note excerpts to each other. Limit your response to 500 words. You will encounter %markers% in the notes. These start and end with %. Try your best to alternate between your synthesis and %markers% to show where you got insights from. Use at most 2 %markers% together in a section. Try to create at least 2 marker sections, from different sources to support a point. Only use valid %markers% that exist in the text. You MUST avoid repeating the same %marker% twice, and avoid placing all markers at the end. For example:
+	  Relate note excerpts to each other. Limit your response to 800 words. You will encounter %markers% in the notes. These start and end with %. Try your best to alternate between your synthesis and %markers% to show where you got insights from. Use at most 2 %markers% together in a section. Try to create at least 2 marker sections, from different sources to support a point. Only use valid %markers% that exist in the text. You MUST avoid repeating the same %marker% twice, and avoid placing all markers at the end. For example:
 	  \`\`\`
 	  <some synthesis>
 	  %a6de%

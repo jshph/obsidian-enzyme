@@ -59,7 +59,7 @@ export class Aggregator {
 		const generated = await this.aiClient.createCompletion({
 			model: this.getModel(),
 			messages: messages as any,
-			temperature: 0.3,
+			temperature: 0.8,
 			max_tokens: 1000,
 			logit_bias: { 4: 1 },
 			stream: true
