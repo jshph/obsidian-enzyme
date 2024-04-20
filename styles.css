@@ -12,6 +12,7 @@
   padding: 10px;
   border-radius: 0.5rem;
   margin: 0px 15px;
+  float: right;
 }
 @keyframes pulsate {
   from {

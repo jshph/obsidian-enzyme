@@ -92,9 +92,6 @@ export class CodeBlockRenderer {
 			this
 		)
 
-		const button = body.createEl('button')
-		button.addClass('reason-generate-button')
-
 		let renderedString: string = ''
 		let sources: DataviewSource[]
 		let prompt: string
@@ -154,6 +151,8 @@ export class CodeBlockRenderer {
 
 			MarkdownRenderer.render(this.app, renderedString, s, '/', new Component())
 
+			const button = body.createEl('button')
+			button.addClass('reason-generate-button')
 			button.setText('Send')
 			button.addEventListener('click', async () => {
 				if (!this.reasonAgent.checkSetup()) {
@@ -171,11 +170,9 @@ export class CodeBlockRenderer {
 					}
 				)
 			})
-		} else if (
-			blockContents.trim().length === 0 &&
-			tempSynthesisContainer.getMessagesToHere().length > 0
-		) {
-			return
+		} else {
+			renderedString += 'Invalid Reason block! 🫤'
+			MarkdownRenderer.render(this.app, renderedString, s, '/', new Component())
 		}
 	}
 
