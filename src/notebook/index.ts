@@ -3,7 +3,6 @@ import { CanvasLoader } from './CanvasLoader'
 import { ReasonNodeType } from '../types'
 import { AIClient, ModelConfig } from './AIClient'
 import { Ranker, getAggregatorMetadata } from './RankedSourceBuilder'
-import { CollapseConversation } from './TemplateSaver'
 
 export {
 	getAggregatorMetadata,
@@ -14,6 +13,5 @@ export {
 	AIClient,
 	ModelConfig,
 	SystemPrompts,
-	getSystemPrompts,
-	CollapseConversation
+	getSystemPrompts
 }

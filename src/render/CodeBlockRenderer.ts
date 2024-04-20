@@ -175,18 +175,7 @@ export class CodeBlockRenderer {
 			blockContents.trim().length === 0 &&
 			tempSynthesisContainer.getMessagesToHere().length > 0
 		) {
-			const saveButton = body.createEl('button')
-			saveButton.addClass('reason-generate-button')
-			saveButton.setText('Save')
-			saveButton.addEventListener('click', async () => {
-				this.createSynthesisContainerAction(
-					el,
-					context,
-					executionLock,
-					async (synthesisContainerEl) =>
-						await this.reasonAgent.collapseAndPersist(synthesisContainerEl)
-				)
-			})
+			return
 		}
 	}
 

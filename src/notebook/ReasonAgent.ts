@@ -6,7 +6,6 @@ import {
 	getAggregatorMetadata
 } from './RankedSourceBuilder'
 import { Aggregator } from '../aggregator/Aggregator'
-import { CollapseConversation } from './TemplateSaver'
 import { CandidateRetriever } from '../source/retrieve/CandidateRetriever'
 import {
 	AssistantMessageMetadata,
@@ -35,7 +34,6 @@ export type DataviewSource = {
 }
 
 export type SystemPrompts = {
-	templateSaver: string
 	ranker: string
 	aggregatorSystemPrompt: string
 	aggregatorInstructions: string
@@ -58,7 +56,6 @@ export type SynthesisPlan = {
 export class ReasonAgent {
 	ranker: Ranker
 	aggregator: Aggregator
-	collapseConversation: CollapseConversation
 
 	constructor(
 		public app: App,
@@ -77,14 +74,6 @@ export class ReasonAgent {
 			getModel,
 			this.systemPrompts.aggregatorSystemPrompt,
 			this.systemPrompts.aggregatorInstructions
-		)
-		this.collapseConversation = new CollapseConversation(
-			this.getModel,
-			this.app,
-			this.aiClient,
-			this.sourceReasonNodeBuilder,
-			this.aggregatorReasonNodeBuilder,
-			this.systemPrompts.templateSaver
 		)
 	}
 
@@ -371,41 +360,6 @@ export class ReasonAgent {
 		return {
 			rankedAggregators: rankedSources
 		}
-	}
-
-	/**
-	 * Collapses and saves the conversation to a canvas.
-	 *
-	 * @param {SynthesisContainer} synthesisContainer - The synthesis context.
-	 * @returns {Promise<void>}
-	 */
-	async collapseAndPersist(
-		synthesisContainer: SynthesisContainer
-	): Promise<void> {
-		const cancelInitialPlaceholderFn =
-			synthesisContainer.waitPlaceholder('🧠 Thinking...')
-
-		const collapsed = await this.collapseConversation.collapse(
-			synthesisContainer.getMessagesToHere()
-		)
-
-		cancelInitialPlaceholderFn()
-
-		synthesisContainer.appendText(
-			`\n\nSaving the following to [[${DEFAULT_CANVAS_PATH}]]\n\n` +
-				collapsed.synthesis_constructions
-					.map((construction) => {
-						const guidance =
-							'> ' + construction.guidance.split('\n').join('\n> ')
-						const sourceMaterial = construction.source_material
-							.map((s) => `\`\`\`dataview\n${s.dql}\n\`\`\``)
-							.join('\n')
-						return `${guidance}${sourceMaterial}`
-					})
-					.join('\n')
-		)
-
-		await this.collapseConversation.save(collapsed, DEFAULT_CANVAS_PATH)
 	}
 }
 

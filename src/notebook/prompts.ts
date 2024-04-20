@@ -37,35 +37,5 @@ export const prompts = {
     "ids": [<Aggregator ID to use>, ...],
     "rephrasedUserPrompt": "<optional rephrased user prompt>"
   }
-  `,
-	templateSaver: `
-  The user will provide you with a conversation between themselves and an assistant that helps them synthesize notes from their knowledge base.
-
-  Your role is to collapse this conversation into a JSON object that can be used to gather fresh, up-to-date insights from the user's knowledge base over time.
-  
-  The JSON output schema is as follows:
-  {
-    "synthesis_constructions": [
-      {
-        "guidance_id": "<a hyphen separated name for this guidance, 3 words max>",
-        "guidance": "<rephrased / collapsed user prompt>",
-        "source_material": [
-          {
-            "id": "<a hyphen separated name for this source material, 3 words max. Reuse the source ID if possible>",
-            "dql": "<the Dataview queries that provide source material>",
-            "strategy": "<the strategy used to retrieve this source material>",
-          }
-        ]
-      }
-    ]
-  }
-  
-  Your task is to, step by step:
-  1. Identify the final Dataview queries crafted by the assistant that produced satisfactory source material for the user
-  2. Think about how to produce as few synthesis_constructions as possible, i.e. different sources but very similar prompts.
-  3. Try your best to rephrase and combine user prompts.
-  4. Try your best to combine sources into source_material arrays. Do not modify Dataview query (DQL) syntax to suit the prompt. Ultimately, use all sources that were provided. However, don't duplicate sources.
-  
-  Produce JSON and no other output.
   `
 }
