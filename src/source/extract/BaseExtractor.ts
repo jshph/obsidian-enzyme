@@ -64,8 +64,8 @@ export abstract class BaseExtractor {
 	 * Substitutes block references within the content.
 	 * This method scans the provided content for block reference markers (e.g., ^blockid)
 	 * and replaces them with Obsidian-style block reference links (![[title#^blockid]]).
-	 * It also generates and substitutes temporary placeholders for these block references
-	 * which can be used for further processing.
+	 * It does something similar for headings. It also generates and substitutes temporary
+	 * placeholders for these block references which can be used for further processing.
 	 *
 	 * @param title The title of the file where the block references are located.
 	 * @param contents The content string containing the block references to be substituted.
@@ -75,7 +75,7 @@ export abstract class BaseExtractor {
 		title: string,
 		contents: string
 	): { substitutions: BlockRefSubstitution[]; contents: string } {
-		// Replace any reference strings (^blockid) with block reference (![[file#^blockid]])
+		// Replace any reference strings (^blockid) with template strings
 		const blockRefRegex = /\^([a-zA-Z0-9]+)/g
 		const blockRefs = contents.match(blockRefRegex)
 		let substitutions: BlockRefSubstitution[] = []
@@ -88,6 +88,26 @@ export abstract class BaseExtractor {
 					block_reference: blockRefString
 				})
 				contents = contents.replace(blockRef, templateString)
+			}
+		}
+
+		// Also replace any headings with template strings
+		const headingRefRegex = /#+\s(.+)/g
+		const headingRefs = contents.match(headingRefRegex)
+		if (headingRefs) {
+			for (const headingRef of headingRefs) {
+				const templateString = `%${Math.random().toString(16).slice(2, 6)}%`
+				const headingSuffix = headingRef.replace(/#+\s/, '')
+				const blockRefString = `![[${title}#${headingSuffix}]]`
+				substitutions.push({
+					template: templateString,
+					block_reference: blockRefString
+				})
+				contents = contents.replace(
+					headingRef,
+					headingRef +
+						` (contents under this heading use marker: ${templateString})`
+				)
 			}
 		}
 
