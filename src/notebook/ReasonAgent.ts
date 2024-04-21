@@ -221,7 +221,7 @@ export class ReasonAgent {
 		}
 		// Append reminder instructions to the last user prompt (assume the last message is a user message)
 		messages[messages.length - 1].content +=
-			`\n\nRemember the rules:\n${this.systemPrompts.aggregatorInstructions}`
+			`\n\nContinue the conversation and remember the rules:\n${this.systemPrompts.aggregatorInstructions}`
 
 		const cancelPlaceholderFn =
 			synthesisContainer.waitPlaceholder('🧠 Synthesizing...')
