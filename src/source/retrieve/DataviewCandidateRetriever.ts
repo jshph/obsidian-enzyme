@@ -1,19 +1,14 @@
 import { App, TFile } from 'obsidian'
 import { ContentRenderer, FileContents } from './ContentRenderer'
 import { ReasonSettings } from '../../settings/ReasonSettings'
-import { ReasonNodeType } from '../../types'
-import {
-	SourceReasonNodeSpec,
-	isHighLevelStrategy
-} from '../../reason-node/SourceReasonNodeBuilder'
+import { isHighLevelStrategy } from '../extract/Strategy'
 import { DataviewApi, getAPI } from '../../obsidian-modules/dataview-handler'
 import { CandidateRetriever } from './CandidateRetriever'
 import { StrategyMetadata } from 'notebook/ReasonAgent'
-import { SingleBacklinkerStrategyMetadata } from 'source/extract/SingleBacklinkerExtractor'
 
 /**
  * The `DataviewCandidateRetriever` class manages the retrieval of candidate information from Dataview.
- * It provides methods to retrieve source information, file contents, and node contents.
+ * It provides methods to retrieve source information and file contents based on the provided DQL query.
  */
 export class DataviewCandidateRetriever implements CandidateRetriever {
 	contentRenderer: ContentRenderer
@@ -80,53 +75,5 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 		)
 
 		return bodies.flat()
-	}
-
-	/**
-	 * Retrieves the contents of a node file based on its frontmatter role.
-	 * If the role is 'source', it retrieves the contents of the DQL query.
-	 * If the role is 'aggregator', it retrieves the guidance from the file.
-	 * Otherwise, it retrieves the file contents as is.
-	 *
-	 * @param nodeFile - The node file to retrieve contents from.
-	 * @returns A Promise that resolves to an array of objects containing the contents of the node file.
-	 */
-	async getNodeContents(nodeFileOrPath: string | TFile): Promise<any[]> {
-		let fileContents: string
-		let nodeFile: TFile
-		if (typeof nodeFileOrPath === 'string') {
-			const file = this.app.vault.getAbstractFileByPath(nodeFileOrPath)
-			if (file instanceof TFile) {
-				fileContents = await this.app.vault.read(nodeFile)
-			} else {
-				throw new Error(`File not found: ${nodeFile}`)
-			}
-		} else {
-			fileContents = await this.app.vault.read(nodeFileOrPath)
-		}
-
-		const frontmatter = this.app.metadataCache.getFileCache(nodeFile)
-			?.frontmatter as SourceReasonNodeSpec
-
-		switch (frontmatter.role) {
-			case ReasonNodeType[ReasonNodeType.Source]:
-				const dqlContents = await this.retrieve(frontmatter.strategy)
-
-				return dqlContents.map((contents) => {
-					return {
-						guidance: frontmatter?.guidance,
-						source_material: contents.contents
-					}
-				})
-			case ReasonNodeType[ReasonNodeType.Aggregator]:
-				const guidance = fileContents.split('---').slice(2).join('---')
-				return [{ guidance }]
-			default:
-				return [
-					{
-						contents: [fileContents]
-					}
-				]
-		}
 	}
 }

@@ -3,14 +3,19 @@ import {
 	CodeBlockRenderer,
 	SourceReasonBlockContents
 } from './CodeBlockRenderer'
-import { AggregatorMetadata } from '../notebook/RankedSourceBuilder'
 import { StrategyMetadata } from '../notebook/ReasonAgent'
-import { DQLStrategy } from 'reason-node/SourceReasonNodeBuilder'
+import { DQLStrategy } from 'source/extract/Strategy'
 
 export type ChatMessageWithMetadata = {
 	role: string
 	content: string
 	metadata: AssistantMessageMetadata[]
+}
+
+export type AggregatorMetadata = {
+	aggregatorId?: string
+	sources: StrategyMetadata[]
+	prompt: string
 }
 
 export type SynthesisMessageMetadata = {

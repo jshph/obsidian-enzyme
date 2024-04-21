@@ -6,11 +6,9 @@ import {
 } from 'obsidian'
 import { ReasonAgent, StrategyMetadata } from '../notebook/ReasonAgent'
 import { SynthesisContainer } from './SynthesisContainer'
-import { getAggregatorMetadata } from '../notebook/RankedSourceBuilder'
-import { CanvasLoader } from '../notebook/CanvasLoader'
 import * as yaml from 'yaml'
 import { Notice } from 'obsidian'
-import { DQLStrategy } from 'reason-node/SourceReasonNodeBuilder'
+import { DQLStrategy } from 'source/extract/Strategy'
 import { DataviewCandidateRetriever } from 'source/retrieve'
 
 type ReasonBlockContents = {
@@ -36,7 +34,7 @@ export type PlainTextReasonBlockContents = {
  * This class is responsible for rendering custom code blocks within Obsidian markdown files.
  * It registers a markdown code block processor for the 'reason' code block type and defines
  * the rendering logic for these blocks. The class interacts with various components of the
- * Reason plugin, such as the CanvasLoader, ReasonAgent, and the markdown code block processor
+ * Reason plugin, such as ReasonAgent, and the markdown code block processor
  * registration function, to facilitate the rendering of 'reason' blocks with interactive
  * elements and integration with the reasoning engine.
  */
@@ -45,7 +43,6 @@ export class CodeBlockRenderer {
 
 	constructor(
 		public app: App,
-		public canvasLoader: CanvasLoader,
 		public reasonAgent: ReasonAgent,
 		public registerMarkdownCodeBlockProcessor: any,
 		public candidateRetriever: DataviewCandidateRetriever
@@ -76,8 +73,6 @@ export class CodeBlockRenderer {
 
 		const body = container.createDiv('reason-preview')
 		const s = body.createSpan()
-
-		await this.canvasLoader.reload()
 
 		// check if there are messages before this code block
 		const tempSynthesisContainer = new SynthesisContainer(
@@ -248,20 +243,16 @@ export class CodeBlockRenderer {
 
 		try {
 			const parsedYaml = yaml.parse(contents.replace(/\t/g, '    '))
-			if (parsedYaml?.aggregator) {
-				const aggregatorId = parsedYaml.aggregator
-				let metadata = getAggregatorMetadata(
-					aggregatorId,
-					this.canvasLoader.canvasData,
-					this.app
-				)
-				return {
-					type: 'aggregator',
-					aggregatorId: metadata.aggregatorId,
-					sources: metadata.sources,
-					prompt: metadata.prompt
-				} as AggregatorReasonBlockContents
-			} else if (parsedYaml?.sources?.length > 0) {
+			// if (parsedYaml?.aggregator) {
+			// 	const aggregatorId = parsedYaml.aggregator
+			// 	return {
+			// 		type: 'aggregator',
+			// 		aggregatorId: metadata.aggregatorId,
+			// 		sources: metadata.sources,
+			// 		prompt: metadata.prompt
+			// 	} as AggregatorReasonBlockContents
+			// TODO restore the premade aggregator functionality
+			if (parsedYaml?.sources?.length > 0) {
 				sources = parsedYaml.sources.map((source) => {
 					return source as StrategyMetadata
 				})

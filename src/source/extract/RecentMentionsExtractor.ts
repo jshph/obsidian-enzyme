@@ -2,7 +2,7 @@ import { DataviewApi } from 'obsidian-dataview'
 import { BaseExtractor, FileContents } from './BaseExtractor'
 import { App, CachedMetadata, TFile } from 'obsidian'
 import { SingleBacklinkerExtractor } from './SingleBacklinkerExtractor'
-import { DQLStrategy } from 'reason-node/SourceReasonNodeBuilder'
+import { DQLStrategy } from 'source/extract/Strategy'
 import { BasicExtractor } from './BasicExtractor'
 import { StrategyMetadata } from 'notebook/ReasonAgent'
 
@@ -38,8 +38,7 @@ export class RecentMentionsExtractor extends BaseExtractor {
 	}
 
 	override async renderSourceBlock(
-		strategy: RecentMentionsStrategyMetadata,
-		sourcePreamble?: string
+		strategy: RecentMentionsStrategyMetadata
 	): Promise<string> {
 		strategy.numReadwiseFiles = strategy.numReadwiseFiles ?? NUM_READWISE_FILES
 		strategy.numOtherFiles = strategy.numOtherFiles ?? NUM_OTHER_FILES
@@ -52,9 +51,7 @@ export class RecentMentionsExtractor extends BaseExtractor {
 		const formattedMentions = '- ' + sortedMentions.join('\n- ')
 		const mentionPart = `**Top mentioned entities**:\n${formattedMentions}`
 
-		return (
-			(await super.renderSourceBlock(strategy, sourcePreamble)) + mentionPart
-		)
+		return (await super.renderSourceBlock(strategy)) + mentionPart
 	}
 
 	private async getTopMentions(

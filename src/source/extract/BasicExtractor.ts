@@ -2,7 +2,7 @@ import { App, CachedMetadata, TFile } from 'obsidian'
 import { BaseExtractor, FileContents } from './BaseExtractor'
 import { DataviewApi } from 'obsidian-dataview'
 import { StrategyMetadata } from 'notebook/ReasonAgent'
-import { DQLStrategy } from 'reason-node/SourceReasonNodeBuilder'
+import { DQLStrategy } from 'source/extract/Strategy'
 
 export class BasicExtractor extends BaseExtractor {
 	strategy = DQLStrategy.Basic

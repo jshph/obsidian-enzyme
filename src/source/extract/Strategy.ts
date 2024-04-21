@@ -1,12 +1,4 @@
 import { StrategyMetadata } from 'notebook/ReasonAgent'
-import { BaseReasonNodeBuilder } from '.'
-import { ReasonNodeSpec, ReasonNodeType } from '../types'
-import dedent from 'dedent-js'
-
-export type SourceReasonNodeSpec = ReasonNodeSpec & {
-	strategy: StrategyMetadata
-	sourcePreamble: string
-}
 
 export enum DQLStrategy {
 	SingleEvergreenReferrer,
@@ -30,20 +22,4 @@ export const DQLStrategyDescriptions = {
 	RecentMentions:
 		'Identify the top most recent tags and links, and extract the content surrounding their mentions.',
 	Basic: 'Extract the entire contents of a file.'
-}
-
-export class SourceReasonNodeBuilder extends BaseReasonNodeBuilder<SourceReasonNodeSpec> {
-	type: ReasonNodeType = ReasonNodeType.Source
-	endpoint: string = 'create-source-node'
-	color: string = '4'
-
-	renderBodyDataWithSpec(spec: ReasonNodeSpec, body: string): string {
-		const sourceSpec = spec as SourceReasonNodeSpec
-
-		return dedent(`
-    \`\`\`dataview
-    ${sourceSpec.strategy.dql}
-    \`\`\`
-    `)
-	}
 }

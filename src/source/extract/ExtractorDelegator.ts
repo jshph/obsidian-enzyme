@@ -4,10 +4,7 @@ import { AllBacklinkersExtractor } from './AllBacklinkersExtractor'
 import { TrimToEndExtractor } from './TrimToEndExtractor'
 import { BaseExtractor, FileContents } from './BaseExtractor'
 import { ReasonSettings } from '../../settings/ReasonSettings'
-import {
-	DQLStrategy,
-	DQLStrategyDescriptions
-} from '../../reason-node/SourceReasonNodeBuilder'
+import { DQLStrategy } from './Strategy'
 import { DataviewApi } from 'obsidian-dataview'
 import {
 	SingleBacklinkerExtractor,

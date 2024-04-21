@@ -25,17 +25,5 @@ export const prompts = {
   {instructions}
 
   Here are a series of note titles / metadata from frontmatter, followed by the note contents in a \`\`\`codefence\`\`\`. At the end, there is user guidance for the synthesis.
-  `,
-	ranker: `
-  You are an expert at helping answer a user's prompt from their notes. You do this by recommending the best Aggregators for the task. An Aggregator contains several Sources (defines a query to retrieve notes) and Guidance for synthesizing info from its sources.
-
-  Given a list of Aggregators, do your best to rank the top one for the user's prompt. Think about whether the User Prompt is a much more specific refinement of its Guidance. If so, rephrase the guidance to incorporate the User Prompt.
-  
-  Output only valid JSON in the following schema, no other output:
-  {
-    "explanation": "<explanation for your ranking of aggregators / how you discarded irrelevant ones, high level, don't mention IDs>",
-    "ids": [<Aggregator ID to use>, ...],
-    "rephrasedUserPrompt": "<optional rephrased user prompt>"
-  }
   `
 }

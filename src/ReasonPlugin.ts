@@ -1,16 +1,8 @@
-import { Plugin, App, PluginManifest, Notice, ItemView } from 'obsidian'
+import { Plugin, App, PluginManifest, Notice } from 'obsidian'
 import { ReasonSettings, DEFAULT_SETTINGS } from './settings/ReasonSettings'
 import SettingsTab from './settings/SettingsTab'
 import { CodeBlockRenderer } from './render'
-import { Canvas, CanvasView } from './obsidian-modules'
-import {
-	ReasonAgent,
-	CanvasLoader,
-	AIClient,
-	getSystemPrompts
-} from './notebook'
-import { SourceReasonNodeBuilder } from './reason-node/SourceReasonNodeBuilder'
-import { AggregatorReasonNodeBuilder } from './reason-node/AggregatorReasonNodeBuilder'
+import { ReasonAgent, AIClient, getSystemPrompts } from './notebook'
 import { DataviewApi, getAPI } from './obsidian-modules/dataview-handler'
 import { DataviewCandidateRetriever } from './source/retrieve/DataviewCandidateRetriever'
 
@@ -18,9 +10,6 @@ export class ReasonPlugin extends Plugin {
 	settings: ReasonSettings
 	reasonAgent: ReasonAgent
 	noteRenderer: CodeBlockRenderer
-	sourceReasonNodeBuilder: SourceReasonNodeBuilder
-	aggregatorReasonNodeBuilder: AggregatorReasonNodeBuilder
-	canvasLoader: CanvasLoader
 	aiClient: AIClient
 	dataview: DataviewApi
 	candidateRetriever: DataviewCandidateRetriever
@@ -30,22 +19,6 @@ export class ReasonPlugin extends Plugin {
 		this.settings = DEFAULT_SETTINGS
 		this.dataview = getAPI(this.app)
 		this.aiClient = new AIClient()
-	}
-
-	getActiveCanvas(): Canvas {
-		this.app.workspace.setActiveLeaf(
-			this.app.workspace.getLeavesOfType('canvas')[0],
-			{ focus: true }
-		)
-		const maybeCanvasView = this.app.workspace.getActiveViewOfType(
-			ItemView
-		) as CanvasView | null
-
-		if (!maybeCanvasView) {
-			throw new Error('No canvas view found')
-		}
-
-		return maybeCanvasView['canvas']
 	}
 
 	async initAIClient() {
@@ -75,11 +48,6 @@ export class ReasonPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings()
 
-		this.canvasLoader = new CanvasLoader(this.app)
-
-		this.sourceReasonNodeBuilder = new SourceReasonNodeBuilder()
-		this.aggregatorReasonNodeBuilder = new AggregatorReasonNodeBuilder()
-
 		this.candidateRetriever = new DataviewCandidateRetriever(
 			this.settings,
 			this.app
@@ -91,7 +59,6 @@ export class ReasonPlugin extends Plugin {
 
 		this.reasonAgent = new ReasonAgent(
 			this.app,
-			this.canvasLoader,
 			this.aiClient,
 			this.candidateRetriever,
 			() =>
@@ -114,8 +81,6 @@ export class ReasonPlugin extends Plugin {
 						return selectedModel.apiKey?.length > 0
 					}
 				})(),
-			this.sourceReasonNodeBuilder,
-			this.aggregatorReasonNodeBuilder,
 			prompts
 		)
 
@@ -123,7 +88,6 @@ export class ReasonPlugin extends Plugin {
 
 		this.noteRenderer = new CodeBlockRenderer(
 			this.app,
-			this.canvasLoader,
 			this.reasonAgent,
 			this.registerMarkdownCodeBlockProcessor.bind(this),
 			this.candidateRetriever
