@@ -61,10 +61,14 @@ export class RecentMentionsExtractor extends BaseExtractor {
 		sortedMentions: string[]
 		groupedFiles: KeyedFile
 	}> {
+		let files = { values: [] }
 		// Get most recently modified files from Readwise
-		const files = await this.dataviewAPI.tryQuery(
-			DQL_READWISE.replace('{numReadwiseFiles}', numReadwiseFiles.toString())
-		)
+		const readwiseFolder = this.app.vault.getAbstractFileByPath('Readwise')
+		if (readwiseFolder) {
+			files = await this.dataviewAPI.tryQuery(
+				DQL_READWISE.replace('{numReadwiseFiles}', numReadwiseFiles.toString())
+			)
+		}
 
 		// Get most recently created files from the rest of the vault
 		const files2 = await this.dataviewAPI.tryQuery(
