@@ -4,7 +4,7 @@
 
 Visit [enzyme.garden/getting-started](https://www.enzyme.garden/getting-started) for the best guide on how to use Enzyme.
 
-![](synthesis.gif)
+![](enzyme_synthesis.gif)
 
 Enzyme retrieves and helps synthesize your Obsidian notes right in the editor. It features:
 
