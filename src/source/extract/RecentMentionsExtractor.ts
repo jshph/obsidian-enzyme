@@ -175,7 +175,7 @@ export class RecentMentionsExtractor extends BaseExtractor {
 				) {
 					// Extract entire contents
 					return await this.basicExtractor.extract(tfile, metadataCache, {
-						name: DQLStrategy[DQLStrategy.Basic]
+						strategy: DQLStrategy[DQLStrategy.Basic]
 					} as StrategyMetadata)
 				} else {
 					// Extract the neighboring context of the mention in the file
@@ -183,7 +183,7 @@ export class RecentMentionsExtractor extends BaseExtractor {
 						tfile,
 						metadataCache,
 						{
-							name: DQLStrategy[DQLStrategy.SingleEvergreenReferrer],
+							strategy: DQLStrategy[DQLStrategy.SingleEvergreenReferrer],
 							evergreen: mention
 						}
 					)

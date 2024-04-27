@@ -1,5 +1,5 @@
-import cors from '@koa/cors'
-import Koa from 'koa'
+import cors from '@koa/cors' // eslint-disable-line import/no-extraneous-dependencies
+import Koa from 'koa' // eslint-disable-line import/no-extraneous-dependencies
 import proxy from 'koa-proxies'
 import http from 'http'
 

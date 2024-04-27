@@ -5,7 +5,7 @@ import {
 } from 'openai/resources'
 import { APIPromise } from 'openai/core'
 import { Stream } from 'openai/streaming'
-import { createLLMClient, LLMClient } from 'llm-polyglot'
+import { createLLMClient, LLMClient } from 'llm-polyglot' // eslint-disable-line
 import { ProxyServer } from './ProxyServer'
 
 export type ModelConfig = {
