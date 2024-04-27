@@ -1,4 +1,4 @@
-import { ReasonAgent, SystemPrompts, getSystemPrompts } from './ReasonAgent'
+import { EnzymeAgent, SystemPrompts, getSystemPrompts } from './EnzymeAgent'
 import { AIClient, ModelConfig } from './AIClient'
 
-export { ReasonAgent, AIClient, ModelConfig, SystemPrompts, getSystemPrompts }
+export { EnzymeAgent, AIClient, ModelConfig, SystemPrompts, getSystemPrompts }

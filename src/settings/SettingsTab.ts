@@ -1,11 +1,11 @@
 import { App, Notice, PluginSettingTab, Setting, requestUrl } from 'obsidian'
-import { ReasonPlugin } from '../ReasonPlugin'
-import { DEFAULT_SETTINGS } from './ReasonSettings'
+import { EnzymePlugin } from '../EnzymePlugin'
+import { DEFAULT_SETTINGS } from './EnzymeSettings'
 
 export class SettingsTab extends PluginSettingTab {
 	constructor(
 		public app: App,
-		public plugin: ReasonPlugin
+		public plugin: EnzymePlugin
 	) {
 		super(app, plugin)
 	}

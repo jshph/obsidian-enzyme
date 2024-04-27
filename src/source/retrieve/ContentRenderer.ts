@@ -1,10 +1,10 @@
 import { TFile, CachedMetadata, App } from 'obsidian'
 import { DataviewApi, getAPI } from '../../obsidian-modules/dataview-handler'
 import { ExtractorDelegator } from '../extract/ExtractorDelegator'
-import { ReasonSettings } from '../../settings/ReasonSettings'
+import { EnzymeSettings } from '../../settings/EnzymeSettings'
 import { BlockRefSubstitution } from '../../types'
 import { FileContents as ExtractorFileContents } from 'source/extract/BaseExtractor'
-import { StrategyMetadata } from 'notebook/ReasonAgent'
+import { StrategyMetadata } from 'notebook/EnzymeAgent'
 
 export type FileContents = {
 	title: string
@@ -23,7 +23,7 @@ export class ContentRenderer {
 
 	constructor(
 		public app: App,
-		settings: ReasonSettings
+		settings: EnzymeSettings
 	) {
 		this.dataviewAPI = getAPI(app)
 		this.extractor = new ExtractorDelegator(app, this.dataviewAPI, settings)

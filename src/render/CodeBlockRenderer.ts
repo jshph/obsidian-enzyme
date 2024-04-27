@@ -4,74 +4,74 @@ import {
 	MarkdownRenderer,
 	Component
 } from 'obsidian'
-import { ReasonAgent, StrategyMetadata } from '../notebook/ReasonAgent'
+import { EnzymeAgent, StrategyMetadata } from '../notebook/EnzymeAgent'
 import { SynthesisContainer } from './SynthesisContainer'
 import * as yaml from 'yaml'
 import { Notice } from 'obsidian'
 import { DQLStrategy } from 'source/extract/Strategy'
 import { DataviewCandidateRetriever } from 'source/retrieve'
 
-type ReasonBlockContents = {
+type EnzymeBlockContents = {
 	prompt: string
 	sources: StrategyMetadata[]
 }
 
-export type AggregatorReasonBlockContents = {
+export type AggregatorEnzymeBlockContents = {
 	type: 'aggregator'
 	aggregatorId?: string
-} & ReasonBlockContents
+} & EnzymeBlockContents
 
-export type SourceReasonBlockContents = {
+export type SourceEnzymeBlockContents = {
 	type: 'source'
-} & ReasonBlockContents
+} & EnzymeBlockContents
 
-export type PlainTextReasonBlockContents = {
+export type PlainTextEnzymeBlockContents = {
 	type: 'plaintext'
 	prompt: string
 }
 
 /**
  * This class is responsible for rendering custom code blocks within Obsidian markdown files.
- * It registers a markdown code block processor for the 'reason' code block type and defines
+ * It registers a markdown code block processor for the 'enzyme' code block type and defines
  * the rendering logic for these blocks. The class interacts with various components of the
- * Reason plugin, such as ReasonAgent, and the markdown code block processor
- * registration function, to facilitate the rendering of 'reason' blocks with interactive
- * elements and integration with the reasoning engine.
+ * Enzyme plugin, such as EnzymeAgent, and the markdown code block processor
+ * registration function, to facilitate the rendering of 'enzyme' blocks with interactive
+ * elements and integration with the enzymeing engine.
  */
 export class CodeBlockRenderer {
-	reasonResponseContainer: HTMLElement
+	enzymeResponseContainer: HTMLElement
 
 	constructor(
 		public app: App,
-		public reasonAgent: ReasonAgent,
+		public enzymeAgent: EnzymeAgent,
 		public registerMarkdownCodeBlockProcessor: any,
 		public candidateRetriever: DataviewCandidateRetriever
 	) {
 		this.registerMarkdownCodeBlockProcessor(
-			'reason',
-			this.renderReason.bind(this)
+			'enzyme',
+			this.renderEnzyme.bind(this)
 		)
 	}
 
 	/**
-	 * Renders the 'reason' code block in the markdown preview.
+	 * Renders the 'enzyme' code block in the markdown preview.
 	 *
-	 * This function is responsible for parsing the contents of a 'reason' code block,
+	 * This function is responsible for parsing the contents of a 'enzyme' code block,
 	 * creating the necessary HTML elements to display the block within the markdown preview,
-	 * and setting up the interaction logic for the 'Send' button which triggers the reasoning process.
+	 * and setting up the interaction logic for the 'Send' button which triggers the enzymeing process.
 	 *
-	 * @param {string} blockContents - The raw text content of the 'reason' code block.
-	 * @param {HTMLElement} el - The parent HTML element where the 'reason' block will be rendered.
+	 * @param {string} blockContents - The raw text content of the 'enzyme' code block.
+	 * @param {HTMLElement} el - The parent HTML element where the 'enzyme' block will be rendered.
 	 * @param {MarkdownPostProcessorContext} context - The context provided by Obsidian for post-processing the markdown.
 	 */
-	async renderReason(
+	async renderEnzyme(
 		blockContents: string,
 		el: HTMLElement,
 		context: MarkdownPostProcessorContext
 	) {
 		const container = el.createEl('div')
 
-		const body = container.createDiv('reason-preview')
+		const body = container.createDiv('enzyme-preview')
 		const s = body.createSpan()
 
 		// check if there are messages before this code block
@@ -90,13 +90,13 @@ export class CodeBlockRenderer {
 
 		if (blockContents.length > 0) {
 			let { type, ...parsedContents } =
-				this.parseReasonBlockContents(blockContents)
+				this.parseEnzymeBlockContents(blockContents)
 
 			let sourceStringParts: string[] = []
 			prompt = (
 				parsedContents as
-					| AggregatorReasonBlockContents
-					| SourceReasonBlockContents
+					| AggregatorEnzymeBlockContents
+					| SourceEnzymeBlockContents
 			).prompt
 
 			// Handle different types of code blocks: aggregator, source, and plaintext
@@ -104,12 +104,12 @@ export class CodeBlockRenderer {
 				// For 'source' and 'aggregator' types, extract sources and generate markdown sections
 				sources = (
 					parsedContents as
-						| AggregatorReasonBlockContents
-						| SourceReasonBlockContents
+						| AggregatorEnzymeBlockContents
+						| SourceEnzymeBlockContents
 				).sources
 
 				// Default to RecentMentions if no sources are provided and this is the first message
-				// need to do this fudging in order to render it properly, but it's not needed for all uses of parseReasonBlockContents
+				// need to do this fudging in order to render it properly, but it's not needed for all uses of parseEnzymeBlockContents
 				if (
 					sources.length === 0 &&
 					tempSynthesisContainer.getMessagesToHere().length === 1
@@ -145,12 +145,12 @@ export class CodeBlockRenderer {
 			MarkdownRenderer.render(this.app, renderedString, s, '/', new Component())
 
 			const button = body.createEl('button')
-			button.addClass('reason-generate-button')
+			button.addClass('enzyme-generate-button')
 			button.setText('Send')
 			button.addEventListener('click', async () => {
-				if (!this.reasonAgent.checkSetup()) {
+				if (!this.enzymeAgent.checkSetup()) {
 					new Notice(
-						'Please check that Reason is set up properly (i.e. API Key, etc.)'
+						'Please check that Enzyme is set up properly (i.e. API Key, etc.)'
 					)
 					return
 				}
@@ -159,12 +159,12 @@ export class CodeBlockRenderer {
 					context,
 					executionLock,
 					async (synthesisContainerEl) => {
-						await this.reasonAgent.synthesize(synthesisContainerEl)
+						await this.enzymeAgent.synthesize(synthesisContainerEl)
 					}
 				)
 			})
 		} else {
-			renderedString += 'Invalid Reason block! 🫤'
+			renderedString += 'Invalid Enzyme block! 🫤'
 			MarkdownRenderer.render(this.app, renderedString, s, '/', new Component())
 		}
 	}
@@ -196,12 +196,12 @@ export class CodeBlockRenderer {
 				const synthesisContainerEl = this.createSynthesisContainer(el, context)
 				await callback(synthesisContainerEl)
 			} catch (e) {
-				new Notice('Reason encountered an error: ' + e.message)
+				new Notice('Enzyme encountered an error: ' + e.message)
 			} finally {
 				executionLock.isExecuting = false
 			}
 		} else {
-			new Notice('Please wait for Reason to finish.')
+			new Notice('Please wait for Enzyme to finish.')
 		}
 	}
 
@@ -230,14 +230,14 @@ export class CodeBlockRenderer {
 	}
 
 	/**
-	 * Parses the contents of a Reason code block as YAML, producing an Aggregator (with guidance + sources, or by ID)
+	 * Parses the contents of a Enzyme code block as YAML, producing an Aggregator (with guidance + sources, or by ID)
 	 *
 	 * @param contents the raw contents, which we'll try to parse as valid YAML syntax.
 	 * @returns metadata, i.e. Aggregator metadata
 	 */
-	parseReasonBlockContents(
+	parseEnzymeBlockContents(
 		contents: string
-	): AggregatorReasonBlockContents | SourceReasonBlockContents {
+	): AggregatorEnzymeBlockContents | SourceEnzymeBlockContents {
 		let prompt
 		let sources
 
@@ -250,7 +250,7 @@ export class CodeBlockRenderer {
 			// 		aggregatorId: metadata.aggregatorId,
 			// 		sources: metadata.sources,
 			// 		prompt: metadata.prompt
-			// 	} as AggregatorReasonBlockContents
+			// 	} as AggregatorEnzymeBlockContents
 			// TODO restore the premade aggregator functionality
 			if (parsedYaml?.sources?.length > 0) {
 				sources = parsedYaml.sources.map((source) => {

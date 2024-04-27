@@ -4,7 +4,7 @@ import { App, CachedMetadata, TFile } from 'obsidian'
 import { SingleBacklinkerExtractor } from './SingleBacklinkerExtractor'
 import { DQLStrategy } from 'source/extract/Strategy'
 import { BasicExtractor } from './BasicExtractor'
-import { StrategyMetadata } from 'notebook/ReasonAgent'
+import { StrategyMetadata } from 'notebook/EnzymeAgent'
 
 export type RecentMentionsStrategyMetadata = StrategyMetadata & {
 	numReadwiseFiles: number

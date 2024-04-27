@@ -1,3 +1,3 @@
-import { ReasonPlugin } from './ReasonPlugin'
+import { EnzymePlugin } from './EnzymePlugin'
 
-export default ReasonPlugin
+export default EnzymePlugin

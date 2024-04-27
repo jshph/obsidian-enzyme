@@ -1,14 +1,14 @@
 @charset "UTF-8";
 
 /* src/styles/styles.scss */
-.reason-preview {
+.enzyme-preview {
   background-color: rgba(var(--color-blue-rgb), 0.3);
   border-radius: 15px;
   padding: 20px;
   float: right;
   width: 95%;
 }
-.reason-generate-button {
+.enzyme-generate-button {
   padding: 10px;
   border-radius: 0.5rem;
   margin: 0px 15px;
@@ -57,11 +57,11 @@
   min-height: unset !important;
   padding-bottom: 0 !important;
 }
-.canvas-node .reason-node-source {
+.canvas-node .enzyme-node-source {
   background-color: rgba(var(--color-green-rgb), 0.08);
   border: 1px solid rgba(var(--color-green-rgb), 0.8);
 }
-.canvas-node .reason-node-aggregator {
+.canvas-node .enzyme-node-aggregator {
   background-color: rgba(var(--color-yellow-rgb), 0.08);
   border: 1px solid rgba(var(--color-yellow-rgb), 0.8);
 }

@@ -2,7 +2,7 @@ import { App, CachedMetadata, TFile } from 'obsidian'
 import { BaseExtractor, FileContents } from './BaseExtractor'
 import { DataviewApi } from 'obsidian-dataview'
 import { LassoFromOffsetExtractor } from './LassoFromOffsetExtractor'
-import { StrategyMetadata } from 'notebook/ReasonAgent'
+import { StrategyMetadata } from 'notebook/EnzymeAgent'
 import { DQLStrategy } from 'source/extract/Strategy'
 
 export type SingleBacklinkerStrategyMetadata = StrategyMetadata & {

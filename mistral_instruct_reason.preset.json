@@ -1,5 +1,5 @@
 {
-	"name": "Mistral Instruct (Reason)",
+	"name": "Mistral Instruct (Enzyme)",
 	"inference_params": {
 		"input_prefix": "[INST]",
 		"input_suffix": "[/INST]",

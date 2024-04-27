@@ -1,6 +1,6 @@
 import { ModelConfig } from '../notebook'
 
-export interface ReasonSettings {
+export interface EnzymeSettings {
 	models: ModelConfig[]
 	selectedModel: string
 	/**
@@ -11,7 +11,7 @@ export interface ReasonSettings {
 	localModelPath?: string
 }
 
-export const DEFAULT_SETTINGS: ReasonSettings = {
+export const DEFAULT_SETTINGS: EnzymeSettings = {
 	models: [
 		{
 			label: 'Haiku',

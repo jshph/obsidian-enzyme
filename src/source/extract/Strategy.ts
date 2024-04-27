@@ -1,4 +1,4 @@
-import { StrategyMetadata } from 'notebook/ReasonAgent'
+import { StrategyMetadata } from 'notebook/EnzymeAgent'
 
 export enum DQLStrategy {
 	SingleEvergreenReferrer,

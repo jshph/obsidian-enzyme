@@ -28,11 +28,11 @@ export async function getSystemPrompts(): Promise<SystemPrompts> {
 }
 
 /**
- * The `ReasonAgent` class is a central component of the Reason plugin, responsible for orchestrating
- * the reasoning process within Obsidian. It manages the interaction between different reasoning
+ * The `EnzymeAgent` class is a central component of the Enzyme plugin, responsible for orchestrating
+ * the enzymeing process within Obsidian. It manages the interaction between different enzymeing
  * systems and the user interface, providing methods to synthesize content
  */
-export class ReasonAgent {
+export class EnzymeAgent {
 	aggregator: Aggregator
 
 	constructor(

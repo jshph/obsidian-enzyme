@@ -1,14 +1,14 @@
 import { Plugin, App, PluginManifest, Notice } from 'obsidian'
-import { ReasonSettings, DEFAULT_SETTINGS } from './settings/ReasonSettings'
+import { EnzymeSettings, DEFAULT_SETTINGS } from './settings/EnzymeSettings'
 import SettingsTab from './settings/SettingsTab'
 import { CodeBlockRenderer } from './render'
-import { ReasonAgent, AIClient, getSystemPrompts } from './notebook'
+import { EnzymeAgent, AIClient, getSystemPrompts } from './notebook'
 import { DataviewApi, getAPI } from './obsidian-modules/dataview-handler'
 import { DataviewCandidateRetriever } from './source/retrieve/DataviewCandidateRetriever'
 
-export class ReasonPlugin extends Plugin {
-	settings: ReasonSettings
-	reasonAgent: ReasonAgent
+export class EnzymePlugin extends Plugin {
+	settings: EnzymeSettings
+	enzymeAgent: EnzymeAgent
 	noteRenderer: CodeBlockRenderer
 	aiClient: AIClient
 	dataview: DataviewApi
@@ -57,7 +57,7 @@ export class ReasonPlugin extends Plugin {
 
 		const prompts = await getSystemPrompts()
 
-		this.reasonAgent = new ReasonAgent(
+		this.enzymeAgent = new EnzymeAgent(
 			this.app,
 			this.aiClient,
 			this.candidateRetriever,
@@ -88,7 +88,7 @@ export class ReasonPlugin extends Plugin {
 
 		this.noteRenderer = new CodeBlockRenderer(
 			this.app,
-			this.reasonAgent,
+			this.enzymeAgent,
 			this.registerMarkdownCodeBlockProcessor.bind(this),
 			this.candidateRetriever
 		)

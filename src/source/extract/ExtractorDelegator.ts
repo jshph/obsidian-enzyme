@@ -3,7 +3,7 @@ import { LassoFromOffsetExtractor } from './LassoFromOffsetExtractor'
 import { AllBacklinkersExtractor } from './AllBacklinkersExtractor'
 import { TrimToEndExtractor } from './TrimToEndExtractor'
 import { BaseExtractor, FileContents } from './BaseExtractor'
-import { ReasonSettings } from '../../settings/ReasonSettings'
+import { EnzymeSettings } from '../../settings/EnzymeSettings'
 import { DQLStrategy } from './Strategy'
 import { DataviewApi } from 'obsidian-dataview'
 import {
@@ -15,7 +15,7 @@ import {
 	RecentMentionsStrategyMetadata
 } from './RecentMentionsExtractor'
 import { BasicExtractor } from './BasicExtractor'
-import { StrategyMetadata } from 'notebook/ReasonAgent'
+import { StrategyMetadata } from 'notebook/EnzymeAgent'
 
 /**
  * The `ExtractorDelegator` class manages the delegation of content extraction to specific extractors. It itself is an extractor.
@@ -31,7 +31,7 @@ export class ExtractorDelegator extends BaseExtractor {
 	constructor(
 		public app: App,
 		dataviewAPI: DataviewApi,
-		public settings: ReasonSettings,
+		public settings: EnzymeSettings,
 		public lassoExtractor: LassoFromOffsetExtractor = new LassoFromOffsetExtractor()
 	) {
 		super()

@@ -1,5 +1,5 @@
 {
-	"name": "obsidian-reason",
+	"name": "obsidian-enzyme",
 	"version": "0.0.1",
 	"description": "Obsidian plugin to Retrieve, Extract, Analyze, and Synthesize Obsidian Notes",
 	"main": "main.js",

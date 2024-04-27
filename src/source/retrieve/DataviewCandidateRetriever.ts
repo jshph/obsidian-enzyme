@@ -1,10 +1,10 @@
 import { App, TFile } from 'obsidian'
 import { ContentRenderer, FileContents } from './ContentRenderer'
-import { ReasonSettings } from '../../settings/ReasonSettings'
+import { EnzymeSettings } from '../../settings/EnzymeSettings'
 import { isHighLevelStrategy } from '../extract/Strategy'
 import { DataviewApi, getAPI } from '../../obsidian-modules/dataview-handler'
 import { CandidateRetriever } from './CandidateRetriever'
-import { StrategyMetadata } from 'notebook/ReasonAgent'
+import { StrategyMetadata } from 'notebook/EnzymeAgent'
 
 /**
  * The `DataviewCandidateRetriever` class manages the retrieval of candidate information from Dataview.
@@ -14,7 +14,7 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 	contentRenderer: ContentRenderer
 	dataviewAPI: DataviewApi
 	constructor(
-		settings: ReasonSettings,
+		settings: EnzymeSettings,
 		public app: App
 	) {
 		this.contentRenderer = new ContentRenderer(app, settings)

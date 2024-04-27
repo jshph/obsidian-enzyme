@@ -8,7 +8,7 @@ import {
 } from 'obsidian'
 import * as _path from 'path'
 import { BlockRefSubstitution } from '../../types'
-import { StrategyMetadata } from 'notebook/ReasonAgent'
+import { StrategyMetadata } from 'notebook/EnzymeAgent'
 import { DQLStrategy, DQLStrategyDescriptions } from 'source/extract/Strategy'
 
 export type ParsedContent = {

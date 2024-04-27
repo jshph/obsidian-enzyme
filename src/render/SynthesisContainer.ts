@@ -1,9 +1,9 @@
 import { Editor } from 'obsidian'
 import {
 	CodeBlockRenderer,
-	SourceReasonBlockContents
+	SourceEnzymeBlockContents
 } from './CodeBlockRenderer'
-import { StrategyMetadata } from '../notebook/ReasonAgent'
+import { StrategyMetadata } from '../notebook/EnzymeAgent'
 import { DQLStrategy } from 'source/extract/Strategy'
 
 export type ChatMessageWithMetadata = {
@@ -170,14 +170,14 @@ export class SynthesisContainer {
 	}
 
 	/**
-	 * Finalizes the editor content by appending a code fence for the 'reason' language.
-	 * This function inserts a closing code fence for a 'reason' code block at the current
+	 * Finalizes the editor content by appending a code fence for the 'enzyme' language.
+	 * This function inserts a closing code fence for a 'enzyme' code block at the current
 	 * cursor position within the editor. It then moves the cursor three lines down to
 	 * position it within the newly created code block, ready for further input. Finally,
 	 * it focuses the editor to allow for immediate typing.
 	 */
 	finalize() {
-		this.editor.replaceRange('\n\n```reason\n\n```\n', {
+		this.editor.replaceRange('\n\n```enzyme\n\n```\n', {
 			ch: this.curCh,
 			line: this.curLine
 		})
@@ -209,14 +209,14 @@ export class SynthesisContainer {
 		)
 
 		const combinedBlocks = rawContent.match(
-			/```reason\n([\s\S]*?)\n```|> \[!💭\]\+\n> ([\s\S]*?)(?=\n[^>])/g
+			/```enzyme\n([\s\S]*?)\n```|> \[!💭\]\+\n> ([\s\S]*?)(?=\n[^>])/g
 		)
 		const messages = combinedBlocks.map((block, index) => {
-			const role = block.includes('```reason') ? 'user' : 'assistant'
+			const role = block.includes('```enzyme') ? 'user' : 'assistant'
 
 			let displayedContent =
 				role === 'user'
-					? block.match(/```reason\n([\s\S]*?)\n```/)[1]
+					? block.match(/```enzyme\n([\s\S]*?)\n```/)[1]
 					: block.match(/> \[!💭\]\+\n> ([\s\S]*)/)[1]
 
 			let content = displayedContent
@@ -224,7 +224,7 @@ export class SynthesisContainer {
 			// Further process if the user message contains more than just a prompt
 			if (role === 'user') {
 				let { type, ...parsedContents } =
-					this.renderer.parseReasonBlockContents(displayedContent)
+					this.renderer.parseEnzymeBlockContents(displayedContent)
 
 				// Mirror the logic in CodeBlockRenderer.ts
 				if (index === 0 && parsedContents.sources.length === 0) {
@@ -241,8 +241,8 @@ export class SynthesisContainer {
 							{
 								id: Math.random().toString(16).slice(6),
 								assistantMessageType: 'synthesisPlan',
-								sources: (parsedContents as SourceReasonBlockContents).sources,
-								prompt: (parsedContents as SourceReasonBlockContents).prompt
+								sources: (parsedContents as SourceEnzymeBlockContents).sources,
+								prompt: (parsedContents as SourceEnzymeBlockContents).prompt
 							}
 						]
 						break
