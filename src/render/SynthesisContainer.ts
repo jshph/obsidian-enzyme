@@ -1,15 +1,11 @@
 import { Editor } from 'obsidian'
-import {
-	CodeBlockRenderer,
-	SourceEnzymeBlockContents
-} from './CodeBlockRenderer'
+import { CodeBlockRenderer } from './CodeBlockRenderer'
 import { StrategyMetadata } from '../notebook/EnzymeAgent'
 import { DQLStrategy } from 'source/extract/Strategy'
 
-export type ChatMessageWithMetadata = {
+export type ChatMessage = {
 	role: string
 	content: string
-	metadata: AssistantMessageMetadata[]
 }
 
 export type AggregatorMetadata = {
@@ -193,16 +189,16 @@ export class SynthesisContainer {
 	 * Retrieves all messages up to the specified cursor position.= This function parses the content
 	 * of the editor up to the specified cursor position and extracts chat messages with metadata.
 	 * It identifies the role of each message (user or assistant) and extracts the content and metadata
-	 * for each message. The messages are then returned as an array of ChatMessageWithMetadata objects.
+	 * for each message. The messages are then returned as an array of ChatMessage objects.
 	 *
 	 * @param {number} curLine - The current line position of the cursor in the editor (defaults to the current line).
 	 * @param {number} curCh - The current character position of the cursor in the editor (defaults to the current character).
-	 * @returns {ChatMessageWithMetadata[]} An array of chat messages with metadata up to the specified cursor position.
+	 * @returns {ChatMessage[]} An array of chat messages up to the specified cursor position.
 	 */
 	getMessagesToHere(
 		curLine: number = this.curLine,
 		curCh: number = this.curCh
-	): ChatMessageWithMetadata[] {
+	): ChatMessage[] {
 		const rawContent = this.editor.getRange(
 			{ ch: 0, line: 0 },
 			{ ch: curCh, line: this.endOfCodeFenceLine }
@@ -220,10 +216,9 @@ export class SynthesisContainer {
 					: block.match(/> \[!💭\]\+\n> ([\s\S]*)/)[1]
 
 			let content = displayedContent
-			let metadata: AssistantMessageMetadata[]
 			// Further process if the user message contains more than just a prompt
 			if (role === 'user') {
-				let { type, ...parsedContents } =
+				let parsedContents =
 					this.renderer.parseEnzymeBlockContents(displayedContent)
 
 				// Mirror the logic in CodeBlockRenderer.ts
@@ -234,43 +229,11 @@ export class SynthesisContainer {
 						}
 					]
 				}
-
-				switch (type) {
-					case 'source':
-						metadata = [
-							{
-								id: Math.random().toString(16).slice(6),
-								assistantMessageType: 'synthesisPlan',
-								sources: (parsedContents as SourceEnzymeBlockContents).sources,
-								prompt: (parsedContents as SourceEnzymeBlockContents).prompt
-							}
-						]
-						break
-					case 'aggregator':
-						metadata = [
-							{
-								id: (parsedContents as AggregatorMetadata).aggregatorId,
-								assistantMessageType: 'synthesisPlan',
-								sources: (parsedContents as AggregatorMetadata).sources,
-								prompt: (parsedContents as AggregatorMetadata).prompt
-							}
-						]
-						break
-					default:
-						break
-				}
 			}
 
 			if (role === 'assistant') {
-				let rawMetadata = block.match(
-					/<div style="display:none">([\s\S]*)<\/div>/
-				)
-				if (rawMetadata) {
-					metadata = JSON.parse(rawMetadata[1])
-				}
-
 				content = displayedContent
-					.replace(/<div style="display:none">([\s\S]*)<\/div>/, '')
+					.replace(/<div style="display:none">([\s\S]*)<\/div>/, '') // TODO this is now legacy
 					.replace(/```\n[^`]```\n/g, '')
 					.split('\n> ')
 					.join('\n')
@@ -278,9 +241,8 @@ export class SynthesisContainer {
 
 			return {
 				role,
-				content,
-				metadata
-			} as ChatMessageWithMetadata
+				content
+			} as ChatMessage
 		})
 
 		return messages

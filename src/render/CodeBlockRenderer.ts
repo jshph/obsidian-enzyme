@@ -16,20 +16,6 @@ type EnzymeBlockContents = {
 	sources: StrategyMetadata[]
 }
 
-export type AggregatorEnzymeBlockContents = {
-	type: 'aggregator'
-	aggregatorId?: string
-} & EnzymeBlockContents
-
-export type SourceEnzymeBlockContents = {
-	type: 'source'
-} & EnzymeBlockContents
-
-export type PlainTextEnzymeBlockContents = {
-	type: 'plaintext'
-	prompt: string
-}
-
 /**
  * This class is responsible for rendering custom code blocks within Obsidian markdown files.
  * It registers a markdown code block processor for the 'enzyme' code block type and defines
@@ -89,55 +75,43 @@ export class CodeBlockRenderer {
 		const executionLock = { isExecuting: false }
 
 		if (blockContents.length > 0) {
-			let { type, ...parsedContents } =
-				this.parseEnzymeBlockContents(blockContents)
+			let parsedContents = this.parseEnzymeBlockContents(blockContents)
 
 			let sourceStringParts: string[] = []
-			prompt = (
-				parsedContents as
-					| AggregatorEnzymeBlockContents
-					| SourceEnzymeBlockContents
-			).prompt
+			prompt = parsedContents.prompt
 
-			// Handle different types of code blocks: aggregator, source, and plaintext
-			if (type === 'source' || type === 'aggregator') {
-				// For 'source' and 'aggregator' types, extract sources and generate markdown sections
-				sources = (
-					parsedContents as
-						| AggregatorEnzymeBlockContents
-						| SourceEnzymeBlockContents
-				).sources
+			// Extract sources and generate markdown sections
+			sources = parsedContents.sources
 
-				// Default to RecentMentions if no sources are provided and this is the first message
-				// need to do this fudging in order to render it properly, but it's not needed for all uses of parseEnzymeBlockContents
-				if (
-					sources.length === 0 &&
-					tempSynthesisContainer.getMessagesToHere().length === 1
-				) {
-					sources.push({
-						strategy: DQLStrategy[DQLStrategy.RecentMentions]
-					})
-				} else if (sources.length === 1 && !sources[0].strategy) {
-					sources[0].strategy = DQLStrategy[DQLStrategy.Basic]
-				}
+			// Default to RecentMentions if no sources are provided and this is the first message
+			// need to do this fudging in order to render it properly, but it's not needed for all uses of parseEnzymeBlockContents
+			if (
+				sources.length === 0 &&
+				tempSynthesisContainer.getMessagesToHere().length === 1
+			) {
+				sources.push({
+					strategy: DQLStrategy[DQLStrategy.RecentMentions]
+				})
+			} else if (sources.length === 1 && !sources[0].strategy) {
+				sources[0].strategy = DQLStrategy[DQLStrategy.Basic]
+			}
 
-				if (sources.length > 0) {
-					sourceStringParts = (
-						await Promise.all(
-							sources.map(async (source) =>
-								this.candidateRetriever.contentRenderer.extractor.renderSourceBlock(
-									source
-								)
+			if (sources.length > 0) {
+				sourceStringParts = (
+					await Promise.all(
+						sources.map(async (source) =>
+							this.candidateRetriever.contentRenderer.extractor.renderSourceBlock(
+								source
 							)
 						)
-					).flat()
+					)
+				).flat()
 
-					// Encase sources as collapsible Markdown block
-					renderedString =
-						'> [!Sources]-\n> ' +
-						sourceStringParts.join('\n\n').split('\n').join('\n> ') +
-						'\n\n'
-				}
+				// Encase sources as collapsible Markdown block
+				renderedString =
+					'> [!Sources]-\n> ' +
+					sourceStringParts.join('\n\n').split('\n').join('\n> ') +
+					'\n\n'
 			}
 
 			renderedString += prompt
@@ -235,42 +209,47 @@ export class CodeBlockRenderer {
 	 * @param contents the raw contents, which we'll try to parse as valid YAML syntax.
 	 * @returns metadata, i.e. Aggregator metadata
 	 */
-	parseEnzymeBlockContents(
-		contents: string
-	): AggregatorEnzymeBlockContents | SourceEnzymeBlockContents {
+	parseEnzymeBlockContents(contents: string): EnzymeBlockContents {
 		let prompt
 		let sources
 
 		try {
 			const parsedYaml = yaml.parse(contents.replace(/\t/g, '    '))
-			// if (parsedYaml?.aggregator) {
-			// 	const aggregatorId = parsedYaml.aggregator
-			// 	return {
-			// 		type: 'aggregator',
-			// 		aggregatorId: metadata.aggregatorId,
-			// 		sources: metadata.sources,
-			// 		prompt: metadata.prompt
-			// 	} as AggregatorEnzymeBlockContents
-			// TODO restore the premade aggregator functionality
+			// First mode is having a UI picker that selects a default aggregator
+			if (parsedYaml?.choice) {
+				// Assume that if choice is present, we always present the user with a UI button to select between "default" sources, and we return EnzymeBlockContents with that chosen source and a flag
+				// We treat choice identically to "strategy" but limited to the strategy's default parameters
+				let guidance = ''
+				if (parsedYaml?.guidance) {
+					guidance = parsedYaml.guidance
+				}
+				return {
+					prompt: guidance,
+					sources: [
+						{
+							strategy: DQLStrategy[parsedYaml.choice]
+						}
+					]
+				}
+			}
+
+			// Other mode is having a list of sources
 			if (parsedYaml?.sources?.length > 0) {
 				sources = parsedYaml.sources.map((source) => {
 					return source as StrategyMetadata
 				})
 				prompt = parsedYaml.guidance
 				return {
-					type: 'source',
 					prompt,
 					sources
 				}
 			} else if (parsedYaml?.guidance) {
 				return {
-					type: 'source',
 					prompt: parsedYaml.guidance,
 					sources: []
 				}
 			} else {
 				return {
-					type: 'source',
 					prompt: contents,
 					sources: []
 				}
@@ -278,7 +257,6 @@ export class CodeBlockRenderer {
 		} catch (e) {
 			// By default return empty sources. Currently the caller sets this to RecentMentions; needs to be differentiated from valid YAML
 			return {
-				type: 'source',
 				prompt: contents,
 				sources: []
 			}
