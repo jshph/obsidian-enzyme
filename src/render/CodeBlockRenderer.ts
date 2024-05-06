@@ -128,12 +128,11 @@ export class CodeBlockRenderer {
 			// Extract sources and generate markdown sections
 			sources = parsedContents.sources
 
+			const messagesSoFar = tempSynthesisContainer.getMessagesToHere()
+
 			// Default to RecentMentions if no sources are provided and this is the first message
 			// need to do this fudging in order to render it properly, but it's not needed for all uses of parseEnzymeBlockContents
-			if (
-				sources.length === 0 &&
-				tempSynthesisContainer.getMessagesToHere().length === 1
-			) {
+			if (sources.length === 0 && messagesSoFar.length === 1) {
 				sources.push({
 					strategy: DQLStrategy[DQLStrategy.RecentMentions]
 				})
@@ -144,7 +143,7 @@ export class CodeBlockRenderer {
 			let selectedStrategy: string = undefined
 			if (parsedContents.choice) {
 				selectedStrategy = parsedContents.choice.strategy
-			} else if (sources.length == 0) {
+			} else if (sources.length === 0 && messagesSoFar.length == 1) {
 				// Default to RecentMentions if no sources are provided
 				selectedStrategy = DQLStrategy.RecentMentions.toString()
 			}
@@ -164,7 +163,7 @@ export class CodeBlockRenderer {
 					)
 
 				renderedString += `> [!Source ${selectedStrategy}]-\n> Update the source: ${dropdownHtml}\n> `
-			} else {
+			} else if (sources.length > 0) {
 				renderedString += '> [!Sources]-\n> '
 			}
 

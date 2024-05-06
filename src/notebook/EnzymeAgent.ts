@@ -87,13 +87,6 @@ export class EnzymeAgent {
 	 * @returns {Promise<void>} - A promise that resolves when the synthesis process is complete.
 	 */
 	async synthesize(synthesisContainer: SynthesisContainer): Promise<void> {
-		synthesisContainer.renderMetadata([
-			{
-				id: Math.random().toString(16).slice(6),
-				assistantMessageType: 'synthesis'
-			} as SynthesisMessageMetadata
-		])
-
 		let allSubstitutions: BlockRefSubstitution[] = []
 
 		// Get all user and synthesis turns as context
@@ -121,10 +114,7 @@ export class EnzymeAgent {
 					content: message,
 					metadata: undefined
 				})
-			} else if (
-				msg.role === 'assistant' &&
-				msg.metadata[0].assistantMessageType === 'synthesis'
-			) {
+			} else if (msg.role === 'assistant') {
 				let { contents, substitutions } = substituteBlockEmbeds(msg.content)
 				allSubstitutions.push(...substitutions)
 				messages.push({
