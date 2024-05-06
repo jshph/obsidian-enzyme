@@ -205,7 +205,7 @@ export class CodeBlockRenderer {
 					const dropdown = document.getElementById(dropdownId)
 					dropdownChangeListener = (event) => {
 						// Case preserving strategy selection
-						const selectedStrategy = event.target.value
+						const selectedStrategy = (event.target as HTMLSelectElement).value
 
 						editor.setLine(
 							parsedContents.choice.line +
