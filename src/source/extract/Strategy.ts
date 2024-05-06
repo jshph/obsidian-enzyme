@@ -1,12 +1,14 @@
 import { StrategyMetadata } from 'notebook/EnzymeAgent'
 
 export enum DQLStrategy {
-	SingleEvergreenReferrer,
-	AllEvergreenReferrers,
-	LongContent,
-	RecentMentions,
-	Basic
+	SingleEvergreenReferrer = 'SingleEvergreenReferrer',
+	AllEvergreenReferrers = 'AllEvergreenReferrers',
+	LongContent = 'LongContent',
+	RecentMentions = 'RecentMentions',
+	Basic = 'Basic'
 }
+
+export const SELECTABLE_STRATEGIES = [DQLStrategy.RecentMentions]
 
 // Handle higher level extraction where the strategy does its querying independently from the user
 export const isHighLevelStrategy = (strategy: StrategyMetadata): boolean => {

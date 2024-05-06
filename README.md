@@ -2,7 +2,11 @@
 
 ![Obsidian Downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22reason%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json&style=for-the-badge)
 
+**Version 0.2.3 contains an important change -- Reason has been renamed to Enzyme. Reason code blocks will still render for backwards compatibility. Once a PR has been merged to the Community Plugins repo, the plugin naming will become consistent. See the website for details about latest updates.**
+
 Visit [enzyme.garden/getting-started](https://www.enzyme.garden/getting-started) for the best guide on how to use Enzyme.
+
+You can also join the conversation on [Discord](https://discord.gg/4UetkVfp)!
 
 ![](enzyme_synthesis.gif)
 

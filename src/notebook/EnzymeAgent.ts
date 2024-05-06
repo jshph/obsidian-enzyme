@@ -2,8 +2,7 @@ import { Aggregator } from '../aggregator/Aggregator'
 import { CandidateRetriever } from '../source/retrieve/CandidateRetriever'
 import {
 	SynthesisContainer,
-	SynthesisMessageMetadata,
-	SynthesisPlanMessageMetadata
+	SynthesisMessageMetadata
 } from '../render/SynthesisContainer'
 import { BlockRefSubstitution } from '../types'
 import { ChatCompletionMessage } from '../types'
@@ -102,28 +101,24 @@ export class EnzymeAgent {
 		const messagesToHere = synthesisContainer.getMessagesToHere()
 		for (const msg of messagesToHere) {
 			if (msg.role === 'user' && msg.content.length > 0) {
-				if (msg.metadata) {
-					let curUserPrompt = (msg.metadata[0] as SynthesisPlanMessageMetadata)
-						.prompt
-					let sources = (msg.metadata[0] as SynthesisPlanMessageMetadata)
-						.sources
-					let retrieval = await this.retrieve(sources)
-					let sourceContents = retrieval.sourceContents
-					let concatenatedContents = sourceContents.join('\n\n').trim()
+				let curUserPrompt = msg.metadata.prompt
+				let sources = msg.metadata.sources
+				let retrieval = await this.retrieve(sources)
+				let sourceContents = retrieval.sourceContents
+				let concatenatedContents = sourceContents.join('\n\n').trim()
 
-					allSubstitutions.push(...retrieval.substitutions)
+				allSubstitutions.push(...retrieval.substitutions)
 
-					let message = ''
-					if (concatenatedContents.length > 0) {
-						message = `Sources:\n${concatenatedContents}\n\n`
-					}
-					message += `Guidance: ${curUserPrompt}`
-
-					messages.push({
-						role: 'user',
-						content: message
-					})
+				let message = ''
+				if (concatenatedContents.length > 0) {
+					message = `Sources:\n${concatenatedContents}\n\n`
 				}
+				message += `Guidance: ${curUserPrompt}`
+
+				messages.push({
+					role: 'user',
+					content: message
+				})
 			} else if (
 				msg.role === 'assistant' &&
 				msg.metadata[0].assistantMessageType === 'synthesis'

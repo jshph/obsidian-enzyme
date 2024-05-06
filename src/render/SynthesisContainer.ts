@@ -2,16 +2,16 @@ import { Editor } from 'obsidian'
 import { CodeBlockRenderer } from './CodeBlockRenderer'
 import { StrategyMetadata } from '../notebook/EnzymeAgent'
 import { DQLStrategy } from 'source/extract/Strategy'
-
-export type ChatMessage = {
-	role: string
-	content: string
-}
+import { ChatCompletionMessage } from 'openai/resources'
 
 export type AggregatorMetadata = {
 	aggregatorId?: string
 	sources: StrategyMetadata[]
 	prompt: string
+}
+
+export type ChatMessageWithMetadata = ChatCompletionMessage & {
+	metadata: any
 }
 
 export type SynthesisMessageMetadata = {
@@ -189,16 +189,16 @@ export class SynthesisContainer {
 	 * Retrieves all messages up to the specified cursor position.= This function parses the content
 	 * of the editor up to the specified cursor position and extracts chat messages with metadata.
 	 * It identifies the role of each message (user or assistant) and extracts the content and metadata
-	 * for each message. The messages are then returned as an array of ChatMessage objects.
+	 * for each message. The messages are then returned as an array of ChatCompletionMessage objects.
 	 *
 	 * @param {number} curLine - The current line position of the cursor in the editor (defaults to the current line).
 	 * @param {number} curCh - The current character position of the cursor in the editor (defaults to the current character).
-	 * @returns {ChatMessage[]} An array of chat messages up to the specified cursor position.
+	 * @returns {ChatMessageWithMetadata[]} An array of chat messages up to the specified cursor position.
 	 */
 	getMessagesToHere(
 		curLine: number = this.curLine,
 		curCh: number = this.curCh
-	): ChatMessage[] {
+	): ChatMessageWithMetadata[] {
 		const rawContent = this.editor.getRange(
 			{ ch: 0, line: 0 },
 			{ ch: curCh, line: this.endOfCodeFenceLine }
@@ -216,9 +216,10 @@ export class SynthesisContainer {
 					: block.match(/> \[!💭\]\+\n> ([\s\S]*)/)[1]
 
 			let content = displayedContent
+			let parsedContents
 			// Further process if the user message contains more than just a prompt
 			if (role === 'user') {
-				let parsedContents =
+				parsedContents =
 					this.renderer.parseEnzymeBlockContents(displayedContent)
 
 				// Mirror the logic in CodeBlockRenderer.ts
@@ -241,8 +242,9 @@ export class SynthesisContainer {
 
 			return {
 				role,
-				content
-			} as ChatMessage
+				content,
+				metadata: parsedContents
+			} as ChatMessageWithMetadata
 		})
 
 		return messages

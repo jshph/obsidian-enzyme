@@ -8,13 +8,19 @@ import { EnzymeAgent, StrategyMetadata } from '../notebook/EnzymeAgent'
 import { SynthesisContainer } from './SynthesisContainer'
 import * as yaml from 'yaml'
 import { Notice } from 'obsidian'
-import { DQLStrategy } from 'source/extract/Strategy'
+import { DQLStrategy, SELECTABLE_STRATEGIES } from 'source/extract/Strategy'
 import { DataviewCandidateRetriever } from 'source/retrieve'
 
 type EnzymeBlockContents = {
 	prompt: string
 	sources: StrategyMetadata[]
+	choice?: {
+		strategy: string
+		line: number
+	}
 }
+
+let dropdownChangeListener: (event: Event) => void
 
 /**
  * This class is responsible for rendering custom code blocks within Obsidian markdown files.
@@ -37,87 +43,29 @@ export class CodeBlockRenderer {
 			'enzyme',
 			this.renderEnzyme.bind(this)
 		)
+
+		// Backwards compatibility for 'reason' code blocks
+		this.registerMarkdownCodeBlockProcessor(
+			'reason',
+			this.renderEnzyme.bind(this)
+		)
 	}
 
-	/**
-	 * Renders the 'enzyme' code block in the markdown preview.
-	 *
-	 * This function is responsible for parsing the contents of a 'enzyme' code block,
-	 * creating the necessary HTML elements to display the block within the markdown preview,
-	 * and setting up the interaction logic for the 'Send' button which triggers the enzymeing process.
-	 *
-	 * @param {string} blockContents - The raw text content of the 'enzyme' code block.
-	 * @param {HTMLElement} el - The parent HTML element where the 'enzyme' block will be rendered.
-	 * @param {MarkdownPostProcessorContext} context - The context provided by Obsidian for post-processing the markdown.
-	 */
-	async renderEnzyme(
-		blockContents: string,
+	renderIntoEl(
 		el: HTMLElement,
-		context: MarkdownPostProcessorContext
+		content: string,
+		context: MarkdownPostProcessorContext,
+		executionLock: { isExecuting: boolean },
+		doRenderButton: boolean = true
 	) {
+		el.setText('')
 		const container = el.createEl('div')
-
 		const body = container.createDiv('enzyme-preview')
 		const s = body.createSpan()
 
-		// check if there are messages before this code block
-		const tempSynthesisContainer = new SynthesisContainer(
-			this.app.workspace.activeEditor.editor,
-			context.getSectionInfo(el).lineStart,
-			0,
-			context.getSectionInfo(el).lineEnd + 1,
-			this
-		)
+		MarkdownRenderer.render(this.app, content, s, '/', new Component())
 
-		let renderedString: string = ''
-		let sources: StrategyMetadata[]
-		let prompt: string
-		const executionLock = { isExecuting: false }
-
-		if (blockContents.length > 0) {
-			let parsedContents = this.parseEnzymeBlockContents(blockContents)
-
-			let sourceStringParts: string[] = []
-			prompt = parsedContents.prompt
-
-			// Extract sources and generate markdown sections
-			sources = parsedContents.sources
-
-			// Default to RecentMentions if no sources are provided and this is the first message
-			// need to do this fudging in order to render it properly, but it's not needed for all uses of parseEnzymeBlockContents
-			if (
-				sources.length === 0 &&
-				tempSynthesisContainer.getMessagesToHere().length === 1
-			) {
-				sources.push({
-					strategy: DQLStrategy[DQLStrategy.RecentMentions]
-				})
-			} else if (sources.length === 1 && !sources[0].strategy) {
-				sources[0].strategy = DQLStrategy[DQLStrategy.Basic]
-			}
-
-			if (sources.length > 0) {
-				sourceStringParts = (
-					await Promise.all(
-						sources.map(async (source) =>
-							this.candidateRetriever.contentRenderer.extractor.renderSourceBlock(
-								source
-							)
-						)
-					)
-				).flat()
-
-				// Encase sources as collapsible Markdown block
-				renderedString =
-					'> [!Sources]-\n> ' +
-					sourceStringParts.join('\n\n').split('\n').join('\n> ') +
-					'\n\n'
-			}
-
-			renderedString += prompt
-
-			MarkdownRenderer.render(this.app, renderedString, s, '/', new Component())
-
+		if (doRenderButton) {
 			const button = body.createEl('button')
 			button.addClass('enzyme-generate-button')
 			button.setText('Send')
@@ -137,9 +85,150 @@ export class CodeBlockRenderer {
 					}
 				)
 			})
+		}
+	}
+
+	/**
+	 * Renders the 'enzyme' code block in the markdown preview.
+	 *
+	 * This function is responsible for parsing the contents of a 'enzyme' code block,
+	 * creating the necessary HTML elements to display the block within the markdown preview,
+	 * and setting up the interaction logic for the 'Send' button which triggers the enzymeing process.
+	 *
+	 * @param {string} blockContents - The raw text content of the 'enzyme' code block.
+	 * @param {HTMLElement} el - The parent HTML element where the 'enzyme' block will be rendered.
+	 * @param {MarkdownPostProcessorContext} context - The context provided by Obsidian for post-processing the markdown.
+	 */
+	async renderEnzyme(
+		blockContents: string,
+		el: HTMLElement,
+		context: MarkdownPostProcessorContext
+	) {
+		if (!this.app.workspace.activeEditor) {
+			return
+		}
+
+		// check if there are messages before this code block
+		const tempSynthesisContainer = new SynthesisContainer(
+			this.app.workspace.activeEditor.editor,
+			context.getSectionInfo(el).lineStart,
+			0,
+			context.getSectionInfo(el).lineEnd + 1,
+			this
+		)
+
+		let renderedString: string = ''
+		let sources: StrategyMetadata[]
+		const executionLock = { isExecuting: false }
+		let editor = this.app.workspace.activeEditor.editor
+		let dropdownId = ''
+		if (blockContents.length > 0) {
+			let parsedContents = this.parseEnzymeBlockContents(blockContents)
+
+			// Extract sources and generate markdown sections
+			sources = parsedContents.sources
+
+			// Default to RecentMentions if no sources are provided and this is the first message
+			// need to do this fudging in order to render it properly, but it's not needed for all uses of parseEnzymeBlockContents
+			if (
+				sources.length === 0 &&
+				tempSynthesisContainer.getMessagesToHere().length === 1
+			) {
+				sources.push({
+					strategy: DQLStrategy[DQLStrategy.RecentMentions]
+				})
+			} else if (sources.length === 1 && !sources[0].strategy) {
+				sources[0].strategy = DQLStrategy[DQLStrategy.Basic]
+			}
+
+			let selectedStrategy: string = undefined
+			if (parsedContents.choice) {
+				selectedStrategy = parsedContents.choice.strategy
+			} else if (sources.length == 0) {
+				// Default to RecentMentions if no sources are provided
+				selectedStrategy = DQLStrategy.RecentMentions.toString()
+			}
+
+			// Render the collapsible header and the dropdown
+			if (selectedStrategy) {
+				dropdownId = 'enzyme-choice-' + Math.random().toString(36).substr(2, 9)
+				const strategiesHTML = SELECTABLE_STRATEGIES.map((strategy) => {
+					const strategyStr = strategy.toString()
+					return `<option value="${strategyStr}" ${strategyStr === selectedStrategy ? 'selected' : ''}>${strategyStr}</option>`
+				})
+
+				const dropdownHtml =
+					`<select id="${dropdownId}">${strategiesHTML.join('')}</select>`.replace(
+						/^\s+/gm,
+						''
+					)
+
+				renderedString += `> [!Source ${selectedStrategy}]-\n> Update the source: ${dropdownHtml}\n> `
+			} else {
+				renderedString += '> [!Sources]-\n> '
+			}
+
+			// Render the sources
+			if (selectedStrategy) {
+				let sourceString =
+					await this.candidateRetriever.contentRenderer.extractor.renderSourceBlock(
+						{ strategy: selectedStrategy }
+					)
+
+				sourceString = sourceString.split('\n').join('\n> ')
+
+				// Encase sources as collapsible Markdown block
+				renderedString += sourceString + '\n\n'
+			} else if (sources.length > 0) {
+				const sourceStringParts = (
+					await Promise.all(
+						sources.map(async (source) =>
+							this.candidateRetriever.contentRenderer.extractor.renderSourceBlock(
+								source
+							)
+						)
+					)
+				).flat()
+
+				// Encase sources as collapsible Markdown block
+				renderedString +=
+					sourceStringParts.join('\n\n').split('\n').join('\n> ') + '\n\n'
+			}
+
+			renderedString += parsedContents.prompt
+
+			this.renderIntoEl(el, renderedString, context, executionLock)
+
+			// Attach event listener after rendering to allow user to change the dropdown and update the choice
+			if (dropdownId.length > 0) {
+				setTimeout(() => {
+					const dropdown = document.getElementById(dropdownId)
+					dropdownChangeListener = (event) => {
+						// Case preserving strategy selection
+						const selectedStrategy = event.target.value
+
+						editor.setLine(
+							parsedContents.choice.line +
+								context.getSectionInfo(el).lineStart +
+								1,
+							'choice: ' + selectedStrategy
+						)
+
+						blockContents = blockContents.replace(
+							/choice: [a-zA-Z]+/,
+							`choice: ${selectedStrategy}`
+						)
+
+						this.renderEnzyme(blockContents, el, context)
+					}
+					if (dropdown) {
+						dropdown.addEventListener('change', dropdownChangeListener)
+					}
+				}, 100) // hacky way to ensure that the dropdown is rendered before we attach the event listener
+			}
 		} else {
 			renderedString += 'Invalid Enzyme block! 🫤'
-			MarkdownRenderer.render(this.app, renderedString, s, '/', new Component())
+			this.renderIntoEl(el, renderedString, context, executionLock, false)
 		}
 	}
 
@@ -223,13 +312,19 @@ export class CodeBlockRenderer {
 				if (parsedYaml?.guidance) {
 					guidance = parsedYaml.guidance
 				}
+
+				// Get the line number where choice was defined
+				const choiceLine = contents
+					.split('\n')
+					.findIndex((line) => line.includes('choice:'))
+
 				return {
 					prompt: guidance,
-					sources: [
-						{
-							strategy: DQLStrategy[parsedYaml.choice]
-						}
-					]
+					sources: [],
+					choice: {
+						strategy: parsedYaml.choice, // No validation
+						line: choiceLine
+					}
 				}
 			}
 

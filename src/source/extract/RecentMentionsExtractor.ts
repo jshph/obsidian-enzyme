@@ -12,8 +12,8 @@ export type RecentMentionsStrategyMetadata = StrategyMetadata & {
 }
 
 const NUM_READWISE_FILES = 10
-const NUM_OTHER_FILES = 40
-const NUM_TAGS = 25
+const NUM_OTHER_FILES = 20
+const NUM_TAGS = 8
 const MAX_NUM_FILES_PER_TAG = 10
 const DQL_READWISE =
 	'TABLE WITHOUT ID file.link, file.mtime, file.tags, file.outlinks FROM "Readwise" SORT file.mtime DESC LIMIT {numReadwiseFiles}'
@@ -126,11 +126,13 @@ export class RecentMentionsExtractor extends BaseExtractor {
 		})
 
 		// Sort entities by number of files and then by most recently modified
-		const sortedMentions = Object.keys(groupedFiles).sort(
-			(a, b) =>
-				groupedFiles[b].length - groupedFiles[a].length ||
-				groupedFilesMTime[b] - groupedFilesMTime[a]
-		)
+		const sortedMentions = Object.keys(groupedFiles)
+			.sort(
+				(a, b) =>
+					groupedFiles[b].length - groupedFiles[a].length ||
+					groupedFilesMTime[b] - groupedFilesMTime[a]
+			)
+			.slice(0, NUM_TAGS)
 
 		return { sortedMentions, groupedFiles }
 	}
@@ -157,7 +159,6 @@ export class RecentMentionsExtractor extends BaseExtractor {
 		)
 
 		const topPromises = sortedMentions
-			.slice(0, NUM_TAGS)
 			.flatMap((mention, index) => {
 				return groupedFiles[mention]
 					.sort((a, b) => b.mtime - a.mtime)
