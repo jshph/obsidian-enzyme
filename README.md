@@ -20,4 +20,3 @@ Enzyme retrieves and helps synthesize your Obsidian notes right in the editor. I
 If you enjoy this plugin, please consider supporting its development:
 
 <a href="https://www.buymeacoffee.com/jpham" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40px !important;width: 150px !important;" ></a>
-:q

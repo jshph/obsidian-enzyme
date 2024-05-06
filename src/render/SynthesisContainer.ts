@@ -10,7 +10,9 @@ export type AggregatorMetadata = {
 	prompt: string
 }
 
-export type ChatMessageWithMetadata = ChatCompletionMessage & {
+export type ChatMessageWithMetadata = {
+	role: 'user' | 'assistant'
+	content: string
 	metadata: any
 }
 

@@ -1,6 +1,7 @@
 import { Aggregator } from '../aggregator/Aggregator'
 import { CandidateRetriever } from '../source/retrieve/CandidateRetriever'
 import {
+	ChatMessageWithMetadata,
 	SynthesisContainer,
 	SynthesisMessageMetadata
 } from '../render/SynthesisContainer'
@@ -96,7 +97,7 @@ export class EnzymeAgent {
 		let allSubstitutions: BlockRefSubstitution[] = []
 
 		// Get all user and synthesis turns as context
-		let messages = [] as ChatCompletionMessage[]
+		let messages = [] as ChatMessageWithMetadata[]
 
 		const messagesToHere = synthesisContainer.getMessagesToHere()
 		for (const msg of messagesToHere) {
@@ -117,7 +118,8 @@ export class EnzymeAgent {
 
 				messages.push({
 					role: 'user',
-					content: message
+					content: message,
+					metadata: undefined
 				})
 			} else if (
 				msg.role === 'assistant' &&
@@ -127,7 +129,8 @@ export class EnzymeAgent {
 				allSubstitutions.push(...substitutions)
 				messages.push({
 					role: 'assistant',
-					content: contents
+					content: contents,
+					metadata: undefined
 				})
 			}
 		}
