@@ -205,14 +205,17 @@ export class SynthesisContainer {
 		)
 
 		const combinedBlocks = rawContent.match(
-			/```enzyme\n([\s\S]*?)\n```|> \[!💭\]\+\n> ([\s\S]*?)(?=\n[^>])/g
+			/```(enzyme|reason)\n([\s\S]*?)\n```|> \[!💭\]\+\n> ([\s\S]*?)(?=\n[^>])/g
 		)
 		const messages = combinedBlocks.map((block, index) => {
-			const role = block.includes('```enzyme') ? 'user' : 'assistant'
+			const role =
+				block.includes('```enzyme') || block.includes('```reason')
+					? 'user'
+					: 'assistant'
 
 			let displayedContent =
 				role === 'user'
-					? block.match(/```enzyme\n([\s\S]*?)\n```/)[1]
+					? block.match(/```(enzyme|reason)\n([\s\S]*?)\n```/)[2]
 					: block.match(/> \[!💭\]\+\n> ([\s\S]*)/)[1]
 
 			let content = displayedContent
