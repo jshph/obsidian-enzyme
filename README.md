@@ -6,7 +6,7 @@
 
 Visit [enzyme.garden/getting-started](https://www.enzyme.garden/getting-started) for the best guide on how to use Enzyme.
 
-You can also join the conversation on [Discord](https://discord.gg/4UetkVfp)!
+You can also join the conversation on [Discord](https://discord.gg/UmShHCmh)!
 
 ![](enzyme_synthesis.gif)
 
