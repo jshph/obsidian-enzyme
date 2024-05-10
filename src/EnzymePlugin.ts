@@ -1,10 +1,11 @@
-import { Plugin, App, PluginManifest, Notice } from 'obsidian'
+import { Plugin, App, PluginManifest, Notice, MarkdownView } from 'obsidian'
 import { EnzymeSettings, DEFAULT_SETTINGS } from './settings/EnzymeSettings'
 import SettingsTab from './settings/SettingsTab'
 import { CodeBlockRenderer } from './render'
 import { EnzymeAgent, AIClient, getSystemPrompts } from './notebook'
 import { DataviewApi, getAPI } from './obsidian-modules/dataview-handler'
 import { DataviewCandidateRetriever } from './source/retrieve/DataviewCandidateRetriever'
+import dedent from 'dedent-js'
 
 export class EnzymePlugin extends Plugin {
 	settings: EnzymeSettings
@@ -13,6 +14,7 @@ export class EnzymePlugin extends Plugin {
 	aiClient: AIClient
 	dataview: DataviewApi
 	candidateRetriever: DataviewCandidateRetriever
+	doCollapseEmbeds: boolean = false
 
 	constructor(app: App, pluginManifest: PluginManifest) {
 		super(app, pluginManifest)
@@ -92,6 +94,50 @@ export class EnzymePlugin extends Plugin {
 			this.registerMarkdownCodeBlockProcessor.bind(this),
 			this.candidateRetriever
 		)
+
+		this.addCommand({
+			id: 'template-backlinks',
+			name: 'Insert Backlinks Template',
+			editorCallback: async (editor) => {
+				// get active leaf's title
+				const activeLeafName =
+					this.app.workspace.getActiveViewOfType(MarkdownView).file.name
+
+				editor.replaceSelection(
+					dedent(`
+          \`\`\`enzyme
+          sources:
+            - strategy: SingleEvergreenReferrer
+              dql: LIST WHERE contains(file.outlinks, [[${activeLeafName}]]) SORT file.ctime DESC LIMIT 10
+              evergreen: "[[${activeLeafName}]]"
+          guidance: Relate the recent mentions of "${activeLeafName}" together
+          \`\`\`
+          `)
+				)
+			}
+		})
+
+		this.addCommand({
+			id: 'toggle-hide-embeds',
+			name: 'Toggle collapsed embeds in digest output',
+			editorCallback: async (editor) => {
+				let newHeight
+				if (this.doCollapseEmbeds) {
+					this.doCollapseEmbeds = false
+					new Notice('Embeds will be shown in digest output')
+					newHeight = '20rem'
+				} else {
+					this.doCollapseEmbeds = true
+					new Notice('Embeds will be hidden in digest output')
+					newHeight = '0.5rem'
+				}
+
+				document.documentElement.style.setProperty(
+					'--enzyme-embed-max-height',
+					newHeight
+				)
+			}
+		})
 	}
 
 	async loadSettings() {

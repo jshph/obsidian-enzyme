@@ -46,22 +46,19 @@ export class SynthesisContainer {
 		public endOfCodeFenceLine: number,
 		public renderer: CodeBlockRenderer
 	) {}
-
 	_appendText(text: string) {
-		let formattedText = text.split('\n').join('\n> ')
-
+		const formattedText = text.replace(/\n/g, '\n> ')
 		const splitText = formattedText.split('\n')
+		const lastLine = splitText[splitText.length - 1]
+		const lastLineLength = lastLine.length
 
 		this.editor.replaceRange(formattedText, {
 			ch: this.curCh,
 			line: this.curLine
 		})
-		const lastLineLength = splitText[splitText.length - 1].length
-		if (splitText.length > 1) {
-			this.curCh = lastLineLength
-		} else {
-			this.curCh += lastLineLength
-		}
+
+		this.curCh =
+			splitText.length > 1 ? lastLineLength : this.curCh + lastLineLength
 		this.curLine += splitText.length - 1
 	}
 

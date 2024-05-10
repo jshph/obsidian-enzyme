@@ -273,20 +273,54 @@ export class CodeBlockRenderer {
 	): SynthesisContainer {
 		let endOfCodeFenceLine = context.getSectionInfo(codeblockEl).lineEnd
 		let editor = this.app.workspace.activeEditor.editor
-		editor.replaceRange('\n> [!💭]+\n> ', {
-			ch: 0,
-			line: endOfCodeFenceLine + 1
-		})
 
-		let curLine = endOfCodeFenceLine + 3
-		endOfCodeFenceLine += 3
-		let curCh = 2
+		// Find the first non-empty line after the code fence
+		let curLine = endOfCodeFenceLine + 1
+		while (
+			curLine < editor.lineCount() &&
+			editor.getLine(curLine).trim() === ''
+		) {
+			curLine++
+		}
 
+		if (curLine >= editor.lineCount()) {
+			curLine = endOfCodeFenceLine + 1
+		}
+
+		// Process any existing quote lines immediately following the code block
+		while (
+			curLine < editor.lineCount() &&
+			(editor.getLine(curLine).startsWith('> ') ||
+				editor.getLine(curLine).trim() === '')
+		) {
+			let lineText = editor.getLine(curLine)
+			// If the line is a collapsible quote, change the '+' to a '-' to indicate it's expanded
+			if (lineText.startsWith('> [!💭]+')) {
+				editor.setLine(curLine, lineText.replace('+', '-'))
+			}
+			curLine++
+		}
+
+		if (curLine >= editor.lineCount()) {
+			curLine--
+		}
+
+		// If no further quote lines, insert a new collapsible quote section
+		if (!editor.getLine(curLine).startsWith('> ')) {
+			let prefix = '\n> [!💭]+\n> \n'
+			editor.setLine(curLine, prefix)
+			editor
+		}
+
+		// Set the cursor position for the new synthesis container
+		let curCh = 2 // Start from the second character of the line
+
+		// Create and return the synthesis container
 		return new SynthesisContainer(
 			editor,
-			curLine,
+			curLine + 2, // Position the cursor three lines below the current line
 			curCh,
-			endOfCodeFenceLine + 1,
+			endOfCodeFenceLine + 1, // The line just after the end of the code fence
 			this
 		)
 	}

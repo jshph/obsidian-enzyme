@@ -9,7 +9,7 @@ import { BlockRefSubstitution } from '../types'
 import { ChatCompletionMessage } from '../types'
 import { AIClient } from './AIClient'
 import { prompts } from './prompts'
-import { App } from 'obsidian'
+import { App, Notice } from 'obsidian'
 
 export type StrategyMetadata = {
 	strategy: string
@@ -128,8 +128,7 @@ export class EnzymeAgent {
 		messages[messages.length - 1].content +=
 			`\n\nContinue the conversation and remember the rules:\n${this.systemPrompts.aggregatorInstructions}`
 
-		const cancelPlaceholderFn =
-			synthesisContainer.waitPlaceholder('🧠 Synthesizing...')
+		new Notice('Synthesizing content...')
 
 		let synthesisGenerator = this.aggregator.generateFromMessages(messages)
 
@@ -141,7 +140,6 @@ export class EnzymeAgent {
 		// TODO refactor / separate
 		for await (const part of await synthesisGenerator) {
 			if (!firstChunkWasSent) {
-				cancelPlaceholderFn()
 				synthesisContainer.appendText('\n\n')
 				firstChunkWasSent = true
 			}

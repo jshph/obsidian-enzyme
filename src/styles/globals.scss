@@ -33,15 +33,6 @@ If your plugin does not need CSS, delete this file.
 	}
 }
 
-.truncated-embed .markdown-preview-view {
-	max-height: 20rem;
-	margin-bottom: 2rem;
-}
-
-.canvas-builder-modal {
-	width: 100%;
-}
-
 .assistant-response {
 	background-color: var(--color-base-20);
 	display: inline-block;
@@ -60,7 +51,7 @@ If your plugin does not need CSS, delete this file.
 
 	.markdown-embed-content,
 	.markdown-embed-content > .markdown-preview-view {
-		max-height: 250px;
+		max-height: var(--enzyme-embed-max-height, 20rem);
 		margin-bottom: 1rem;
 	}
 
