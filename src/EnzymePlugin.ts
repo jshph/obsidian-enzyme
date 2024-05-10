@@ -1,11 +1,11 @@
-import { Plugin, App, PluginManifest, Notice, MarkdownView } from 'obsidian'
+import { Plugin, App, PluginManifest, Notice } from 'obsidian'
 import { EnzymeSettings, DEFAULT_SETTINGS } from './settings/EnzymeSettings'
 import SettingsTab from './settings/SettingsTab'
 import { CodeBlockRenderer } from './render'
 import { EnzymeAgent, AIClient, getSystemPrompts } from './notebook'
 import { DataviewApi, getAPI } from './obsidian-modules/dataview-handler'
 import { DataviewCandidateRetriever } from './source/retrieve/DataviewCandidateRetriever'
-import dedent from 'dedent-js'
+import { Suggester } from 'Suggester'
 
 export class EnzymePlugin extends Plugin {
 	settings: EnzymeSettings
@@ -15,6 +15,7 @@ export class EnzymePlugin extends Plugin {
 	dataview: DataviewApi
 	candidateRetriever: DataviewCandidateRetriever
 	doCollapseEmbeds: boolean = false
+	suggester: Suggester
 
 	constructor(app: App, pluginManifest: PluginManifest) {
 		super(app, pluginManifest)
@@ -49,6 +50,7 @@ export class EnzymePlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings()
+		this.suggester = new Suggester(this.app, this.settings.evergreenFolders)
 
 		this.candidateRetriever = new DataviewCandidateRetriever(
 			this.settings,
@@ -97,23 +99,9 @@ export class EnzymePlugin extends Plugin {
 
 		this.addCommand({
 			id: 'template-backlinks',
-			name: 'Insert Backlinks Template',
+			name: 'Insert template to digest evergreen mentions',
 			editorCallback: async (editor) => {
-				// get active leaf's title
-				const activeLeafName =
-					this.app.workspace.getActiveViewOfType(MarkdownView).file.name
-
-				editor.replaceSelection(
-					dedent(`
-          \`\`\`enzyme
-          sources:
-            - strategy: SingleEvergreenReferrer
-              dql: LIST WHERE contains(file.outlinks, [[${activeLeafName}]]) SORT file.ctime DESC LIMIT 10
-              evergreen: "[[${activeLeafName}]]"
-          guidance: Relate the recent mentions of "${activeLeafName}" together
-          \`\`\`
-          `)
-				)
+				this.suggester.open()
 			}
 		})
 

@@ -151,6 +151,27 @@ export class SettingsTab extends PluginSettingTab {
 		})
 
 		new Setting(containerEl)
+			.setName('Folders for evergreens')
+			.setDesc(
+				'The command palette helper will filter for entities in these folders. If empty, it will search over the whole vault. Separate paths with a newline.'
+			)
+			.addTextArea((text) => {
+				text
+					.setPlaceholder('Folders')
+					.onChange(async (value) => {
+						if (value.trim().length > 0) {
+							this.plugin.settings.evergreenFolders = value.split('\n')
+						} else {
+							this.plugin.settings.evergreenFolders = []
+						}
+						this.plugin.saveSettings()
+					})
+					.setValue(
+						this.plugin.settings.evergreenFolders.join('\n')
+					).inputEl.style.width = '100%'
+			})
+
+		new Setting(containerEl)
 			.setName('Debug output')
 			.setDesc('Enable debug output in the console')
 			.addToggle((component) => {

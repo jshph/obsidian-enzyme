@@ -9,6 +9,8 @@ export interface EnzymeSettings {
 	debug: boolean
 
 	localModelPath?: string
+
+	evergreenFolders: string[]
 }
 
 export const DEFAULT_SETTINGS: EnzymeSettings = {
@@ -41,5 +43,6 @@ export const DEFAULT_SETTINGS: EnzymeSettings = {
 	],
 	selectedModel: 'Haiku',
 	debug: false,
-	localModelPath: undefined
+	localModelPath: undefined,
+	evergreenFolders: []
 }
