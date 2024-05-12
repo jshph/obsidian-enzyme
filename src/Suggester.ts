@@ -192,42 +192,14 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 
 		const files = allFiles.sort((a, b) => b.stat.ctime - a.stat.ctime)
 
-		const tagCounts: Record<string, number> = {}
-
 		// Get tags of recently created files
-		files.slice(0, 100).forEach((file) => {
-			const tags = this.app.metadataCache
-				.getFileCache(file)
-				.tags?.map((tag) => tag.tag)
-			if (tags) {
-				tags.forEach((tag) => {
-					if (tag) {
-						tagCounts[tag] = (tagCounts[tag] || 0) + 1
-					}
-				})
-			}
-		})
-
-		// Assign default value to remainder of tags
-		files.slice(100).forEach((file) => {
-			const tags = this.app.metadataCache
-				.getFileCache(file)
-				.tags?.map((tag) => tag.tag)
-			if (tags) {
-				tags.forEach((tag) => {
-					if (tag) {
-						tagCounts[tag] = tagCounts[tag] || 0
-					}
-				})
-			}
-		})
-
-		const allFileTags: SuggesterSource[] = Object.entries(tagCounts)
-			.sort((a, b) => b[1] - a[1]) // Sort by count in descending order
-			.map((entry) => ({
-				entity: entry[0],
-				type: SourceType.Tag
-			}))
+		const allFileTags: SuggesterSource[] = files
+			.flatMap((file) =>
+				this.app.metadataCache.getFileCache(file).tags?.map((tag) => tag.tag)
+			)
+			.filter((tag) => tag && tag != '')
+			.unique()
+			.map((tag) => ({ entity: tag, type: SourceType.Tag }))
 
 		const activeLeafName = `[[${activeLeaf.basename}]]`
 		const filteredFiles = allFiles.filter(
