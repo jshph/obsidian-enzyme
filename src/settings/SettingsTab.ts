@@ -2,6 +2,8 @@ import { App, Notice, PluginSettingTab, Setting, requestUrl } from 'obsidian'
 import { EnzymePlugin } from '../EnzymePlugin'
 import { DEFAULT_SETTINGS } from './EnzymeSettings'
 
+const DEFAULT_INPUT_WIDTH = '500px'
+
 export class SettingsTab extends PluginSettingTab {
 	constructor(
 		public app: App,
@@ -42,7 +44,8 @@ export class SettingsTab extends PluginSettingTab {
 						this.plugin.settings.models[index] = thisModelConfig
 						this.plugin.saveSettings()
 					})
-					.setValue(thisModelConfig.label).inputEl.style.width = '100%'
+					.setValue(thisModelConfig.label).inputEl.style.width =
+					DEFAULT_INPUT_WIDTH
 			})
 		topSetting.settingEl.style.borderTop =
 			'1px solid var(--background-modifier-border)'
@@ -59,7 +62,8 @@ export class SettingsTab extends PluginSettingTab {
 						this.plugin.settings.models[index] = thisModelConfig
 						this.plugin.saveSettings()
 					})
-					.setValue(thisModelConfig.model).inputEl.style.width = '100%'
+					.setValue(thisModelConfig.model).inputEl.style.width =
+					DEFAULT_INPUT_WIDTH
 			}).settingEl.style.borderTop = 'none'
 
 		new Setting(div)
@@ -73,7 +77,8 @@ export class SettingsTab extends PluginSettingTab {
 						this.plugin.settings.models[index] = thisModelConfig
 						this.plugin.saveSettings()
 					})
-					.setValue(thisModelConfig.baseURL).inputEl.style.width = '100%'
+					.setValue(thisModelConfig.baseURL).inputEl.style.width =
+					DEFAULT_INPUT_WIDTH
 			}).settingEl.style.borderTop = 'none'
 
 		new Setting(div)
@@ -87,7 +92,8 @@ export class SettingsTab extends PluginSettingTab {
 						this.plugin.settings.models[index] = thisModelConfig
 						this.plugin.saveSettings()
 					})
-					.setValue(thisModelConfig.apiKey).inputEl.style.width = '100%'
+					.setValue(thisModelConfig.apiKey).inputEl.style.width =
+					DEFAULT_INPUT_WIDTH
 			}).settingEl.style.borderTop = 'none'
 
 		new Setting(div).addButton((button) => {
@@ -153,7 +159,7 @@ export class SettingsTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Folders for evergreens')
 			.setDesc(
-				'The command palette helper will filter for entities in these folders. If empty, it will search over the whole vault. Separate paths with a newline.'
+				'Evergreens are notes that are commonly referenced, i.e. people, ideas, other entities. The command palette helper will filter for notes in these folders. If empty, it will search over the whole vault. Separate paths with a newline.'
 			)
 			.addTextArea((text) => {
 				text
@@ -168,7 +174,28 @@ export class SettingsTab extends PluginSettingTab {
 					})
 					.setValue(
 						this.plugin.settings.evergreenFolders.join('\n')
-					).inputEl.style.width = '100%'
+					).inputEl.style.width = DEFAULT_INPUT_WIDTH
+			})
+
+		new Setting(containerEl)
+			.setName('Folders to trim contents')
+			.setDesc(
+				'Enzyme will trim the contents of files in these folders to the last few blocks. This prevents long files from being entirely fed to the model'
+			)
+			.addTextArea((text) => {
+				text
+					.setPlaceholder('Folders')
+					.onChange(async (value) => {
+						if (value.trim().length > 0) {
+							this.plugin.settings.trimFolders = value.split('\n')
+						} else {
+							this.plugin.settings.trimFolders = []
+						}
+						this.plugin.saveSettings()
+					})
+					.setValue(
+						this.plugin.settings.trimFolders.join('\n')
+					).inputEl.style.width = DEFAULT_INPUT_WIDTH
 			})
 
 		new Setting(containerEl)

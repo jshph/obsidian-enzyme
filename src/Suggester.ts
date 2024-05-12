@@ -49,7 +49,8 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 	defaultLimit: number = 5
 	constructor(
 		app: App,
-		private folders: string[]
+		private evergreenFolders: string[],
+		private longContentFolders: string[]
 	) {
 		super(app)
 		this.selectedItems = []
@@ -193,7 +194,7 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 
 		const tagCounts: Record<string, number> = {}
 
-		// Compute counts for tags of recent files
+		// Get tags of recently created files
 		files.slice(0, 100).forEach((file) => {
 			const tags = this.app.metadataCache
 				.getFileCache(file)
@@ -231,8 +232,8 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 		const activeLeafName = `[[${activeLeaf.basename}]]`
 		const filteredFiles = allFiles.filter(
 			(file) =>
-				this.folders.length == 0 ||
-				this.folders.some((folder) => file.path.contains(folder))
+				this.evergreenFolders.length == 0 ||
+				this.evergreenFolders.some((folder) => file.path.contains(folder))
 		)
 		const renderedFiles: SuggesterSource[] = filteredFiles.map((file) => ({
 			entity: `[[${file.basename}]]`,
@@ -266,7 +267,7 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 				break
 			case SourceType.Folder:
 				el.addClass('suggestion-folder')
-				el.setText('/' + item.item.entity)
+				el.setText('folder: ' + item.item.entity)
 				break
 		}
 	}
@@ -345,7 +346,9 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 					break
 				case SourceType.Folder:
 					strategy = {
-						strategy: 'LongContent'
+						strategy: this.longContentFolders.includes(item.entity)
+							? 'LongContent'
+							: 'Basic'
 					}
 					break
 			}
