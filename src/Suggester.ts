@@ -10,8 +10,25 @@ import {
 
 type SelectedItem = {
 	entity: string
+	type: SourceType
 	limit: number
+	strategy: Strategy
+}
+
+enum SourceType {
+	Note,
+	Tag,
+	Folder
+}
+
+type SuggesterSource = {
+	entity: string
+	type: SourceType
+}
+
+type Strategy = {
 	strategy: string
+	evergreen?: string
 }
 
 // internal
@@ -25,7 +42,7 @@ declare module 'obsidian' {
 	}
 }
 
-export class Suggester extends FuzzySuggestModal<string> {
+export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 	selectedItems: SelectedItem[]
 	setLimitModeEnabled: boolean = false
 	nativeInputElPadding: string
@@ -43,7 +60,7 @@ export class Suggester extends FuzzySuggestModal<string> {
 			if (!selectItemResult) {
 				// Handle special case in limit mode, where number doesn't select a valid item
 				if (this.setLimitModeEnabled) {
-					this.onChooseItem(this.inputEl.value, evt)
+					this.onChooseItem(undefined, evt)
 				}
 			}
 			this.inputEl.value = ''
@@ -130,17 +147,22 @@ export class Suggester extends FuzzySuggestModal<string> {
 
 	produceEnzymeBlock() {
 		const sourcesText = this.selectedItems.map((item) => {
-			let filter: string
-			if (item.entity.contains('[[')) {
-				filter = `contains(file.outlinks, ${item.entity})`
-			} else if (item.entity.contains('#')) {
-				filter = `contains(file.tags, "${item.entity}")`
+			let dql: string
+			switch (item.type) {
+				case SourceType.Note:
+					dql = `LIST WHERE contains(file.outlinks, ${item.entity}) SORT file.ctime DESC LIMIT ${item.limit}`
+					break
+				case SourceType.Tag:
+					dql = `LIST WHERE contains(file.tags, "${item.entity}") SORT file.ctime DESC LIMIT ${item.limit}`
+					break
+				case SourceType.Folder:
+					dql = `LIST FROM "${item.entity}" SORT file.mtime DESC LIMIT ${item.limit}`
+					break
 			}
 
 			return dedent`
-        - strategy: ${item.strategy}
-          dql: LIST WHERE ${filter} SORT file.ctime DESC LIMIT ${item.limit}
-          evergreen: "${item.entity}"
+        - strategy: ${item.strategy.strategy}
+          dql: ${dql}${item.strategy.evergreen ? `\n  evergreen: "${item.strategy.evergreen}"` : ''}
       `
 		})
 
@@ -157,9 +179,16 @@ export class Suggester extends FuzzySuggestModal<string> {
     `
 	}
 
-	getItems(): string[] {
+	getItems(): SuggesterSource[] {
 		const activeLeaf = this.app.workspace.getActiveViewOfType(MarkdownView).file
 		const allFiles = this.app.vault.getMarkdownFiles()
+		const allFolders = this.app.vault
+			.getMarkdownFiles()
+			.sort((a, b) => b.stat.ctime - a.stat.ctime) // Most recent first
+			.map((file) => file.parent.path)
+			.filter((path) => path != '')
+			.unique()
+
 		const files = allFiles.sort((a, b) => b.stat.ctime - a.stat.ctime)
 
 		const tagCounts: Record<string, number> = {}
@@ -192,9 +221,12 @@ export class Suggester extends FuzzySuggestModal<string> {
 			}
 		})
 
-		const allFileTags: string[] = Object.entries(tagCounts)
+		const allFileTags: SuggesterSource[] = Object.entries(tagCounts)
 			.sort((a, b) => b[1] - a[1]) // Sort by count in descending order
-			.map((entry) => entry[0]) // Extract the tag names
+			.map((entry) => ({
+				entity: entry[0],
+				type: SourceType.Tag
+			}))
 
 		const activeLeafName = `[[${activeLeaf.basename}]]`
 		const filteredFiles = allFiles.filter(
@@ -202,24 +234,50 @@ export class Suggester extends FuzzySuggestModal<string> {
 				this.folders.length == 0 ||
 				this.folders.some((folder) => file.path.contains(folder))
 		)
-		const renderedFiles = filteredFiles.map((file) => `[[${file.basename}]]`)
+		const renderedFiles: SuggesterSource[] = filteredFiles.map((file) => ({
+			entity: `[[${file.basename}]]`,
+			type: SourceType.Note
+		}))
+
+		const renderedFolders: SuggesterSource[] = allFolders.map((folder) => ({
+			entity: folder,
+			type: SourceType.Folder
+		}))
 
 		// helpful ordering to visually improve recall
 		return [
-			activeLeafName,
+			{ entity: activeLeafName, type: SourceType.Note },
 			...allFileTags.slice(0, 15),
+			...renderedFolders.slice(0, 10),
 			...renderedFiles,
-			...allFileTags.slice(15)
+			...allFileTags.slice(15),
+			...renderedFolders.slice(10)
 		]
 	}
 
-	getItemText(item: string): string {
-		return item
+	renderSuggestion(item: FuzzyMatch<SuggesterSource>, el: HTMLElement): void {
+		el.setText(item.item.entity)
+		switch (item.item.type) {
+			case SourceType.Note:
+				el.addClass('suggestion-note')
+				break
+			case SourceType.Tag:
+				el.addClass('suggestion-tag')
+				break
+			case SourceType.Folder:
+				el.addClass('suggestion-folder')
+				el.setText('/' + item.item.entity)
+				break
+		}
+	}
+
+	getItemText(item: SuggesterSource): string {
+		return item.entity
 	}
 
 	// internally, called by useSelectedItem with the value
 	selectSuggestion(
-		value: FuzzyMatch<string>,
+		value: FuzzyMatch<SuggesterSource>,
 		evt: KeyboardEvent | MouseEvent
 	): void {
 		// Need to override this because we don't want to close the modal as per default
@@ -227,8 +285,8 @@ export class Suggester extends FuzzySuggestModal<string> {
 		this.onChooseItem(value.item, evt)
 	}
 
-	insertPillForItem(item: string) {
-		const pill = createDiv({ text: item, cls: 'pill' })
+	insertPillForItem(item: SuggesterSource) {
+		const pill = createDiv({ text: item.entity, cls: 'pill' })
 		this.inputEl.parentElement.insertBefore(pill, this.inputEl)
 
 		const limitPill = createDiv({
@@ -239,7 +297,7 @@ export class Suggester extends FuzzySuggestModal<string> {
 		this.inputEl.parentElement.insertBefore(limitPill, this.inputEl)
 	}
 
-	onChooseItem(item: string, evt: MouseEvent | KeyboardEvent): void {
+	onChooseItem(item: SuggesterSource, evt: MouseEvent | KeyboardEvent): void {
 		// Handle "limit setting mode"
 		if (this.setLimitModeEnabled) {
 			let limit
@@ -271,11 +329,33 @@ export class Suggester extends FuzzySuggestModal<string> {
 
 			this.insertPillForItem(item)
 
+			let strategy: Strategy
+			switch (item.type) {
+				case SourceType.Note:
+					strategy = {
+						strategy: 'SingleEvergreenReferrer',
+						evergreen: item.entity
+					}
+					break
+				case SourceType.Tag:
+					strategy = {
+						strategy: 'SingleEvergreenReferrer',
+						evergreen: item.entity
+					}
+					break
+				case SourceType.Folder:
+					strategy = {
+						strategy: 'LongContent'
+					}
+					break
+			}
+
 			// Insert the selected item into the selectedItems
 			this.selectedItems.push({
-				entity: item,
+				entity: item.entity,
+				type: item.type,
 				limit: this.defaultLimit,
-				strategy: 'SingleEvergreenReferrer'
+				strategy
 			})
 		}
 

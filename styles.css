@@ -69,3 +69,19 @@
 .pill.limit.active {
   background: var(--interactive-accent);
 }
+.suggestion-tag {
+  background: var(--tag-background);
+  border-radius: 10px;
+  padding: 5px 10px;
+  margin: 5px;
+  max-width: fit-content;
+}
+.suggestion-folder {
+  font-family: monospace;
+  background: var(--color-base-10);
+  color: lightseagreen;
+  max-width: fit-content;
+}
+.suggestion-item {
+  margin-bottom: 5px;
+}
