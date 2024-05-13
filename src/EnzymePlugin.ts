@@ -50,7 +50,11 @@ export class EnzymePlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings()
-		this.suggester = new Suggester(this.app, this.settings.evergreenFolders)
+		this.suggester = new Suggester(
+			this.app,
+			this.settings.evergreenFolders,
+			this.settings.trimFolders
+		)
 
 		this.candidateRetriever = new DataviewCandidateRetriever(
 			this.settings,
@@ -98,8 +102,8 @@ export class EnzymePlugin extends Plugin {
 		)
 
 		this.addCommand({
-			id: 'template-backlinks',
-			name: 'Insert template to digest evergreen mentions',
+			id: 'build-enzyme-block',
+			name: 'Build an Enzyme block with type-ahead to select sources',
 			editorCallback: async (editor) => {
 				this.suggester.open()
 			}

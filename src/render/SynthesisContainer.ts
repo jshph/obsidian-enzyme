@@ -165,26 +165,6 @@ export class SynthesisContainer {
 	}
 
 	/**
-	 * Finalizes the editor content by appending a code fence for the 'enzyme' language.
-	 * This function inserts a closing code fence for a 'enzyme' code block at the current
-	 * cursor position within the editor. It then moves the cursor three lines down to
-	 * position it within the newly created code block, ready for further input. Finally,
-	 * it focuses the editor to allow for immediate typing.
-	 */
-	finalize() {
-		this.editor.replaceRange('\n\n```enzyme\n\n```\n', {
-			ch: this.curCh,
-			line: this.curLine
-		})
-		let lineWithinCodeBlock = this.curLine + 3
-		this.editor.setCursor({
-			ch: 0,
-			line: lineWithinCodeBlock
-		})
-		this.editor.focus()
-	}
-
-	/**
 	 * Retrieves all messages up to the specified cursor position.= This function parses the content
 	 * of the editor up to the specified cursor position and extracts chat messages with metadata.
 	 * It identifies the role of each message (user or assistant) and extracts the content and metadata

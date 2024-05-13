@@ -53,7 +53,11 @@ export abstract class BaseExtractor {
 		const preamblePart = strategy.sourcePreamble
 			? `\n**Preamble**: ${strategy.sourcePreamble}\n`
 			: ''
-		return `### Source:\n${dqlPart}**Strategy**: ${this.description()}${preamblePart}\n`
+
+		const evergreenPart = strategy.evergreen
+			? `\nExtracting contents around mentions of: ${strategy.evergreen}\n`
+			: ''
+		return `**Strategy**: ${this.description()}\n${dqlPart}${evergreenPart}${preamblePart}`
 	}
 
 	description() {

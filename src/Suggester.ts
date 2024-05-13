@@ -1,9 +1,11 @@
 import dedent from 'dedent-js'
 import {
 	App,
+	Component,
 	FuzzyMatch,
 	FuzzySuggestModal,
 	Instruction,
+	MarkdownRenderer,
 	MarkdownView,
 	Notice
 } from 'obsidian'
@@ -39,6 +41,7 @@ declare module 'obsidian' {
 			selectedItem: number
 			suggestions: HTMLElement[]
 		}
+		updateSuggestions: () => void
 	}
 }
 
@@ -47,6 +50,7 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 	setLimitModeEnabled: boolean = false
 	nativeInputElPadding: string
 	defaultLimit: number = 5
+	dqlResultEl: HTMLElement
 	constructor(
 		app: App,
 		private evergreenFolders: string[],
@@ -55,8 +59,18 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 		super(app)
 		this.selectedItems = []
 
+		// Setup result and preview container to be toggled between
+		this.dqlResultEl = createDiv({ cls: 'dql-results' })
+		this.resultContainerEl.parentElement.insertBefore(
+			this.dqlResultEl,
+			this.resultContainerEl
+		)
+
 		this.scope.register(['Shift'], 'Enter', (evt: KeyboardEvent) => {
-			this.resultContainerEl.setCssStyles({ display: 'block' })
+			// User has selected an item so we can remove the preview
+			this.hideDQLResult()
+
+			// Let user select the next one from resultContainer
 			const selectItemResult = this.chooser.useSelectedItem(evt)
 			if (!selectItemResult) {
 				// Handle special case in limit mode, where number doesn't select a valid item
@@ -70,30 +84,42 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 		this.scope.register([], 'Tab', (evt: KeyboardEvent) => {
 			// Insert a pill to denote mode switch to typing in a tab
 			evt.preventDefault()
-			this.inputEl.value = ''
+
 			const limitEl = this.inputEl.previousSibling as HTMLElement
+			this.inputEl.addClass('limit-mode')
 
 			if (this.setLimitModeEnabled) {
+				// If in this mode, allow the user to use Tab rather than just Shift+Enter to set the limit
+				this.setLimitForCurrentItem()
 				this.setLimitModeEnabled = false
+
 				this.emptyStateText = this.defaultEmptyStateText
-				this.resultContainerEl.setCssStyles({ display: 'block' })
 				limitEl.removeClass('active')
+
+				// Disable the limit mode removes the preview
+				this.hideDQLResult()
+				this.inputEl.value = ''
+
+				this.updateSuggestions()
 				return
 			}
 
 			limitEl.addClass('active')
 
+			this.inputEl.value = ''
 			this.setLimitModeEnabled = true
-			this.emptyStateText = 'Type the limit for the selected evergreen'
 
-			this.resultContainerEl.setCssStyles({ display: 'none' })
+			this.renderDQLPreview()
+			this.showDQLResult()
 		})
 
 		this.scope.register(['Mod'], 'Backspace', (evt: KeyboardEvent) => {
 			if (this.setLimitModeEnabled) {
 				this.setLimitModeEnabled = false
 				this.emptyStateText = this.defaultEmptyStateText
-				this.resultContainerEl.setCssStyles({ display: 'block' })
+
+				// User has decided to cancel the limit setting operation
+				this.hideDQLResult()
 			} else {
 				this.selectedItems.pop()
 			}
@@ -111,16 +137,16 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 
 		const modalInstructions: Instruction[] = [
 			{
+				command: 'tab',
+				purpose: 'Set the max number of files for the selection'
+			},
+			{
 				command: 'shift ↵',
-				purpose: 'Select this evergreen and go to find another'
+				purpose: 'Select and go to find another'
 			},
 			{
 				command: '↵',
 				purpose: 'Insert Enzyme block'
-			},
-			{
-				command: 'tab',
-				purpose: 'Set the max number of files for the selected evergreen'
 			}
 		]
 
@@ -139,27 +165,45 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 			this.inputEl.parentElement.removeChild(this.inputEl.previousSibling)
 		}
 
-		this.resultContainerEl.setCssStyles({ display: 'block' })
 		this.inputEl.setCssStyles({ paddingLeft: this.nativeInputElPadding })
 		this.setLimitModeEnabled = false
 	}
 
+	hideDQLResult() {
+		this.dqlResultEl.removeClass('active')
+		setTimeout(() => {
+			this.dqlResultEl.empty()
+			this.resultContainerEl.setCssStyles({ display: 'block' })
+		}, 700)
+	}
+
+	showDQLResult() {
+		this.dqlResultEl.addClass('active')
+		setTimeout(() => {
+			this.resultContainerEl.setCssStyles({ display: 'none' })
+		}, 200)
+	}
+
 	defaultEmptyStateText: string = 'Type the name of a note or tag'
+
+	buildDQL(item: SelectedItem): string {
+		switch (item.type) {
+			case SourceType.Note:
+				return `LIST WHERE contains(file.outlinks, ${item.entity}) SORT file.ctime DESC LIMIT ${item.limit}`
+			case SourceType.Tag:
+				return `LIST WHERE contains(file.tags, "${item.entity}") SORT file.ctime DESC LIMIT ${item.limit}`
+			case SourceType.Folder:
+				let sortOrder = 'file.ctime'
+				if (item.strategy.strategy === 'LongContent') {
+					sortOrder = 'file.mtime'
+				}
+				return `LIST FROM "${item.entity}" SORT ${sortOrder} DESC LIMIT ${item.limit}`
+		}
+	}
 
 	produceEnzymeBlock() {
 		const sourcesText = this.selectedItems.map((item) => {
-			let dql: string
-			switch (item.type) {
-				case SourceType.Note:
-					dql = `LIST WHERE contains(file.outlinks, ${item.entity}) SORT file.ctime DESC LIMIT ${item.limit}`
-					break
-				case SourceType.Tag:
-					dql = `LIST WHERE contains(file.tags, "${item.entity}") SORT file.ctime DESC LIMIT ${item.limit}`
-					break
-				case SourceType.Folder:
-					dql = `LIST FROM "${item.entity}" SORT file.mtime DESC LIMIT ${item.limit}`
-					break
-			}
+			let dql: string = this.buildDQL(item)
 
 			return dedent`
         - strategy: ${item.strategy.strategy}
@@ -254,6 +298,7 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 		evt: KeyboardEvent | MouseEvent
 	): void {
 		// Need to override this because we don't want to close the modal as per default
+		// @ts-ignore
 		this.app.keymap.updateModifiers(evt)
 		this.onChooseItem(value.item, evt)
 	}
@@ -270,21 +315,55 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 		this.inputEl.parentElement.insertBefore(limitPill, this.inputEl)
 	}
 
+	setLimitForCurrentItem() {
+		let limit
+		this.inputEl.removeClass('limit-mode')
+
+		if (this.inputEl.value == '') {
+			new Notice('Empty limit value')
+			return
+		}
+
+		try {
+			limit = parseInt(this.inputEl.value)
+		} catch (e) {
+			new Notice(`Invalid limit value: ${this.inputEl.value}`)
+		}
+
+		const limitEl = this.inputEl.previousSibling as HTMLElement
+		limitEl.textContent = `limit: ${limit}`
+		limitEl.removeClass('active')
+
+		// If in limit setting mode, a pill button was already inserted, so we just update the limit
+		this.selectedItems[this.selectedItems.length - 1].limit = limit
+		this.inputEl.removeClass('limit-mode')
+
+		this.renderDQLPreview()
+	}
+
+	renderDQLPreview() {
+		// Render the DQL preview in the DQL result container
+		let dqlResultPreview = dedent`
+    ### Preview:
+    \`\`\`dataview
+    ${this.buildDQL(this.selectedItems[this.selectedItems.length - 1])}
+    \`\`\`
+    `.trim()
+
+		this.dqlResultEl.empty()
+		MarkdownRenderer.render(
+			this.app,
+			dqlResultPreview,
+			this.dqlResultEl,
+			'/',
+			new Component()
+		)
+	}
+
 	onChooseItem(item: SuggesterSource, evt: MouseEvent | KeyboardEvent): void {
 		// Handle "limit setting mode"
 		if (this.setLimitModeEnabled) {
-			let limit
-			try {
-				limit = parseInt(this.inputEl.value)
-			} catch (e) {
-				new Notice(`Invalid limit value: ${this.inputEl.value}`)
-			}
-			const limitEl = this.inputEl.previousSibling as HTMLElement
-			limitEl.textContent = `limit: ${limit}`
-			limitEl.removeClass('active')
-
-			// If in limit setting mode, a pill button was already inserted, so we just update the limit
-			this.selectedItems[this.selectedItems.length - 1].limit = limit
+			this.setLimitForCurrentItem()
 			this.setLimitModeEnabled = false
 		}
 

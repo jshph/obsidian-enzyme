@@ -6,10 +6,7 @@ import { BaseExtractor, FileContents } from './BaseExtractor'
 import { EnzymeSettings } from '../../settings/EnzymeSettings'
 import { DQLStrategy } from './Strategy'
 import { DataviewApi } from 'obsidian-dataview'
-import {
-	SingleBacklinkerExtractor,
-	SingleBacklinkerStrategyMetadata
-} from './SingleBacklinkerExtractor'
+import { SingleBacklinkerExtractor } from './SingleBacklinkerExtractor'
 import {
 	RecentMentionsExtractor,
 	RecentMentionsStrategyMetadata
@@ -65,9 +62,7 @@ export class ExtractorDelegator extends BaseExtractor {
 			case DQLStrategy[DQLStrategy.LongContent]:
 				return await this.trimToEndExtractor.renderSourceBlock(strategy)
 			case DQLStrategy[DQLStrategy.SingleEvergreenReferrer]:
-				return await this.singleBacklinkerExtractor.renderSourceBlock(
-					strategy as SingleBacklinkerStrategyMetadata
-				)
+				return await this.singleBacklinkerExtractor.renderSourceBlock(strategy)
 			case DQLStrategy[DQLStrategy.RecentMentions]:
 				return await this.recentMentionsExtractor.renderSourceBlock(
 					strategy as RecentMentionsStrategyMetadata
@@ -101,11 +96,7 @@ export class ExtractorDelegator extends BaseExtractor {
 			case DQLStrategy[DQLStrategy.LongContent]:
 				return this.trimToEndExtractor.extract(file, metadata)
 			case DQLStrategy[DQLStrategy.SingleEvergreenReferrer]:
-				return this.singleBacklinkerExtractor.extract(
-					file,
-					metadata,
-					strategy as SingleBacklinkerStrategyMetadata
-				)
+				return this.singleBacklinkerExtractor.extract(file, metadata, strategy)
 			case DQLStrategy[DQLStrategy.RecentMentions]:
 				return this.recentMentionsExtractor.extract(
 					null,

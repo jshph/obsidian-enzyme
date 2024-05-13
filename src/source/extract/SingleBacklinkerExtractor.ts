@@ -5,11 +5,6 @@ import { LassoFromOffsetExtractor } from './LassoFromOffsetExtractor'
 import { StrategyMetadata } from 'notebook/EnzymeAgent'
 import { DQLStrategy } from 'source/extract/Strategy'
 
-export type SingleBacklinkerStrategyMetadata = StrategyMetadata & {
-	evergreen: string
-	dql?: string // Optional since it's only present if we are not calling this extractor directly, but rather through a list of files
-}
-
 export class SingleBacklinkerExtractor extends BaseExtractor {
 	strategy = DQLStrategy.SingleEvergreenReferrer
 	constructor(
@@ -31,7 +26,7 @@ export class SingleBacklinkerExtractor extends BaseExtractor {
 	async extract(
 		file: TFile,
 		metadata: CachedMetadata,
-		strategy: SingleBacklinkerStrategyMetadata
+		strategy: StrategyMetadata
 	): Promise<FileContents[]> {
 		let contents = await this.app.vault.cachedRead(file)
 

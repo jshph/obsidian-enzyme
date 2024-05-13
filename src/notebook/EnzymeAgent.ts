@@ -2,11 +2,9 @@ import { Aggregator } from '../aggregator/Aggregator'
 import { CandidateRetriever } from '../source/retrieve/CandidateRetriever'
 import {
 	ChatMessageWithMetadata,
-	SynthesisContainer,
-	SynthesisMessageMetadata
+	SynthesisContainer
 } from '../render/SynthesisContainer'
 import { BlockRefSubstitution } from '../types'
-import { ChatCompletionMessage } from '../types'
 import { AIClient } from './AIClient'
 import { prompts } from './prompts'
 import { App, Notice } from 'obsidian'
@@ -16,6 +14,7 @@ export type StrategyMetadata = {
 	dql?: string
 	id?: string
 	sourcePreamble?: string // Optional -- a preamble to be included about the source
+	evergreen?: string
 }
 
 export type SystemPrompts = {
@@ -179,8 +178,6 @@ export class EnzymeAgent {
 				synthesisContainer.appendText(textToAppend)
 			}
 		}
-
-		synthesisContainer.finalize()
 	}
 }
 

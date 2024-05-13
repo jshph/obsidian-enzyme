@@ -191,7 +191,7 @@ export class CodeBlockRenderer {
 
 				// Encase sources as collapsible Markdown block
 				renderedString +=
-					sourceStringParts.join('\n\n').split('\n').join('\n> ') + '\n\n'
+					sourceStringParts.join('\n\n---\n').split('\n').join('\n> ') + '\n\n'
 			}
 
 			renderedString += parsedContents.prompt
