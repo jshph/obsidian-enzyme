@@ -58,108 +58,110 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 	) {
 		super(app)
 		this.selectedItems = []
+		this.dqlResultEl = this.createDQLResultElement()
+		this.setupEventHandlers()
+		this.setInstructions(this.getModalInstructions())
+	}
 
-		// Setup result and preview container to be toggled between
-		this.dqlResultEl = createDiv({ cls: 'dql-results' })
+	private createDQLResultElement(): HTMLElement {
+		const dqlResultEl = createDiv({ cls: 'dql-results' })
 		this.resultContainerEl.parentElement.insertBefore(
-			this.dqlResultEl,
+			dqlResultEl,
 			this.resultContainerEl
 		)
+		return dqlResultEl
+	}
 
-		this.scope.register(['Shift'], 'Enter', (evt: KeyboardEvent) => {
-			// User has selected an item so we can remove the preview
-			this.hideDQLResult()
+	private setupEventHandlers(): void {
+		this.scope.register(['Shift'], 'Enter', this.handleShiftEnter.bind(this))
+		this.scope.register([], 'Tab', this.handleTab.bind(this))
+		this.scope.register(
+			['Mod'],
+			'Backspace',
+			this.handleModBackspace.bind(this)
+		)
+	}
 
-			// Let user select the next one from resultContainer
-			const selectItemResult = this.chooser.useSelectedItem(evt)
-			if (!selectItemResult) {
-				// Handle special case in limit mode, where number doesn't select a valid item
-				if (this.setLimitModeEnabled) {
-					this.onChooseItem(undefined, evt)
-				}
+	private handleShiftEnter(evt: KeyboardEvent): void {
+		this.hideDQLResult()
+		const selectItemResult = this.chooser.useSelectedItem(evt)
+		if (!selectItemResult && this.setLimitModeEnabled) {
+			this.onChooseItem(undefined, evt)
+		}
+		this.inputEl.value = ''
+	}
+
+	private handleTab(evt: KeyboardEvent): void {
+		evt.preventDefault()
+		const limitEl = this.inputEl.previousSibling as HTMLElement
+		if (!limitEl) {
+			new Notice('No item selected to set limit for')
+			return
+		}
+
+		if (this.setLimitModeEnabled) {
+			this.setLimitForCurrentItem()
+			this.disableLimitMode()
+		} else {
+			this.enableLimitMode(limitEl)
+		}
+	}
+
+	private handleModBackspace(evt: KeyboardEvent): void {
+		if (this.setLimitModeEnabled) {
+			this.disableLimitMode()
+		} else {
+			this.removeLastSelectedItem()
+		}
+	}
+
+	private enableLimitMode(limitEl: HTMLElement): void {
+		limitEl.addClass('active')
+		this.inputEl.value = ''
+		this.setLimitModeEnabled = true
+		this.renderDQLPreview()
+		this.showDQLResult()
+	}
+
+	private disableLimitMode(): void {
+		this.setLimitModeEnabled = false
+		this.inputEl.removeClass('limit-mode')
+		this.emptyStateText = this.defaultEmptyStateText
+		this.hideDQLResult()
+		this.inputEl.value = ''
+		this.updateSuggestions()
+
+		const limitEl = this.inputEl.previousSibling as HTMLElement
+		if (limitEl) {
+			limitEl.removeClass('active')
+		}
+	}
+
+	private removeLastSelectedItem(): void {
+		this.selectedItems.pop()
+		if (this.inputEl.previousSibling) {
+			const limitEl = this.inputEl.previousSibling
+			const itemEl = this.inputEl.previousSibling.previousSibling
+			this.inputEl.parentElement.removeChild(limitEl)
+			this.inputEl.parentElement.removeChild(itemEl)
+			if (!this.inputEl.previousSibling) {
+				this.inputEl.setCssStyles({ paddingLeft: this.nativeInputElPadding })
 			}
-			this.inputEl.value = ''
-		})
+		}
+	}
 
-		this.scope.register([], 'Tab', (evt: KeyboardEvent) => {
-			// Insert a pill to denote mode switch to typing in a tab
-			evt.preventDefault()
-
-			const limitEl = this.inputEl.previousSibling as HTMLElement
-			if (!limitEl) {
-				new Notice('No item selected to set limit for')
-				return
-			}
-
-			if (this.setLimitModeEnabled) {
-				// If in this mode, allow the user to use Tab rather than just Shift+Enter to set the limit
-				this.setLimitForCurrentItem()
-				this.setLimitModeEnabled = false
-				this.inputEl.removeClass('limit-mode')
-				this.emptyStateText = this.defaultEmptyStateText
-
-				limitEl.removeClass('active')
-
-				// Disable the limit mode removes the preview
-				this.hideDQLResult()
-				this.inputEl.value = ''
-
-				this.updateSuggestions()
-				return
-			}
-
-			limitEl.addClass('active')
-
-			this.inputEl.value = ''
-			this.setLimitModeEnabled = true
-
-			this.renderDQLPreview()
-			this.showDQLResult()
-		})
-
-		this.scope.register(['Mod'], 'Backspace', (evt: KeyboardEvent) => {
-			if (this.setLimitModeEnabled) {
-				this.setLimitModeEnabled = false
-				this.inputEl.removeClass('limit-mode')
-				this.emptyStateText = this.defaultEmptyStateText
-
-				// User has decided to cancel the limit setting operation
-				this.hideDQLResult()
-			} else {
-				this.selectedItems.pop()
-			}
-			if (this.inputEl.previousSibling) {
-				const limitEl = this.inputEl.previousSibling
-				const itemEl = this.inputEl.previousSibling.previousSibling
-				this.inputEl.parentElement.removeChild(limitEl)
-				this.inputEl.parentElement.removeChild(itemEl)
-
-				if (!this.inputEl.previousSibling) {
-					this.inputEl.setCssStyles({ paddingLeft: this.nativeInputElPadding })
-				}
-			}
-		})
-
-		const modalInstructions: Instruction[] = [
+	private getModalInstructions(): Instruction[] {
+		return [
 			{
 				command: 'tab',
 				purpose: 'Set the max number of files for the selection'
 			},
-			{
-				command: 'shift ↵',
-				purpose: 'Select and go to find another'
-			},
-			{
-				command: '↵',
-				purpose: 'Insert Enzyme block'
-			}
+			{ command: 'shift ↵', purpose: 'Select and go to find another' },
+			{ command: '↵', purpose: 'Insert Enzyme block' }
 		]
-
-		this.setInstructions(modalInstructions)
 	}
 
 	onOpen(): void {
-		// Want to be free to call close() without losing selectedItems
 		this.selectedItems = []
 		this.emptyStateText = this.defaultEmptyStateText
 	}
@@ -170,12 +172,11 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 		while (this.inputEl.previousSibling) {
 			this.inputEl.parentElement.removeChild(this.inputEl.previousSibling)
 		}
-
 		this.inputEl.setCssStyles({ paddingLeft: this.nativeInputElPadding })
 		this.setLimitModeEnabled = false
 	}
 
-	hideDQLResult() {
+	hideDQLResult(): void {
 		this.dqlResultEl.removeClass('active')
 		setTimeout(() => {
 			this.dqlResultEl.empty()
@@ -183,7 +184,7 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 		}, 700)
 	}
 
-	showDQLResult() {
+	showDQLResult(): void {
 		this.dqlResultEl.addClass('active')
 		setTimeout(() => {
 			this.resultContainerEl.setCssStyles({ display: 'none' })
@@ -333,6 +334,8 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 			limit = parseInt(this.inputEl.value)
 		} catch (e) {
 			new Notice(`Invalid limit value: ${this.inputEl.value}`)
+			this.disableLimitMode()
+			return
 		}
 
 		const limitEl = this.inputEl.previousSibling as HTMLElement
@@ -346,6 +349,10 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 	}
 
 	renderDQLPreview() {
+		if (this.selectedItems.length == 0) {
+			return
+		}
+
 		// Render the DQL preview in the DQL result container
 		let dqlResultPreview = dedent`
     ### Preview:
