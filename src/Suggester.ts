@@ -86,14 +86,18 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 			evt.preventDefault()
 
 			const limitEl = this.inputEl.previousSibling as HTMLElement
-			this.inputEl.addClass('limit-mode')
+			if (!limitEl) {
+				new Notice('No item selected to set limit for')
+				return
+			}
 
 			if (this.setLimitModeEnabled) {
 				// If in this mode, allow the user to use Tab rather than just Shift+Enter to set the limit
 				this.setLimitForCurrentItem()
 				this.setLimitModeEnabled = false
-
+				this.inputEl.removeClass('limit-mode')
 				this.emptyStateText = this.defaultEmptyStateText
+
 				limitEl.removeClass('active')
 
 				// Disable the limit mode removes the preview
@@ -116,6 +120,7 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 		this.scope.register(['Mod'], 'Backspace', (evt: KeyboardEvent) => {
 			if (this.setLimitModeEnabled) {
 				this.setLimitModeEnabled = false
+				this.inputEl.removeClass('limit-mode')
 				this.emptyStateText = this.defaultEmptyStateText
 
 				// User has decided to cancel the limit setting operation
@@ -161,6 +166,7 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 
 	onClose(): void {
 		this.inputEl.value = ''
+		this.hideDQLResult()
 		while (this.inputEl.previousSibling) {
 			this.inputEl.parentElement.removeChild(this.inputEl.previousSibling)
 		}
@@ -317,7 +323,6 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 
 	setLimitForCurrentItem() {
 		let limit
-		this.inputEl.removeClass('limit-mode')
 
 		if (this.inputEl.value == '') {
 			new Notice('Empty limit value')
@@ -336,7 +341,6 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 
 		// If in limit setting mode, a pill button was already inserted, so we just update the limit
 		this.selectedItems[this.selectedItems.length - 1].limit = limit
-		this.inputEl.removeClass('limit-mode')
 
 		this.renderDQLPreview()
 	}
