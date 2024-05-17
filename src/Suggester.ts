@@ -51,12 +51,24 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 	nativeInputElPadding: string
 	defaultLimit: number = 5
 	dqlResultEl: HTMLElement
+	selectModeEnabled: boolean = false
+	divInputEl: HTMLElement
+	atSpanContents: string = ''
 	constructor(
 		app: App,
 		private evergreenFolders: string[],
 		private longContentFolders: string[]
 	) {
 		super(app)
+
+		this.divInputEl = document.createElement('div')
+		this.divInputEl.addClasses(['prompt-input', 'editablediv'])
+		this.divInputEl.contentEditable = 'true'
+		this.inputEl.parentElement.insertBefore(this.divInputEl, this.inputEl)
+
+		// keep it around as a container for parent to use its value to search suggestions
+		this.inputEl.setCssStyles({ display: 'none' })
+
 		this.selectedItems = []
 		this.dqlResultEl = this.createDQLResultElement()
 		this.setupEventHandlers()
@@ -74,15 +86,20 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 
 	private setupEventHandlers(): void {
 		this.scope.register(['Shift'], 'Enter', this.handleShiftEnter.bind(this))
-		this.scope.register([], 'Tab', this.handleTab.bind(this))
-		this.scope.register(
-			['Mod'],
-			'Backspace',
-			this.handleModBackspace.bind(this)
-		)
+
+		// This took forever to find
+		this.scope.unregister(this.scope.keys.find((key) => key.key === 'Enter'))
+		this.scope.register([], 'Enter', (evt) => {
+			evt.preventDefault()
+			this.handleEnter(evt)
+		})
+
+		this.divInputEl.addEventListener('beforeinput', this.handleInput.bind(this))
 	}
 
 	private handleShiftEnter(evt: KeyboardEvent): void {
+		this.selectModeEnabled = false
+
 		this.hideDQLResult()
 		const selectItemResult = this.chooser.useSelectedItem(evt)
 		if (!selectItemResult && this.setLimitModeEnabled) {
@@ -91,51 +108,127 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 		this.inputEl.value = ''
 	}
 
-	private handleTab(evt: KeyboardEvent): void {
+	private handleEnter(evt: KeyboardEvent): void {
 		evt.preventDefault()
-		const limitEl = this.inputEl.previousSibling as HTMLElement
-		if (!limitEl) {
-			new Notice('No item selected to set limit for')
-			return
-		}
 
-		if (this.setLimitModeEnabled) {
-			this.setLimitForCurrentItem()
-			this.disableLimitMode()
+		// Break out of the span from below
+		const inputEl = this.divInputEl
+		const lastNode = inputEl.lastChild
+
+		this.chooser.useSelectedItem(evt)
+
+		if (lastNode.nodeType === Node.ELEMENT_NODE) {
+			lastNode.textContent =
+				this.selectedItems[this.selectedItems.length - 1].entity
+			lastNode.addClass('active')
 		} else {
-			this.enableLimitMode(limitEl)
+			this.close()
+			this.app.workspace.activeEditor.editor.replaceSelection(
+				this.produceEnzymeBlock()
+			)
 		}
 	}
 
-	private handleModBackspace(evt: KeyboardEvent): void {
-		if (this.setLimitModeEnabled) {
-			this.disableLimitMode()
-		} else {
-			this.removeLastSelectedItem()
+	private handleInput(evt: InputEvent): void {
+		evt.preventDefault()
+		const inputEl = this.divInputEl
+
+		if (evt.inputType === 'insertText' && evt.data === '@') {
+			// Create a new span element when '@' is typed
+			const span = document.createElement('span')
+			span.textContent = '@'
+			span.addClass('input-pill')
+
+			// Append the span to the div
+			inputEl.appendChild(span)
+
+			// Move the cursor to the end of the contentEditable div
+			const range = document.createRange()
+			const sel = window.getSelection()
+			range.setStartAfter(span)
+			range.collapse(true)
+			sel.removeAllRanges()
+			sel.addRange(range)
+		} else if (evt.inputType === 'insertText') {
+			// Append the newly typed character to the last text node or create a new text node
+			let lastNode = inputEl.lastChild
+			if (!lastNode) {
+				lastNode = document.createTextNode(evt.data)
+				inputEl.appendChild(lastNode)
+			} else {
+				lastNode.textContent += evt.data
+			}
+
+			if (lastNode.nodeType === Node.ELEMENT_NODE) {
+				this.inputEl.value = lastNode.textContent.slice(1)
+				this.updateSuggestions()
+			}
+
+			// Handle edge case for space insertion
+			if (evt.data === ' ') {
+				const spaceNode = document.createTextNode(' ')
+				inputEl.appendChild(spaceNode)
+			}
+
+			// Move the cursor to the end of the contentEditable div
+			const range = document.createRange()
+			const sel = window.getSelection()
+			range.selectNodeContents(inputEl)
+			range.collapse(false)
+			sel.removeAllRanges()
+			sel.addRange(range)
+		} else if (evt.inputType === 'deleteContentBackward') {
+			// Handle Backspace key by deleting the last character
+			const lastNode = inputEl.lastChild
+			if (lastNode.nodeType === Node.TEXT_NODE) {
+				lastNode.textContent = lastNode.textContent.slice(0, -1)
+				if (lastNode.textContent === '') {
+					inputEl.removeChild(lastNode)
+				}
+			} else if (lastNode.nodeType === Node.ELEMENT_NODE) {
+				inputEl.removeChild(lastNode)
+				this.selectedItems.remove(
+					this.selectedItems.find(
+						(item) => item.entity == lastNode.textContent.trim()
+					)
+				)
+
+				// Clear suggestions when we've just removed the last tag
+				this.inputEl.value = ''
+				this.updateSuggestions()
+			}
 		}
 	}
 
-	private enableLimitMode(limitEl: HTMLElement): void {
-		limitEl.addClass('active')
-		this.inputEl.value = ''
-		this.setLimitModeEnabled = true
-		this.renderDQLPreview()
-		this.showDQLResult()
-	}
+	// private handleModBackspace(evt: KeyboardEvent): void {
+	// 	if (this.setLimitModeEnabled) {
+	// 		this.disableLimitMode()
+	// 	} else {
+	// 		this.removeLastSelectedItem()
+	// 	}
+	// }
 
-	private disableLimitMode(): void {
-		this.setLimitModeEnabled = false
-		this.inputEl.removeClass('limit-mode')
-		this.emptyStateText = this.defaultEmptyStateText
-		this.hideDQLResult()
-		this.inputEl.value = ''
-		this.updateSuggestions()
+	// private enableLimitMode(limitEl: HTMLElement): void {
+	// 	limitEl.addClass('active')
+	// 	this.inputEl.value = ''
+	// 	this.setLimitModeEnabled = true
+	// 	this.renderDQLPreview()
+	// 	this.showDQLResult()
+	// }
 
-		const limitEl = this.inputEl.previousSibling as HTMLElement
-		if (limitEl) {
-			limitEl.removeClass('active')
-		}
-	}
+	// private disableLimitMode(): void {
+	// 	this.setLimitModeEnabled = false
+	// 	this.inputEl.removeClass('limit-mode')
+	// 	this.emptyStateText = this.defaultEmptyStateText
+	// 	this.hideDQLResult()
+	// 	this.inputEl.value = ''
+	// 	this.updateSuggestions()
+
+	// 	const limitEl = this.inputEl.previousSibling as HTMLElement
+	// 	if (limitEl) {
+	// 		limitEl.removeClass('active')
+	// 	}
+	// }
 
 	private removeLastSelectedItem(): void {
 		this.selectedItems.pop()
@@ -162,18 +255,19 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 	}
 
 	onOpen(): void {
+		this.divInputEl.textContent = ''
 		this.selectedItems = []
-		this.emptyStateText = this.defaultEmptyStateText
+		// this.emptyStateText = this.defaultEmptyStateText
 	}
 
 	onClose(): void {
-		this.inputEl.value = ''
-		this.hideDQLResult()
-		while (this.inputEl.previousSibling) {
-			this.inputEl.parentElement.removeChild(this.inputEl.previousSibling)
-		}
-		this.inputEl.setCssStyles({ paddingLeft: this.nativeInputElPadding })
-		this.setLimitModeEnabled = false
+		// this.inputEl.value = ''
+		// this.hideDQLResult()
+		// while (this.inputEl.previousSibling) {
+		// 	this.inputEl.parentElement.removeChild(this.inputEl.previousSibling)
+		// }
+		// this.inputEl.setCssStyles({ paddingLeft: this.nativeInputElPadding })
+		// this.setLimitModeEnabled = false
 	}
 
 	hideDQLResult(): void {
@@ -218,15 +312,14 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
       `
 		})
 
-		const concatenatedItems = this.selectedItems
-			.map((item) => item.entity.replace('#', ''))
-			.join(' and ')
+		// TODO as default
+		// Relate the recent mentions of ${concatenatedItems} together
 
 		return dedent`
       \`\`\`enzyme
       sources:
       ${sourcesText.join('\n')}
-      guidance: Relate the recent mentions of ${concatenatedItems} together
+      guidance: "${this.divInputEl.innerText}"
       \`\`\`
     `
 	}
@@ -386,11 +479,11 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 			evt.shiftKey ||
 			!(this.selectedItems.length > 0 && this.inputEl.value == '')
 		) {
-			this.nativeInputElPadding =
-				this.inputEl.getCssPropertyValue('paddingLeft')
-			this.inputEl.setCssStyles({ paddingLeft: '5px' }) // If adding a pill, reduce the padding before the pill
+			// this.nativeInputElPadding =
+			// 	this.inputEl.getCssPropertyValue('paddingLeft')
+			// this.inputEl.setCssStyles({ paddingLeft: '5px' }) // If adding a pill, reduce the padding before the pill
 
-			this.insertPillForItem(item)
+			// this.insertPillForItem(item)
 
 			let strategy: Strategy
 			switch (item.type) {
@@ -422,13 +515,6 @@ export class Suggester extends FuzzySuggestModal<SuggesterSource> {
 				limit: this.defaultLimit,
 				strategy
 			})
-		}
-
-		if (!evt.shiftKey) {
-			this.close()
-			this.app.workspace.activeEditor.editor.replaceSelection(
-				this.produceEnzymeBlock()
-			)
 		}
 	}
 }

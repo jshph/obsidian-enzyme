@@ -1,5 +1,8 @@
 import { Editor } from 'obsidian'
-import { CodeBlockRenderer } from './CodeBlockRenderer'
+import {
+	CodeBlockRenderer,
+	defaultSourcesForContents
+} from './CodeBlockRenderer'
 import { StrategyMetadata } from '../notebook/EnzymeAgent'
 import { DQLStrategy } from 'source/extract/Strategy'
 import { ChatCompletionMessage } from 'openai/resources'
@@ -204,13 +207,9 @@ export class SynthesisContainer {
 				parsedContents =
 					this.renderer.parseEnzymeBlockContents(displayedContent)
 
-				// Mirror the logic in CodeBlockRenderer.ts
+				// If there are no sources, add a default source
 				if (index === 0 && parsedContents.sources.length === 0) {
-					parsedContents.sources = [
-						{
-							strategy: DQLStrategy[DQLStrategy.RecentMentions]
-						}
-					]
+					parsedContents.sources = defaultSourcesForContents(displayedContent)
 				}
 			}
 

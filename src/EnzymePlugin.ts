@@ -102,6 +102,14 @@ export class EnzymePlugin extends Plugin {
 		)
 
 		this.addCommand({
+			id: 'build-enzyme-block-from-selection',
+			name: 'Build an Enzyme block from selection',
+			editorCallback: async (editor) => {
+				this.noteRenderer.buildEnzymeBlockFromCurLine()
+			}
+		})
+
+		this.addCommand({
 			id: 'build-enzyme-block',
 			name: 'Build an Enzyme block with type-ahead to select sources',
 			editorCallback: async (editor) => {

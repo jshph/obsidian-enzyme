@@ -97,6 +97,18 @@
   transition: opacity 0.2s ease-in;
   opacity: 1;
 }
-.limit-mode {
-  color: var(--interactive-accent) !important;
+.input-pill {
+  padding: 5px;
+  background-color: var(--color-base-35);
+  border-radius: 5px;
+  margin: 2px;
+}
+.input-pill.active {
+  background-color: var(--interactive-accent);
+}
+.prompt-input.editablediv {
+  width: 100%;
+  height: 1rem;
+  padding: 1rem 1rem 2.3rem 1rem;
+  margin: 10px;
 }
