@@ -1,11 +1,7 @@
 import { Editor } from 'obsidian'
-import {
-	CodeBlockRenderer,
-	defaultSourcesForContents
-} from './CodeBlockRenderer'
+import { CodeBlockRenderer } from './CodeBlockRenderer'
 import { StrategyMetadata } from '../notebook/EnzymeAgent'
-import { DQLStrategy } from 'source/extract/Strategy'
-import { ChatCompletionMessage } from 'openai/resources'
+import { processRawContents } from './EnzymeBlockConstructor'
 
 export type AggregatorMetadata = {
 	aggregatorId?: string
@@ -209,7 +205,9 @@ export class SynthesisContainer {
 
 				// If there are no sources, add a default source
 				if (index === 0 && parsedContents.sources.length === 0) {
-					parsedContents.sources = defaultSourcesForContents(displayedContent)
+					const processedRawContents = processRawContents(displayedContent)
+					parsedContents.sources = processedRawContents.sources
+					parsedContents.prompt = processedRawContents.prompt
 				}
 			}
 

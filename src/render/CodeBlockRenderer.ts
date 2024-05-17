@@ -9,8 +9,9 @@ import { SynthesisContainer } from './SynthesisContainer'
 import * as yaml from 'yaml'
 import { Notice } from 'obsidian'
 import { DQLStrategy, SELECTABLE_STRATEGIES } from 'source/extract/Strategy'
-import { DataviewCandidateRetriever } from 'source/retrieve'
 import dedent from 'dedent-js'
+import { DataviewCandidateRetriever } from 'source/retrieve'
+import { processRawContents } from './EnzymeBlockConstructor'
 
 type EnzymeBlockContents = {
 	prompt: string
@@ -128,13 +129,16 @@ export class CodeBlockRenderer {
 
 			// Extract sources and generate markdown sections
 			sources = parsedContents.sources
+			let prompt = parsedContents.prompt
 
 			const messagesSoFar = tempSynthesisContainer.getMessagesToHere()
 
 			// Default to RecentMentions if no sources are provided and this is the first message
 			// need to do this fudging in order to render it properly, but it's not needed for all uses of parseEnzymeBlockContents
 			if (sources.length === 0 && messagesSoFar.length === 1) {
-				sources = defaultSourcesForContents(blockContents)
+				const processedContents = processRawContents(blockContents)
+				sources = processedContents.sources
+				prompt = processedContents.prompt
 			} else if (sources.length === 1 && !sources[0].strategy) {
 				sources[0].strategy = DQLStrategy[DQLStrategy.Basic]
 			}
@@ -193,7 +197,7 @@ export class CodeBlockRenderer {
 					sourceStringParts.join('\n\n---\n').split('\n').join('\n> ') + '\n\n'
 			}
 
-			renderedString += parsedContents.prompt
+			renderedString += prompt
 
 			this.renderIntoEl(el, renderedString, context, executionLock)
 
@@ -413,58 +417,4 @@ export class CodeBlockRenderer {
 			}
 		}
 	}
-}
-
-export function defaultSourcesForContents(
-	contents: string
-): StrategyMetadata[] {
-	const entities = extractEntitiesFromRawContents(contents)
-	if (entities.length > 0) {
-		// Create a SingleEvergreenReferrer for each entity or tag
-		return entities.map((entity) => {
-			let filter: string
-			if (entity.startsWith('#')) {
-				filter = `contains(file.tags, "${entity}")`
-			} else if (entity.startsWith('[[')) {
-				filter = `contains(file.outlinks, "${entity}")`
-			}
-			return {
-				strategy: DQLStrategy[DQLStrategy.SingleEvergreenReferrer],
-				dql: `LIST WHERE ${filter} SORT file.ctime DESC LIMIT 5`,
-				evergreen: entity
-			}
-		})
-	} else {
-		return [
-			{
-				strategy: DQLStrategy[DQLStrategy.RecentMentions]
-			}
-		]
-	}
-}
-
-/**
- * Extracts entities from the raw contents of a markdown file.
- * @param contents
- * @returns
- */
-export function extractEntitiesFromRawContents(contents: string): string[] {
-	const entities = []
-	const lines = contents.split('\n')
-	for (const line of lines) {
-		const entityMatches = line.match(/!\[([^\]]+)\]/g)
-		if (entityMatches) {
-			for (const match of entityMatches) {
-				const entity = match.match(/\[([^\]]+)\]/)[1]
-				entities.push(entity)
-			}
-		}
-		const tagMatches = line.match(/#(\w+)/g)
-		if (tagMatches) {
-			for (const tag of tagMatches) {
-				entities.push(tag)
-			}
-		}
-	}
-	return entities
 }

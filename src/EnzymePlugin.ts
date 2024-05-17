@@ -5,7 +5,6 @@ import { CodeBlockRenderer } from './render'
 import { EnzymeAgent, AIClient, getSystemPrompts } from './notebook'
 import { DataviewApi, getAPI } from './obsidian-modules/dataview-handler'
 import { DataviewCandidateRetriever } from './source/retrieve/DataviewCandidateRetriever'
-import { Suggester } from 'Suggester'
 
 export class EnzymePlugin extends Plugin {
 	settings: EnzymeSettings
@@ -15,7 +14,6 @@ export class EnzymePlugin extends Plugin {
 	dataview: DataviewApi
 	candidateRetriever: DataviewCandidateRetriever
 	doCollapseEmbeds: boolean = false
-	suggester: Suggester
 
 	constructor(app: App, pluginManifest: PluginManifest) {
 		super(app, pluginManifest)
@@ -50,11 +48,6 @@ export class EnzymePlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings()
-		this.suggester = new Suggester(
-			this.app,
-			this.settings.evergreenFolders,
-			this.settings.trimFolders
-		)
 
 		this.candidateRetriever = new DataviewCandidateRetriever(
 			this.settings,
@@ -106,14 +99,6 @@ export class EnzymePlugin extends Plugin {
 			name: 'Build an Enzyme block from selection',
 			editorCallback: async (editor) => {
 				this.noteRenderer.buildEnzymeBlockFromCurLine()
-			}
-		})
-
-		this.addCommand({
-			id: 'build-enzyme-block',
-			name: 'Build an Enzyme block with type-ahead to select sources',
-			editorCallback: async (editor) => {
-				this.suggester.open()
 			}
 		})
 
