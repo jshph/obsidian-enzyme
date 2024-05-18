@@ -15,7 +15,6 @@ Enzyme retrieves and helps synthesize your Obsidian notes right in the editor. I
 - **Chat in markdown**: Chat UI that works entirely in Markdown / YAML (like a Jupyter Notebook for your notes)
 - **Navigable output**: Renders relevant block embeds inline with the generated output, so you can navigate to the source
 - **Flexible retrieval**: Powerful note retrieval powered by Dataview and extensible content extraction (a la YAML in a codeblock). Embedding-based retrieval is on the roadmap.
-- **Workflow templates**: Re-curate your notes as they update, with workflow templates powered by Obsidian Canvas
 
 If you enjoy this plugin, please consider supporting its development:
 
