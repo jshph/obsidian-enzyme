@@ -8,7 +8,7 @@ Visit [enzyme.garden/getting-started](https://www.enzyme.garden/getting-started)
 
 You can also join the conversation on [Discord](https://discord.gg/UmShHCmh)!
 
-![](enzyme_suggester_demo.gif)
+![](enzyme_demo.gif)
 
 Enzyme retrieves and helps synthesize your Obsidian notes right in the editor. It features:
 
