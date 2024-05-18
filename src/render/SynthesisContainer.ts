@@ -2,6 +2,7 @@ import { Editor } from 'obsidian'
 import { CodeBlockRenderer } from './CodeBlockRenderer'
 import { StrategyMetadata } from '../notebook/EnzymeAgent'
 import { processRawContents } from './EnzymeBlockConstructor'
+import { DQLStrategy } from 'source/extract/Strategy'
 
 export type AggregatorMetadata = {
 	aggregatorId?: string
@@ -204,9 +205,13 @@ export class SynthesisContainer {
 					this.renderer.parseEnzymeBlockContents(displayedContent)
 
 				// If there are no sources, add a default source
-				if (index === 0 && parsedContents.sources.length === 0) {
-					const processedRawContents = processRawContents(displayedContent)
+				if (parsedContents.sources.length === 0) {
+					const processedRawContents = processRawContents(
+						displayedContent,
+						index > 0
+					)
 					parsedContents.sources = processedRawContents.sources
+
 					parsedContents.prompt = processedRawContents.prompt
 				}
 			}

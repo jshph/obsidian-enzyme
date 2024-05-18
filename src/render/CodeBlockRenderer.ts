@@ -135,8 +135,11 @@ export class CodeBlockRenderer {
 
 			// Default to RecentMentions if no sources are provided and this is the first message
 			// need to do this fudging in order to render it properly, but it's not needed for all uses of parseEnzymeBlockContents
-			if (sources.length === 0 && messagesSoFar.length === 1) {
-				const processedContents = processRawContents(blockContents)
+			if (sources.length === 0) {
+				const processedContents = processRawContents(
+					blockContents,
+					messagesSoFar.length > 1
+				)
 				sources = processedContents.sources
 				prompt = processedContents.prompt
 			} else if (sources.length === 1 && !sources[0].strategy) {

@@ -9,9 +9,15 @@ export enum EnzymeSourceType {
 	Folder
 }
 
-export function defaultSourcesForContents(
-	contents: string
-): StrategyMetadata[] {
+const ENTITY_PATTERN = /(\[\[[^\]]+\]\])(<\d+)?/g
+const TAG_PATTERN = /(#[\w-]+(?:\/[\w-]+)*)(<\d+)?/g
+const FOLDER_PATTERN = /([A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\/)(<\d+)?/g
+const ENTITY_MATCH_PATTERN = /(\[\[.*\]\])(<(\d+))?/
+const TAG_MATCH_PATTERN = /(#[\w-]+(?:\/[\w-]+)*)(<(\d+))?/
+const FOLDER_MATCH_PATTERN =
+	/([A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\/)(<(\d+))?/
+
+function defaultSourcesForContents(contents: string): StrategyMetadata[] {
 	const entities = extractSourcesFromRawContents(contents)
 	if (entities.length > 0) {
 		return entities.map((entity) => {
@@ -22,21 +28,18 @@ export function defaultSourcesForContents(
 						dql: `LIST WHERE contains(file.outlinks, ${entity.entity}) SORT file.ctime DESC LIMIT ${entity.limit}`,
 						evergreen: entity.entity
 					}
-					break
 				case EnzymeSourceType.Tag:
 					return {
 						strategy: DQLStrategy[DQLStrategy.SingleEvergreenReferrer],
 						dql: `LIST WHERE contains(file.tags, "${entity.entity}") SORT file.ctime DESC LIMIT ${entity.limit}`,
 						evergreen: entity.entity
 					}
-					break
 				case EnzymeSourceType.Folder:
 					let folder = entity.entity.slice(0, -1)
 					return {
 						strategy: DQLStrategy[DQLStrategy.LongContent], // TODO
 						dql: `LIST FROM "${folder}" SORT file.ctime DESC LIMIT ${entity.limit}`
 					}
-					break
 			}
 		})
 	} else {
@@ -48,21 +51,14 @@ export function defaultSourcesForContents(
 	}
 }
 
-/**
- * Extracts entities from raw string if mentioned
- * @param contents
- * @returns
- */
-export function extractSourcesFromRawContents(
+function extractSourcesFromRawContents(
 	contents: string
 ): { entity: string; type: EnzymeSourceType; limit: number }[] {
 	const entities = []
-	const entityMatches: RegExpMatchArray | null = contents.match(
-		/(\[\[[^\]]+\]\])(<\d+)?/g
-	)
+	const entityMatches: RegExpMatchArray | null = contents.match(ENTITY_PATTERN)
 	if (entityMatches) {
 		for (const entity of entityMatches) {
-			const entityMatch = entity.match(/(\[\[.*\]\])(<(\d+))?/)
+			const entityMatch = entity.match(ENTITY_MATCH_PATTERN)
 			if (entityMatch) {
 				const entity = entityMatch[1]
 				const limit = entityMatch[3] ? parseInt(entityMatch[3]) : 5
@@ -74,11 +70,10 @@ export function extractSourcesFromRawContents(
 			}
 		}
 	}
-	const tagMatches: RegExpMatchArray | null =
-		contents.match(/(#[\w-\/]+)(<\d+)?/g)
+	const tagMatches: RegExpMatchArray | null = contents.match(TAG_PATTERN)
 	if (tagMatches) {
 		for (const tag of tagMatches) {
-			const entityMatch = tag.match(/(#[\w-\/]+)(<(\d+))?/)
+			const entityMatch = tag.match(TAG_MATCH_PATTERN)
 			if (entityMatch) {
 				const entity = entityMatch[1]
 				const limit = entityMatch[3] ? parseInt(entityMatch[3]) : 5
@@ -90,16 +85,14 @@ export function extractSourcesFromRawContents(
 			}
 		}
 	}
-	const folderMatches: RegExpMatchArray | null = contents.match(
-		/([A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\/)(<\d+)?/g
-	)
+	const folderMatches: RegExpMatchArray | null = contents.match(FOLDER_PATTERN)
 	if (folderMatches) {
 		for (const folder of folderMatches) {
-			// Ensure the match is not a tag with subtag (e.g., #tag/subtag)
-			if (!folder.startsWith('#')) {
-				const entityMatch = folder.match(
-					/([A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\/)(<(\d+))?/
-				)
+			// Find the index of the match in the original content
+			const startIndex = contents.indexOf(folder)
+			// Check if the character before the match is not '#'
+			if (startIndex === 0 || contents[startIndex - 1] !== '#') {
+				const entityMatch = folder.match(FOLDER_MATCH_PATTERN)
 				if (entityMatch) {
 					const entity = entityMatch[1]
 					const limit = entityMatch[3] ? parseInt(entityMatch[3]) : 5
@@ -118,9 +111,9 @@ export function extractSourcesFromRawContents(
 function promptOnlyContainsEntities(prompt: string): boolean {
 	// Replace tags and entities with empty strings
 	const strippedPrompt = prompt
-		.replace(/\[\[.*\]\](<\d+)?/g, '')
-		.replace(/#(\w+)(<\d+)?/g, '')
-		.replace(/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\/(<\d+)?/g, '')
+		.replace(ENTITY_PATTERN, '')
+		.replace(TAG_PATTERN, '')
+		.replace(FOLDER_PATTERN, '')
 		.trim()
 
 	const entities = extractSourcesFromRawContents(prompt)
@@ -130,12 +123,24 @@ function cleanPrompt(prompt: string): string {
 	return prompt.replace(/(<\d+)?/g, '').trim()
 }
 
-export function processRawContents(rawContents: string): {
+export function processRawContents(
+	rawContents: string,
+	excludeNoEntityDefault: boolean = false
+): {
 	sources: StrategyMetadata[]
 	prompt: string
 } {
 	let prompt: string
 	let sources = defaultSourcesForContents(rawContents)
+
+	// If the prompt doesn't contain any entities, remove the default recent mentions strategy
+	// used if this is a followup prompt, i.e. no need to fetch additioanl sources
+	if (excludeNoEntityDefault) {
+		sources = sources.filter(
+			(s) => s.strategy !== DQLStrategy[DQLStrategy.RecentMentions]
+		)
+	}
+
 	if (promptOnlyContainsEntities(rawContents)) {
 		prompt = 'Relate the '
 		let parts = ''
