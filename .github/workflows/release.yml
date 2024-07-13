@@ -21,15 +21,15 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: '20.x'
-      - name: Build
-        id: build
+      - name: Authenticate with GitHub
+        run: |
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PAT }}" > ~/.npmrc
+          git config --global url."https://${{ secrets.GH_PAT }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Install dependencies
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GH_PAT }}
-          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
-          git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
-          git config --global url."https://github.com/".insteadOf "git@github.com:"
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PAT }}" > ~/.npmrc
           npm install
           npm run build
           mkdir ${{ env.PLUGIN_NAME }}
