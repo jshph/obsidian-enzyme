@@ -21,13 +21,12 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: '20.x'
-      - name: Authenticate with GitHub package registry
-        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PAT }}" > ~/.npmrc
       - name: Build
         id: build
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GH_PAT }}" > ~/.npmrc
           npm install
           npm run build
           mkdir ${{ env.PLUGIN_NAME }}
