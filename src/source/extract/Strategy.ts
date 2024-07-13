@@ -1,4 +1,4 @@
-import { StrategyMetadata } from 'notebook/EnzymeAgent'
+import { StrategyMetadata } from '../../notebook/ObsidianEnzymeAgent'
 
 export enum DQLStrategy {
 	SingleEvergreenReferrer = 'SingleEvergreenReferrer',

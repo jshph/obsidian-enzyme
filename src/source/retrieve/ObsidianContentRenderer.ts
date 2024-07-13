@@ -2,22 +2,16 @@ import { TFile, CachedMetadata, App } from 'obsidian'
 import { DataviewApi, getAPI } from '../../obsidian-modules/dataview-handler'
 import { ExtractorDelegator } from '../extract/ExtractorDelegator'
 import { EnzymeSettings } from '../../settings/EnzymeSettings'
-import { BlockRefSubstitution } from '../../types'
-import { FileContents as ExtractorFileContents } from 'source/extract/BaseExtractor'
-import { StrategyMetadata } from 'notebook/EnzymeAgent'
-
-export type FileContents = {
-	title: string
-	contents: string
-	substitutions: BlockRefSubstitution[]
-}
+import { FileContents } from 'enzyme-core'
+import { FileContents as ExtractorFileContents } from '../extract/BaseExtractor'
+import { StrategyMetadata } from '../../notebook/ObsidianEnzymeAgent'
 
 /**
- * ContentRenderer is responsible for preparing and rendering the contents of files.
+ * ObsidianContentRenderer is responsible for preparing and rendering the contents of files.
  * It utilizes the Dataview API for data retrieval and an ExtractorDelegator for content extraction.
  * It may extract the contents of specified files or files determined by a specified strategy
  */
-export class ContentRenderer {
+export class ObsidianContentRenderer {
 	dataviewAPI: DataviewApi
 	extractor: ExtractorDelegator
 

@@ -1,25 +1,36 @@
 import { Plugin, App, PluginManifest, Notice } from 'obsidian'
+import { AIClient, getSystemPrompts, Server } from 'enzyme-core'
 import { EnzymeSettings, DEFAULT_SETTINGS } from './settings/EnzymeSettings'
 import SettingsTab from './settings/SettingsTab'
-import { CodeBlockRenderer } from './render'
-import { EnzymeAgent, AIClient, getSystemPrompts } from './notebook'
+import { CodeBlockRenderer } from './render/CodeBlockRenderer'
+import { ObsidianEnzymeAgent } from './notebook/ObsidianEnzymeAgent'
 import { DataviewApi, getAPI } from './obsidian-modules/dataview-handler'
 import { DataviewCandidateRetriever } from './source/retrieve/DataviewCandidateRetriever'
+import { EnzymeBlockConstructor } from './render/EnzymeBlockConstructor'
+import { DataviewGraphLinker } from './render/DataviewGraphLinker'
+import { ProxyServer } from './notebook/ProxyServer'
 
 export class EnzymePlugin extends Plugin {
 	settings: EnzymeSettings
-	enzymeAgent: EnzymeAgent
+	obsidianEnzymeAgent: ObsidianEnzymeAgent
 	noteRenderer: CodeBlockRenderer
 	aiClient: AIClient
 	dataview: DataviewApi
 	candidateRetriever: DataviewCandidateRetriever
 	doCollapseEmbeds: boolean = false
+	enzymeBlockConstructor: EnzymeBlockConstructor
+	dataviewGraphLinker: DataviewGraphLinker
+	reasonCodeBlockProcessor: any
+	enzymeCodeBlockProcessor: any
 
 	constructor(app: App, pluginManifest: PluginManifest) {
 		super(app, pluginManifest)
 		this.settings = DEFAULT_SETTINGS
 		this.dataview = getAPI(this.app)
-		this.aiClient = new AIClient()
+		this.aiClient = new AIClient(
+			(baseURL: string) =>
+				new ProxyServer(baseURL, 3123, `http://localhost:3123`)
+		)
 	}
 
 	async initAIClient() {
@@ -48,6 +59,11 @@ export class EnzymePlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings()
+		this.dataviewGraphLinker = new DataviewGraphLinker(
+			this.app,
+			this.dataview,
+			this.settings
+		)
 
 		this.candidateRetriever = new DataviewCandidateRetriever(
 			this.settings,
@@ -58,9 +74,15 @@ export class EnzymePlugin extends Plugin {
 
 		const prompts = await getSystemPrompts()
 
-		this.enzymeAgent = new EnzymeAgent(
+		this.enzymeBlockConstructor = new EnzymeBlockConstructor(
+			this.app,
+			this.settings
+		)
+
+		this.obsidianEnzymeAgent = new ObsidianEnzymeAgent(
 			this.app,
 			this.aiClient,
+			this.enzymeBlockConstructor,
 			this.candidateRetriever,
 			() =>
 				(() =>
@@ -89,10 +111,22 @@ export class EnzymePlugin extends Plugin {
 
 		this.noteRenderer = new CodeBlockRenderer(
 			this.app,
-			this.enzymeAgent,
-			this.registerMarkdownCodeBlockProcessor.bind(this),
-			this.candidateRetriever
+			this.obsidianEnzymeAgent,
+			this.candidateRetriever,
+			this.dataviewGraphLinker
 		)
+
+		try {
+			this.enzymeCodeBlockProcessor = this.registerMarkdownCodeBlockProcessor(
+				'enzyme',
+				this.noteRenderer.renderEnzyme.bind(this.noteRenderer)
+			)
+
+			this.reasonCodeBlockProcessor = this.registerMarkdownCodeBlockProcessor(
+				'reason',
+				this.noteRenderer.renderEnzyme.bind(this.noteRenderer)
+			)
+		} catch (e) {}
 
 		this.addCommand({
 			id: 'build-enzyme-block-from-selection',
@@ -103,18 +137,16 @@ export class EnzymePlugin extends Plugin {
 		})
 
 		this.addCommand({
-			id: 'toggle-hide-embeds',
-			name: 'Toggle collapsed embeds in digest output',
+			id: 'toggle-truncate-embeds',
+			name: 'Truncate embed previews (across Obsidian)',
 			editorCallback: async (editor) => {
 				let newHeight
 				if (this.doCollapseEmbeds) {
 					this.doCollapseEmbeds = false
-					new Notice('Embeds will be shown in digest output')
-					newHeight = '20rem'
+					newHeight = '100%'
 				} else {
 					this.doCollapseEmbeds = true
-					new Notice('Embeds will be hidden in digest output')
-					newHeight = '0.5rem'
+					newHeight = '20rem'
 				}
 
 				document.documentElement.style.setProperty(
@@ -123,10 +155,26 @@ export class EnzymePlugin extends Plugin {
 				)
 			}
 		})
+
+		this.addCommand({
+			id: 'unlock-graph',
+			name: 'Unlock graph',
+			editorCallback: async (editor) => {
+				this.dataviewGraphLinker.unlockGraph()
+			}
+		})
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
+		if (!this.settings) {
+			this.settings = DEFAULT_SETTINGS
+		}
+		const loadedData = await this.loadData()
+		for (const key in loadedData) {
+			if (Object.prototype.hasOwnProperty.call(loadedData, key)) {
+				this.settings[key] = loadedData[key]
+			}
+		}
 	}
 
 	async saveSettings() {

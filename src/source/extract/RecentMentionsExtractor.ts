@@ -2,9 +2,9 @@ import { DataviewApi } from 'obsidian-dataview'
 import { BaseExtractor, FileContents } from './BaseExtractor'
 import { App, CachedMetadata, TFile } from 'obsidian'
 import { SingleBacklinkerExtractor } from './SingleBacklinkerExtractor'
-import { DQLStrategy } from 'source/extract/Strategy'
+import { DQLStrategy } from './Strategy'
 import { BasicExtractor } from './BasicExtractor'
-import { StrategyMetadata } from 'notebook/EnzymeAgent'
+import { StrategyMetadata } from '../../notebook/ObsidianEnzymeAgent'
 
 export type RecentMentionsStrategyMetadata = StrategyMetadata & {
 	numReadwiseFiles: number

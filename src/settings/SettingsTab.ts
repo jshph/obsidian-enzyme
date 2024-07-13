@@ -1,4 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting, requestUrl } from 'obsidian'
+import { App, PluginSettingTab, Setting } from 'obsidian'
 import { EnzymePlugin } from '../EnzymePlugin'
 import { DEFAULT_SETTINGS } from './EnzymeSettings'
 
@@ -131,7 +131,7 @@ export class SettingsTab extends PluginSettingTab {
 		loaderSettings.addButton((button) => {
 			button.setButtonText('Reload Settings').onClick(() => {
 				this.display()
-				this.plugin.initAIClient()
+				this.plugin.loadSettings()
 			}).buttonEl.style.marginLeft = '10px'
 		})
 
@@ -157,30 +157,32 @@ export class SettingsTab extends PluginSettingTab {
 		})
 
 		new Setting(containerEl)
-			.setName('Folders for evergreens')
+			.setName('Exclude from Evergreen extraction strategy')
 			.setDesc(
-				'Evergreens are notes that are commonly referenced, i.e. people, ideas, other entities. The command palette helper will filter for notes in these folders. If empty, it will search over the whole vault. Separate paths with a newline.'
+				'By default, when a [[link]] is mentioned in an Enzyme block, Enzyme will treat mentions of [[link]] as source material (as an evergreen). Add paths to this list to exclude from this strategy. For any files in this list, Enzyme will extract their full contents. Separate paths with newlines.'
 			)
 			.addTextArea((text) => {
 				text
 					.setPlaceholder('Folders')
 					.onChange(async (value) => {
 						if (value.trim().length > 0) {
-							this.plugin.settings.evergreenFolders = value.split('\n')
+							this.plugin.settings.basicExtractionFolders = value.split('\n')
 						} else {
-							this.plugin.settings.evergreenFolders = []
+							this.plugin.settings.basicExtractionFolders = []
 						}
 						this.plugin.saveSettings()
 					})
 					.setValue(
-						this.plugin.settings.evergreenFolders.join('\n')
+						this.plugin.settings.basicExtractionFolders?.length > 0
+							? this.plugin.settings.basicExtractionFolders.join('\n')
+							: ''
 					).inputEl.style.width = DEFAULT_INPUT_WIDTH
 			})
 
 		new Setting(containerEl)
-			.setName('Folders to trim contents')
+			.setName('Trim contents')
 			.setDesc(
-				'Enzyme will trim the contents of files in these folders to the last few blocks. This prevents long files from being entirely fed to the model'
+				'Override for similar purposes as the previous setting, but rather than extract full contents, trim to the end of the file. Examples might be folders where files contain book highlights (long files).'
 			)
 			.addTextArea((text) => {
 				text
@@ -194,8 +196,24 @@ export class SettingsTab extends PluginSettingTab {
 						this.plugin.saveSettings()
 					})
 					.setValue(
-						this.plugin.settings.trimFolders.join('\n')
+						this.plugin.settings.trimFolders?.length > 0
+							? this.plugin.settings.trimFolders.join('\n')
+							: ''
 					).inputEl.style.width = DEFAULT_INPUT_WIDTH
+			})
+
+		new Setting(containerEl)
+			.setName('Visualize sources in graph')
+			.setDesc(
+				'Enable visualization of Dataview sources in Graph view. This is a togglable setting because it overrides the default Obsidian Graph behavior (with this enabled, to reset the Graph state you can use the `Enzyme: Unlock graph` command). The best way to use this is to have Graph view opened in a separate pane.'
+			)
+			.addToggle((component) => {
+				component
+					.setValue(this.plugin.settings.visualizeSourceInGraph)
+					.onChange(async (value) => {
+						this.plugin.settings.visualizeSourceInGraph = value
+						this.plugin.saveSettings()
+					})
 			})
 
 		new Setting(containerEl)

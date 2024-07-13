@@ -9,14 +9,15 @@ import http from 'http'
 export class ProxyServer {
 	private server: http.Server | null = null
 	constructor(
-		url: string,
-		private port: number
+		targetURL: string,
+		private port: number,
+		public baseURL: string
 	) {
 		const app = new Koa()
 		app.use(cors())
 		app.use(
 			proxy('/', {
-				target: url,
+				target: targetURL,
 				changeOrigin: true
 			})
 		)

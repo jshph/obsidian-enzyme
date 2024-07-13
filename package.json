@@ -1,8 +1,7 @@
 {
 	"name": "obsidian-enzyme",
 	"version": "0.0.1",
-	"description": "Obsidian plugin to Retrieve, Extract, Analyze, and Synthesize Obsidian Notes",
-	"main": "main.js",
+	"module": "src/index.ts",
 	"scripts": {
 		"dev": "NODE_ENV=development node esbuild.config.mjs",
 		"build": "NODE_ENV=production node esbuild.config.mjs production",
@@ -10,10 +9,25 @@
 	},
 	"keywords": [],
 	"author": "",
-	"type": "module",
+	"include": [
+		"src/**/*.ts"
+	],
+	"types": "src/types.d.ts",
+	"exclude": [
+		"node_modules",
+		"dist"
+	],
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.17.2",
 		"@koa/cors": "^5.0.0",
+		"@tiptap/extension-bubble-menu": "^2.4.0",
+		"@tiptap/extension-highlight": "^2.4.0",
+		"@tiptap/extension-mention": "^2.4.0",
+		"@tiptap/extension-placeholder": "^2.4.0",
+		"@tiptap/pm": "^2.4.0",
+		"@tiptap/react": "^2.4.0",
+		"@tiptap/starter-kit": "^2.4.0",
+		"@tiptap/suggestion": "^2.4.0",
 		"@types/koa": "^2.15.0",
 		"@types/koa__cors": "^5.0.0",
 		"@types/node": "^20.11.30",
@@ -22,6 +36,7 @@
 		"builtin-modules": "3.3.0",
 		"codemirror": "6.0.1",
 		"dedent-js": "^1.0.1",
+		"enzyme-core": "https://github.com/jshph/enzyme-core.git#master",
 		"esbuild": "0.19.11",
 		"esbuild-sass-plugin": "2.16.1",
 		"eslint": "^8.57.0",

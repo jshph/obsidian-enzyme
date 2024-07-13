@@ -1,8 +1,8 @@
 import { App, CachedMetadata, TFile } from 'obsidian'
 import { BaseExtractor, FileContents } from './BaseExtractor'
 import { DataviewApi } from 'obsidian-dataview'
-import { StrategyMetadata } from 'notebook/EnzymeAgent'
-import { DQLStrategy } from 'source/extract/Strategy'
+import { StrategyMetadata } from '../../notebook/ObsidianEnzymeAgent'
+import { DQLStrategy } from './Strategy'
 
 export class BasicExtractor extends BaseExtractor {
 	strategy = DQLStrategy.Basic

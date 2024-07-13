@@ -12,7 +12,7 @@ import {
 	RecentMentionsStrategyMetadata
 } from './RecentMentionsExtractor'
 import { BasicExtractor } from './BasicExtractor'
-import { StrategyMetadata } from 'notebook/EnzymeAgent'
+import { StrategyMetadata } from '../../notebook/ObsidianEnzymeAgent'
 
 /**
  * The `ExtractorDelegator` class manages the delegation of content extraction to specific extractors. It itself is an extractor.
@@ -34,8 +34,8 @@ export class ExtractorDelegator extends BaseExtractor {
 		super()
 		this.allBacklinkersExtractor = new AllBacklinkersExtractor(
 			app,
-			this.lassoExtractor,
-			dataviewAPI
+			dataviewAPI,
+			this.lassoExtractor
 		)
 		this.trimToEndExtractor = new TrimToEndExtractor(app)
 		this.singleBacklinkerExtractor = new SingleBacklinkerExtractor(

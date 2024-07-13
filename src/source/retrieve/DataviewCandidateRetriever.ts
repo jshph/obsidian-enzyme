@@ -1,23 +1,24 @@
 import { App, TFile } from 'obsidian'
-import { ContentRenderer, FileContents } from './ContentRenderer'
+import { FileContents, CandidateRetriever } from 'enzyme-core'
+import { ObsidianContentRenderer } from './ObsidianContentRenderer'
 import { EnzymeSettings } from '../../settings/EnzymeSettings'
 import { isHighLevelStrategy } from '../extract/Strategy'
 import { DataviewApi, getAPI } from '../../obsidian-modules/dataview-handler'
-import { CandidateRetriever } from './CandidateRetriever'
-import { StrategyMetadata } from 'notebook/EnzymeAgent'
+import { StrategyMetadata } from '../../notebook/ObsidianEnzymeAgent'
 
 /**
  * The `DataviewCandidateRetriever` class manages the retrieval of candidate information from Dataview.
  * It provides methods to retrieve source information and file contents based on the provided DQL query.
  */
 export class DataviewCandidateRetriever implements CandidateRetriever {
-	contentRenderer: ContentRenderer
+	obsidianContentRenderer: ObsidianContentRenderer
 	dataviewAPI: DataviewApi
 	constructor(
 		settings: EnzymeSettings,
 		public app: App
 	) {
-		this.contentRenderer = new ContentRenderer(app, settings)
+		this.obsidianContentRenderer = new ObsidianContentRenderer(app, settings)
+
 		this.dataviewAPI = getAPI(app)
 	}
 
@@ -55,7 +56,7 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 	 */
 	async retrieve(parameters: StrategyMetadata): Promise<FileContents[]> {
 		if (isHighLevelStrategy(parameters)) {
-			return [await this.contentRenderer.prepareContents(parameters)]
+			return [await this.obsidianContentRenderer.prepareContents(parameters)]
 		} else if (parameters.dql === undefined) {
 			return []
 		}
@@ -70,7 +71,7 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 		)
 		const bodies: FileContents[] = await Promise.all(
 			files.map((file: TFile) =>
-				this.contentRenderer.prepareFileContents(file, parameters)
+				this.obsidianContentRenderer.prepareFileContents(file, parameters)
 			)
 		)
 

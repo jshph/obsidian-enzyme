@@ -7,9 +7,9 @@ import {
 	App
 } from 'obsidian'
 import * as _path from 'path'
-import { BlockRefSubstitution } from '../../types'
-import { StrategyMetadata } from 'notebook/EnzymeAgent'
-import { DQLStrategy, DQLStrategyDescriptions } from 'source/extract/Strategy'
+import { BlockRefSubstitution } from 'enzyme-core'
+import { StrategyMetadata } from '../../notebook/ObsidianEnzymeAgent'
+import { DQLStrategy, DQLStrategyDescriptions } from './Strategy'
 
 export type ParsedContent = {
 	title: string
@@ -34,6 +34,7 @@ export type FileContents = {
 export abstract class BaseExtractor {
 	app: App
 	strategy: DQLStrategy
+
 	abstract extract(
 		file?: TFile,
 		metadata?: CachedMetadata,

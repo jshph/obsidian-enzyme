@@ -65,7 +65,7 @@ export class LassoFromOffsetExtractor {
 			// Return whole file if it's in frontmatter
 			if (
 				topic.startsWith('#') &&
-				metadata.frontmatter?.tags?.toString().includes(topic)
+				metadata.frontmatter?.tags?.toString().includes(topic.slice(1))
 			) {
 				// TODO just gets the first ~200 words of the doc... not very robust but we don't want to eat tokens
 				referenceWindows.push(
@@ -75,8 +75,8 @@ export class LassoFromOffsetExtractor {
 			} else {
 				// Otherwise, there may be multiple references to that tag or link throughout the doc; extract all of the refs and their windows
 				if (topic.startsWith('#')) {
-					for (let tag of metadata.tags || []) {
-						if (tag.tag === topic) {
+					for (let tag of metadata.frontmatter?.tags || []) {
+						if (tag.tag.includes(topic)) {
 							referenceWindows.push(
 								this.lassoContentFromOffset(contents, tag.position, 3, 200)
 							)

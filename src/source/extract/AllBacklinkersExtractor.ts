@@ -6,8 +6,8 @@ import { BaseExtractor, FileContents } from './BaseExtractor'
 export class AllBacklinkersExtractor extends BaseExtractor {
 	constructor(
 		public app: App,
-		public lassoExtractor: LassoFromOffsetExtractor,
-		public dataviewAPI: DataviewApi
+		public dataviewAPI: DataviewApi,
+		public lassoExtractor: LassoFromOffsetExtractor
 	) {
 		super()
 	}

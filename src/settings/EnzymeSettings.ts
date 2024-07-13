@@ -1,4 +1,4 @@
-import { ModelConfig } from '../notebook'
+import { ModelConfig } from 'enzyme-core'
 
 export interface EnzymeSettings {
 	models: ModelConfig[]
@@ -10,9 +10,11 @@ export interface EnzymeSettings {
 
 	localModelPath?: string
 
-	evergreenFolders: string[]
+	basicExtractionFolders: string[]
 
 	trimFolders: string[]
+
+	visualizeSourceInGraph: boolean
 }
 
 export const DEFAULT_SETTINGS: EnzymeSettings = {
@@ -46,6 +48,7 @@ export const DEFAULT_SETTINGS: EnzymeSettings = {
 	selectedModel: 'Haiku',
 	debug: false,
 	localModelPath: undefined,
-	evergreenFolders: [],
-	trimFolders: []
+	basicExtractionFolders: [],
+	trimFolders: [],
+	visualizeSourceInGraph: false
 }

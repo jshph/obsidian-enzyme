@@ -1,3 +1,3 @@
 import { DataviewCandidateRetriever } from './DataviewCandidateRetriever'
-import { ContentRenderer } from './ContentRenderer'
-export { DataviewCandidateRetriever, ContentRenderer as FileRenderer }
+import { ObsidianContentRenderer } from './ObsidianContentRenderer'
+export { DataviewCandidateRetriever, ObsidianContentRenderer as FileRenderer }
