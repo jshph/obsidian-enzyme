@@ -76,7 +76,7 @@ export class LassoFromOffsetExtractor {
 				// Otherwise, there may be multiple references to that tag or link throughout the doc; extract all of the refs and their windows
 				if (topic.startsWith('#')) {
 					for (let tag of metadata.frontmatter?.tags || []) {
-						if (tag.tag.includes(topic)) {
+						if (tag.includes(topic)) {
 							referenceWindows.push(
 								this.lassoContentFromOffset(contents, tag.position, 3, 200)
 							)

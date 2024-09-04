@@ -14,7 +14,7 @@ export async function copyToPlugins() {
 		'obsidian',
 		'.obsidian',
 		'plugins',
-		'enzyme'
+		'reason'
 	)
 
 	// Files to copy
