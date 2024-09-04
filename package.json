@@ -3,9 +3,13 @@
 	"version": "0.0.1",
 	"module": "src/index.ts",
 	"scripts": {
-		"dev": "NODE_ENV=development node esbuild.config.mjs",
-		"build": "NODE_ENV=production node esbuild.config.mjs production",
-		"version": "node version-bump.mjs && git add manifest.json versions.json"
+		"preinstall": "node ./scripts/check-prod.js",
+		"dev": "node esbuild.config.mjs",
+		"build": "node esbuild.config.mjs production",
+		"version": "node scripts/bump-version.js && git add manifest.json versions.json",
+		"postinstall": "node scripts/check-prod.js && ([ \"$NODE_ENV\" != \"production\" ] && [ \"$BUILD_PROD\" != \"true\" ] && pnpm link ../enzyme-core || true)",
+		"prebuild": "node scripts/remove-links.js",
+		"postbuild": "node scripts/remove-links.js"
 	},
 	"keywords": [],
 	"author": "",
@@ -36,7 +40,7 @@
 		"builtin-modules": "3.3.0",
 		"codemirror": "6.0.1",
 		"dedent-js": "^1.0.1",
-		"enzyme-core": "https://github.com/jshph/enzyme-core.git",
+		"enzyme-core": "github:jshph/enzyme-core",
 		"esbuild": "0.19.11",
 		"esbuild-sass-plugin": "2.16.1",
 		"eslint": "^8.57.0",

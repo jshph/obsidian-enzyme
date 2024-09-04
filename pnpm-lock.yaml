@@ -60,8 +60,8 @@ dependencies:
     specifier: ^1.0.1
     version: 1.0.1
   enzyme-core:
-    specifier: https://github.com/jshph/enzyme-core.git#master
-    version: git@github.com+jshph/enzyme-core/4e858f1eb2a3673277717ad38f48fd499778dbdb(@lezer/common@1.2.1)
+    specifier: github:jshph/enzyme-core
+    version: git@github.com+jshph/enzyme-core/c96a064146a06804f7d5876d230fa302f9f5195a(@lezer/common@1.2.1)
   esbuild:
     specifier: 0.19.11
     version: 0.19.11
@@ -3012,7 +3012,7 @@ packages:
     resolution: {integrity: sha512-REKQtAuIOKDbvNH/th1C1gWmJWCP5tRn9T/mfZGZt4Zncgko7McXK0aSKFtEInipvgbZJ2nScivvyLdiWluSMw==}
     hasBin: true
     dependencies:
-      obsidian: github.com/obsidianmd/obsidian-api/f20b17e38ccf12a8d7f62231255cb0608436dfbf(@codemirror/state@6.4.1)(@codemirror/view@6.28.4)
+      obsidian: github.com/obsidianmd/obsidian-api/df9434bec6883bd32727f61b1ed1336f7663d0e4(@codemirror/state@6.4.1)(@codemirror/view@6.28.4)
       tslib: 2.1.0
     transitivePeerDependencies:
       - '@codemirror/state'
@@ -3975,11 +3975,11 @@ packages:
     engines: {node: '>=10'}
     dev: false
 
-  git@github.com+jshph/enzyme-core/4e858f1eb2a3673277717ad38f48fd499778dbdb(@lezer/common@1.2.1):
-    resolution: {commit: 4e858f1eb2a3673277717ad38f48fd499778dbdb, repo: git@github.com:jshph/enzyme-core.git, type: git}
-    id: git@github.com+jshph/enzyme-core/4e858f1eb2a3673277717ad38f48fd499778dbdb
-    name: enzyme-digest
-    version: 0.0.1
+  git@github.com+jshph/enzyme-core/c96a064146a06804f7d5876d230fa302f9f5195a(@lezer/common@1.2.1):
+    resolution: {commit: c96a064146a06804f7d5876d230fa302f9f5195a, repo: git@github.com:jshph/enzyme-core.git, type: git}
+    id: git@github.com+jshph/enzyme-core/c96a064146a06804f7d5876d230fa302f9f5195a
+    name: enzyme-core
+    version: 0.1.0
     dependencies:
       '@anthropic-ai/sdk': 0.17.2
       '@koa/cors': 5.0.0
@@ -4031,9 +4031,9 @@ packages:
       style-mod: 4.1.2
     dev: false
 
-  github.com/obsidianmd/obsidian-api/f20b17e38ccf12a8d7f62231255cb0608436dfbf(@codemirror/state@6.4.1)(@codemirror/view@6.28.4):
-    resolution: {tarball: https://codeload.github.com/obsidianmd/obsidian-api/tar.gz/f20b17e38ccf12a8d7f62231255cb0608436dfbf}
-    id: github.com/obsidianmd/obsidian-api/f20b17e38ccf12a8d7f62231255cb0608436dfbf
+  github.com/obsidianmd/obsidian-api/df9434bec6883bd32727f61b1ed1336f7663d0e4(@codemirror/state@6.4.1)(@codemirror/view@6.28.4):
+    resolution: {tarball: https://codeload.github.com/obsidianmd/obsidian-api/tar.gz/df9434bec6883bd32727f61b1ed1336f7663d0e4}
+    id: github.com/obsidianmd/obsidian-api/df9434bec6883bd32727f61b1ed1336f7663d0e4
     name: obsidian
     version: 1.6.6
     peerDependencies:
