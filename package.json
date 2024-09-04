@@ -3,7 +3,7 @@
 	"version": "0.0.1",
 	"module": "src/index.ts",
 	"scripts": {
-		"preinstall": "node ./scripts/check-prod.js",
+		"preinstall": "node scripts/check-prod.js",
 		"dev": "node esbuild.config.mjs",
 		"build": "node esbuild.config.mjs production",
 		"version": "node scripts/bump-version.js && git add manifest.json versions.json",
