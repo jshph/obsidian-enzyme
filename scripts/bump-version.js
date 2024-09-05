@@ -13,10 +13,7 @@ function getLatestTag() {
 function getCommitDiffSummary(latestTag) {
 	// Replace this with your actual LLM CLI tool command
 	const summaryCommand = `git diff ${latestTag}..HEAD | llm -m gpt-4-0125-preview "Write a brief bulleted list of functional changes in this git diff, appropriate for revision history."`
-	return execSync(summaryCommand, { shell: '/bin/bash' })
-		.toString()
-		.trim()
-		.replace(/\n/g, '\\n')
+	return execSync(summaryCommand).toString().trim()
 }
 
 // Function to bump version
@@ -29,9 +26,10 @@ function bumpVersion(currentVersion, summary) {
 
 // Function to create a git tag with summary
 function createGitTag(version, summary) {
-	const tagMessage = `Version ${version}\n\n${summary.replace(/\\n/g, '\n')}`
-	execSync(`git tag -a ${version} -m "${tagMessage}"`, { shell: '/bin/bash' })
-	console.log(`Created git tag: v${version} with summary`)
+	const tagMessageLines = [`Version ${version}`, '', ...summary.split('\n')]
+	const tagCommand = `git tag -a ${version} ${tagMessageLines.map((line) => `-m "${line.replace(/`/g, '\\`')}"`).join(' ')}`
+	execSync(tagCommand)
+	console.log(`Created git tag: ${version} with summary`)
 }
 
 // Function to update, stage, and commit manifest.json
