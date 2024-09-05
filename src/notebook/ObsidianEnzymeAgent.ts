@@ -54,44 +54,38 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 			startPos
 		)
 
-		const combinedBlocks = rawContent.match(
-			/```(enzyme|reason)\n([\s\S]*?)\n```|==([\s\S]*?)==/g
-		)
-		const messages = combinedBlocks.map((block, index) => {
-			const role =
-				block.includes('```enzyme\n') || block.includes('```reason\n')
-					? 'user'
-					: 'assistant'
+		const blocks = rawContent.split(/```(enzyme|reason)\n/)
+		const messages: ChatMessageWithMetadata[] = []
 
-			let displayedContent =
-				role === 'user'
-					? block.match(/```(enzyme|reason)\n([\s\S]*?)\n```/)[2]
-					: block.match(/==([\s\S]*?)==/)[1]
-			let content = displayedContent
-			let parsedContents
-			// Further process if the user message contains more than just a prompt
-			if (role === 'user') {
-				parsedContents = parseEnzymeBlockContents(displayedContent)
+		for (let i = 1; i < blocks.length; i += 2) {
+			const userContent = blocks[i + 1].split('```')[0].trim()
+			const assistantContent =
+				blocks[i + 2]?.split(/```(enzyme|reason)\n/)[0].trim() || ''
 
-				// If there are no sources, add a default source
-				if (parsedContents.sources.length === 0) {
-					const processedRawContents =
-						this.enzymeBlockConstructor.processRawContents(
-							displayedContent,
-							index > 0
-						)
-					parsedContents.sources = processedRawContents.sources
+			const parsedContents = parseEnzymeBlockContents(userContent)
 
-					parsedContents.prompt = processedRawContents.prompt
-				}
+			// If there are no sources, add a default source
+			if (parsedContents.sources.length === 0) {
+				const processedRawContents =
+					this.enzymeBlockConstructor.processRawContents(userContent, i > 1)
+				parsedContents.sources = processedRawContents.sources
+				parsedContents.prompt = processedRawContents.prompt
 			}
 
-			return {
-				role,
-				content,
+			messages.push({
+				role: 'user',
+				content: userContent,
 				metadata: parsedContents
-			} as ChatMessageWithMetadata
-		})
+			})
+
+			if (assistantContent) {
+				messages.push({
+					role: 'assistant',
+					content: assistantContent,
+					metadata: {}
+				})
+			}
+		}
 
 		return messages
 	}

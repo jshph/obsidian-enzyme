@@ -437,23 +437,10 @@ export class CodeBlockRenderer {
 
 		for (let i = startLine; i <= endLine; i++) {
 			const line = lines[i]
-			const highlightMatches = line.match(/==/g)
-
-			if (highlightMatches) {
-				const highlightCount = highlightMatches.length
-
-				if (highlightCount % 2 === 0) {
-					// Even number of '==' on the same line
-					const parts = line.split('==')
-					for (let j = 1; j < parts.length - 1; j += 2) {
-						keptContent.push(parts[j].trim())
-					}
-				} else {
-					// Odd number of '==' (spanning multiple lines)
-					isHighlighted = !isHighlighted
-					const trimmedLine = line.replace(/==/g, '').trim()
-					if (trimmedLine && isHighlighted) keptContent.push(trimmedLine)
-				}
+			if (line.includes('==')) {
+				isHighlighted = !isHighlighted
+				const trimmedLine = line.replace(/==/g, '').trim()
+				if (trimmedLine) keptContent.push(trimmedLine)
 			} else if (isHighlighted) {
 				keptContent.push(line.trim())
 			}
