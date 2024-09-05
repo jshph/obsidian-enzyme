@@ -1,7 +1,7 @@
 {
   "id": "reason",
   "name": "Enzyme",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "minAppVersion": "1.1.10",
   "description": "a REPL to digest your thoughts",
   "author": "Joshua Pham",
