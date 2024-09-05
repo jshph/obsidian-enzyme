@@ -56,11 +56,22 @@ export class CodeBlockRenderer {
 		doRenderButton: boolean = true
 	) {
 		el.setText('')
-		const container = el.createEl('div')
-		const body = container.createDiv('enzyme-preview')
-		const s = body.createSpan()
+		const container = el.createEl('div', { cls: 'enzyme-container' })
 		const uniqueId = 'enzyme-' + Math.random().toString(36).substr(2, 9)
 		el.setAttribute('data-unique-id', uniqueId)
+
+		// Create the digest button
+		if (doRenderButton) {
+			this.createDigestButton(container, el, context, executionLock)
+		}
+
+		// Create the sources button
+		if (sources.length > 0) {
+			this.createSourcesButton(container, sources)
+		}
+
+		// Render the content
+		MarkdownRenderer.render(this.app, content, container, '/', new Component())
 
 		const observer = new MutationObserver((mutations) => {
 			for (const mutation of mutations) {
@@ -110,25 +121,62 @@ export class CodeBlockRenderer {
 
 		this.intersectionObserverMap.set(uniqueId, intersectionObserver)
 		intersectionObserver.observe(el)
-
-		MarkdownRenderer.render(this.app, content, s, '/', new Component())
-
-		if (doRenderButton) {
-			this.createDigestButton(body, el, context, executionLock)
-		}
 	}
 
 	createDigestButton(
-		body: HTMLElement,
+		container: HTMLElement,
 		el: HTMLElement,
 		context: MarkdownPostProcessorContext,
 		executionLock: { isExecuting: boolean }
 	) {
-		const button = body.createEl('button')
-		button.addClass('enzyme-generate-button')
-		button.setText('Digest')
+		const button = container.createEl('button', {
+			cls: 'enzyme-digest-button',
+			text: 'Digest'
+		})
 		button.addEventListener('click', async () => {
 			await this.handleDigestButtonClick(el, context, executionLock)
+		})
+	}
+
+	createSourcesButton(container: HTMLElement, sources: StrategyMetadata[]) {
+		const button = container.createEl('button', {
+			cls: 'enzyme-sources-button',
+			text: 'Sources'
+		})
+		const sourcesContent = document.body.createEl('div', {
+			cls: 'enzyme-sources-content'
+		})
+
+		sources.forEach(async (source) => {
+			const sourceBlock =
+				await this.candidateRetriever.obsidianContentRenderer.extractor.renderSourceBlock(
+					source
+				)
+			const sourceEl = sourcesContent.createEl('div', { cls: 'enzyme-source' })
+			MarkdownRenderer.render(
+				this.app,
+				sourceBlock,
+				sourceEl,
+				'/',
+				new Component()
+			)
+		})
+
+		button.addEventListener('click', (event) => {
+			event.stopPropagation()
+			const rect = button.getBoundingClientRect()
+			sourcesContent.style.top = `${rect.bottom + window.scrollY + 5}px`
+			sourcesContent.style.left = `${rect.left + window.scrollX}px`
+			sourcesContent.classList.toggle('show')
+		})
+
+		// Close the sources content when clicking outside
+		document.addEventListener('click', () => {
+			sourcesContent.classList.remove('show')
+		})
+
+		sourcesContent.addEventListener('click', (event) => {
+			event.stopPropagation()
 		})
 	}
 
@@ -181,133 +229,107 @@ export class CodeBlockRenderer {
 		}
 
 		let renderedString: string = ''
-		let sources: StrategyMetadata[]
+		let sources: StrategyMetadata[] = []
 		const executionLock = { isExecuting: false }
-		let editor = this.app.workspace.activeEditor.editor
+		let editor = this.app.workspace.activeEditor?.editor
 		let dropdownId = ''
-		if (blockContents.length > 0) {
-			let parsedContents = parseEnzymeBlockContents(blockContents)
 
-			// Extract sources and generate markdown sections
-			sources = parsedContents.sources
-			let prompt = parsedContents.prompt
-
-			const messagesSoFar = this.enzymeAgent.getMessagesToPosition({
-				line: context.getSectionInfo(el).lineEnd + 1,
-				ch: 0
-			})
-
-			// Default to RecentMentions if no sources are provided and this is the first message
-			// need to do this fudging in order to render it properly, but it's not needed for all uses of parseEnzymeBlockContents
-			if (sources.length === 0) {
-				const processedContents =
-					this.enzymeAgent.enzymeBlockConstructor.processRawContents(
-						blockContents,
-						messagesSoFar.length > 1
-					)
-				sources = processedContents.sources
-				prompt = processedContents.prompt
-			} else if (sources.length === 1 && !sources[0].strategy) {
-				sources[0].strategy = DQLStrategy[DQLStrategy.Basic]
-			}
-
-			let selectedStrategy: string = undefined
-			if (parsedContents.choice) {
-				selectedStrategy = parsedContents.choice.strategy
-			} else if (sources.length === 0 && messagesSoFar.length == 1) {
-				// Default to RecentMentions if no sources are provided
-				selectedStrategy = DQLStrategy.RecentMentions.toString()
-			}
-
-			// Render the collapsible header and the dropdown
-			if (selectedStrategy) {
-				dropdownId = 'enzyme-choice-' + Math.random().toString(36).substr(2, 9)
-				const strategiesHTML = SELECTABLE_STRATEGIES.map((strategy) => {
-					const strategyStr = strategy.toString()
-					return `<option value="${strategyStr}" ${strategyStr === selectedStrategy ? 'selected' : ''}>${strategyStr}</option>`
-				})
-
-				const dropdownHtml =
-					`<select id="${dropdownId}">${strategiesHTML.join('')}</select>`.replace(
-						/^\s+/gm,
-						''
-					)
-
-				renderedString += `> [!Source ${selectedStrategy}]-\n> Update the source: ${dropdownHtml}\n> `
-			} else if (sources.length > 0) {
-				renderedString += '> [!Sources]-\n> '
-			}
-
-			// Render the sources
-			if (selectedStrategy) {
-				let sourceString =
-					await this.candidateRetriever.obsidianContentRenderer.extractor.renderSourceBlock(
-						{ strategy: selectedStrategy }
-					)
-
-				sourceString = sourceString.split('\n').join('\n> ')
-
-				// Encase sources as collapsible Markdown block
-				renderedString += sourceString + '\n\n'
-			} else if (sources.length > 0) {
-				const sourceStringParts = (
-					await Promise.all(
-						sources.map(async (source) =>
-							this.candidateRetriever.obsidianContentRenderer.extractor.renderSourceBlock(
-								source
-							)
-						)
-					)
-				).flat()
-
-				// Encase sources as collapsible Markdown block
-				renderedString +=
-					sourceStringParts.join('\n\n---\n').split('\n').join('\n> ') + '\n\n'
-			}
-
-			renderedString += prompt
-
-			await this.dataviewGraphLinker.addSources(sources)
-
-			this.renderIntoEl(el, renderedString, sources, context, executionLock)
-
-			// Attach event listener after rendering to allow user to change the dropdown and update the choice
-			if (dropdownId.length > 0) {
-				setTimeout(() => {
-					const dropdown = document.getElementById(dropdownId)
-					dropdownChangeListener = (event) => {
-						// Case preserving strategy selection
-						const selectedStrategy = (event.target as HTMLSelectElement).value
-
-						editor.setLine(
-							parsedContents.choice.line +
-								context.getSectionInfo(el).lineStart +
-								1,
-							'choice: ' + selectedStrategy
-						)
-
-						blockContents = blockContents.replace(
-							/choice: [a-zA-Z]+/,
-							`choice: ${selectedStrategy}`
-						)
-
-						this.renderEnzyme(blockContents, el, context)
-					}
-					if (dropdown) {
-						dropdown.addEventListener('change', dropdownChangeListener)
-					}
-				}, 100) // hacky way to ensure that the dropdown is rendered before we attach the event listener
-			}
-		} else {
-			renderedString += 'Invalid Enzyme block! 🫤'
+		if (blockContents.trim().length === 0) {
+			// Handle empty codefence
+			renderedString = 'Enzyme block is missing a prompt...'
 			this.renderIntoEl(
 				el,
 				renderedString,
 				sources,
 				context,
 				executionLock,
-				false
+				true
 			)
+			return
+		}
+
+		let parsedContents = parseEnzymeBlockContents(blockContents)
+
+		// Extract sources and generate markdown sections
+		sources = parsedContents.sources
+		let prompt = parsedContents.prompt
+
+		const messagesSoFar = this.enzymeAgent.getMessagesToPosition({
+			line: context.getSectionInfo(el)?.lineEnd + 1,
+			ch: 0
+		})
+
+		// Handle empty sources
+		if (sources.length === 0) {
+			const processedContents =
+				this.enzymeAgent.enzymeBlockConstructor.processRawContents(
+					blockContents,
+					messagesSoFar.length > 1
+				)
+			sources = processedContents.sources
+			prompt = processedContents.prompt
+		} else if (sources.length === 1 && !sources[0].strategy) {
+			sources[0].strategy = DQLStrategy[DQLStrategy.Basic]
+		}
+
+		let selectedStrategy: string | undefined
+		if (parsedContents.choice) {
+			selectedStrategy = parsedContents.choice.strategy
+		} else if (sources.length === 0 && messagesSoFar.length == 1) {
+			// Default to RecentMentions if no sources are provided and this is the first message
+			selectedStrategy = DQLStrategy.RecentMentions.toString()
+		}
+
+		// Render the strategy dropdown if a strategy is selected
+		if (selectedStrategy) {
+			dropdownId = 'enzyme-choice-' + Math.random().toString(36).substr(2, 9)
+			const strategiesHTML = SELECTABLE_STRATEGIES.map((strategy) => {
+				const strategyStr = strategy.toString()
+				return `<option value="${strategyStr}" ${strategyStr === selectedStrategy ? 'selected' : ''}>${strategyStr}</option>`
+			})
+
+			const dropdownHtml =
+				`<select id="${dropdownId}">${strategiesHTML.join('')}</select>`.replace(
+					/^\s+/gm,
+					''
+				)
+
+			renderedString += `Update the source: ${dropdownHtml}\n`
+		}
+
+		// Only render the prompt, not the sources
+		renderedString += prompt
+
+		await this.dataviewGraphLinker.addSources(sources)
+
+		this.renderIntoEl(el, renderedString, sources, context, executionLock)
+
+		// Attach event listener after rendering to allow user to change the dropdown and update the choice
+		if (dropdownId.length > 0) {
+			setTimeout(() => {
+				const dropdown = document.getElementById(dropdownId)
+				dropdownChangeListener = (event) => {
+					// Case preserving strategy selection
+					const selectedStrategy = (event.target as HTMLSelectElement).value
+
+					editor.setLine(
+						parsedContents.choice.line +
+							context.getSectionInfo(el).lineStart +
+							1,
+						'choice: ' + selectedStrategy
+					)
+
+					blockContents = blockContents.replace(
+						/choice: [a-zA-Z]+/,
+						`choice: ${selectedStrategy}`
+					)
+
+					this.renderEnzyme(blockContents, el, context)
+				}
+				if (dropdown) {
+					dropdown.addEventListener('change', dropdownChangeListener)
+				}
+			}, 100) // hacky way to ensure that the dropdown is rendered before we attach the event listener
 		}
 	}
 
