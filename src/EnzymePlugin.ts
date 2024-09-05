@@ -163,6 +163,14 @@ export class EnzymePlugin extends Plugin {
 				this.dataviewGraphLinker.unlockGraph()
 			}
 		})
+
+		this.addCommand({
+			id: 'trim-highlighted-content',
+			name: 'Trim digest output to highlighted content',
+			editorCallback: (editor) => {
+				this.noteRenderer.trimHighlightedContent(editor)
+			}
+		})
 	}
 
 	async loadSettings() {

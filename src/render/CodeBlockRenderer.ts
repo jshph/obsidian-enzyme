@@ -3,7 +3,9 @@ import {
 	MarkdownPostProcessorContext,
 	MarkdownRenderer,
 	Component,
-	EditorPosition
+	EditorPosition,
+	Editor,
+	EditorRange
 } from 'obsidian'
 import {
 	ObsidianEnzymeAgent,
@@ -381,5 +383,98 @@ export class CodeBlockRenderer {
 		let curCh = 0 // Start from the beginning of the line
 
 		return { line: curLine + 1, ch: curCh }
+	}
+
+	trimHighlightedContent(editor: Editor) {
+		const cursor = editor.getCursor()
+		const file = this.app.workspace.getActiveFile()
+		if (!file) return
+
+		const fileContents = editor.getValue()
+		const lines = fileContents.split('\n')
+
+		// Check for frontmatter
+		let frontmatterOffset = 0
+		if (lines[0] === '---') {
+			for (let i = 1; i < lines.length; i++) {
+				if (lines[i] === '---') {
+					frontmatterOffset = i + 1
+					break
+				}
+			}
+		}
+
+		let startLine = cursor.line
+		let endLine = cursor.line
+
+		// Find the previous Enzyme block
+		while (
+			startLine > frontmatterOffset &&
+			!lines[startLine].startsWith('```enzyme')
+		) {
+			startLine--
+		}
+		let enzymeBlockEnd = startLine
+		while (
+			enzymeBlockEnd < lines.length - 1 &&
+			!(lines[enzymeBlockEnd].startsWith('```') && enzymeBlockEnd > startLine)
+		) {
+			enzymeBlockEnd++
+		}
+		startLine = enzymeBlockEnd + 1 // Start after the enzyme block
+
+		// Find the end of the digest output
+		while (
+			endLine < lines.length - 1 &&
+			!lines[endLine].startsWith('```enzyme')
+		) {
+			endLine++
+		}
+		endLine-- // Move to the line before the next enzyme block or end of file
+
+		let keptContent = []
+		let isHighlighted = false
+
+		for (let i = startLine; i <= endLine; i++) {
+			const line = lines[i]
+			const highlightMatches = line.match(/==/g)
+
+			if (highlightMatches) {
+				const highlightCount = highlightMatches.length
+
+				if (highlightCount % 2 === 0) {
+					// Even number of '==' on the same line
+					const parts = line.split('==')
+					for (let j = 1; j < parts.length - 1; j += 2) {
+						keptContent.push(parts[j].trim())
+					}
+				} else {
+					// Odd number of '==' (spanning multiple lines)
+					isHighlighted = !isHighlighted
+					const trimmedLine = line.replace(/==/g, '').trim()
+					if (trimmedLine && isHighlighted) keptContent.push(trimmedLine)
+				}
+			} else if (isHighlighted) {
+				keptContent.push(line.trim())
+			}
+		}
+
+		const newContent = keptContent.join('\n\n')
+
+		// Find the next enzyme block or end of file
+		let nextEnzymeBlock = endLine + 1
+		while (
+			nextEnzymeBlock < lines.length &&
+			!lines[nextEnzymeBlock].startsWith('```enzyme')
+		) {
+			nextEnzymeBlock++
+		}
+
+		// Replace the content after the enzyme block, accounting for frontmatter
+		editor.replaceRange(
+			newContent + (nextEnzymeBlock < lines.length ? '\n' : ''),
+			{ line: startLine, ch: 0 },
+			{ line: nextEnzymeBlock - 1, ch: lines[nextEnzymeBlock - 1].length }
+		)
 	}
 }
