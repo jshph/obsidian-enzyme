@@ -6,7 +6,7 @@
 		"preinstall": "node scripts/check-prod.js",
 		"dev": "node esbuild.config.mjs",
 		"build": "node esbuild.config.mjs production",
-		"version": "node scripts/bump-version.js && git add manifest.json versions.json",
+		"version": "node scripts/bump-version.js",
 		"postinstall": "node scripts/check-prod.js && ([ \"$NODE_ENV\" != \"production\" ] && [ \"$BUILD_PROD\" != \"true\" ] && pnpm link ../enzyme-core || true)",
 		"prebuild": "node scripts/remove-links.js",
 		"postbuild": "node scripts/remove-links.js"
