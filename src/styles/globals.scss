@@ -173,3 +173,144 @@
 		background-color: initial;
 	}
 }
+
+.cm-temporary-highlight {
+	background-color: rgba(255, 255, 0, 0.3);
+}
+
+// New styles for prompt popup
+.enzyme-prompt-popup {
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px; // Increased border radius for a softer look
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); // Softer, more spread out shadow
+	padding: 12px; // Increased padding around the entire popup
+	z-index: 1000;
+	display: flex;
+	flex-direction: column;
+	gap: 10px; // Slightly increased gap
+	backdrop-filter: blur(5px); // Adds a subtle blur effect to the background
+	transition: box-shadow 0.3s ease, width 0.3s ease; // Smooth transition for hover effect
+}
+
+.enzyme-prompt-popup:hover {
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); // Slightly elevated shadow on hover
+}
+
+.enzyme-prompt-popup-content {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.enzyme-prompt-input-container {
+	display: flex;
+	align-items: stretch;
+	background-color: var(--background-secondary);
+	border-radius: 6px;
+	overflow: hidden;
+	border: 1px solid var(--background-modifier-border);
+	position: relative;
+	height: 40px;
+	transition: width 0.3s ease;
+	width: 210px;
+}
+
+.enzyme-prompt-format-select {
+	flex: 0 0 auto;
+	background-color: var(--background-secondary-alt);
+	color: var(--text-normal);
+	border: none;
+	padding: 8px 12px;
+	font-size: 14px;
+	transition: background-color 0.3s ease;
+	min-width: 75px;
+	max-width: 130px;
+	cursor: pointer;
+	outline: none;
+	height: 100%; // Change this to 100% to match the container height
+	box-shadow: var(--input-shadow);
+	padding-top: 0;
+	padding-bottom: 0;
+	display: flex;
+	align-items: center;
+}
+
+.enzyme-prompt-format-select:hover,
+.enzyme-prompt-format-select:focus {
+	background-color: var(--background-modifier-hover);
+}
+
+.enzyme-prompt-format-select:focus {
+	box-shadow: var(--input-shadow);
+}
+
+
+.enzyme-prompt-input-container.expanded {
+	width: 400px;
+}
+
+.enzyme-prompt-popup input {
+	flex: 1;
+	border: none;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-size: 14px;
+	outline: none;
+	padding: 0 40px 0 10px;
+	height: 100%;
+	transition: background-color 0.3s ease, width 0.3s ease;
+	width: 60px; // Default narrow width for the input
+}
+
+.enzyme-prompt-popup input:focus {
+	background-color: var(--background-primary-alt);
+	box-shadow: none;
+}
+
+.enzyme-prompt-input-container.expanded input {
+	width: 100%; // Full width when expanded
+}
+
+.enzyme-prompt-send-button {
+	position: absolute;
+	right: 5px;
+	top: 50%;
+	transform: translateY(-50%);
+	background: var(--interactive-accent);
+	border: none;
+	color: var(--text-on-accent-inverted);
+	font-size: 16px;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	padding: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	width: 30px;
+	height: 30px;
+}
+
+.enzyme-prompt-send-button:hover {
+	background-color: var(--interactive-accent-hover);
+	transform: translateY(-50%) translateX(2px);
+	box-shadow: 0 0 8px var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.enzyme-prompt-tooltip-container {
+	position: fixed;
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+	padding: 8px 12px;
+	border-radius: 6px;
+	font-size: 12px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	transition: background-color 0.3s ease, color 0.3s ease, padding 0.3s ease, border-radius 0.3s ease, font-size 0.3s ease, box-shadow 0.3s ease;
+	z-index: 1001;
+	pointer-events: none;
+	white-space: nowrap;
+}
+
+// ... existing styles ...

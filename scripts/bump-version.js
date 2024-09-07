@@ -12,7 +12,7 @@ function getLatestTag() {
 // Function to get commit diff summary using LLM CLI tool
 function getCommitDiffSummary(latestTag) {
 	// Replace this with your actual LLM CLI tool command
-	const summaryCommand = `git diff ${latestTag}..HEAD | llm -m gpt-4-0125-preview "Write a brief bulleted list of functional changes in this git diff, appropriate for revision history."`
+	const summaryCommand = `git diff ${latestTag}..HEAD | llm -m gpt-4-0125-preview "Write a brief bulleted list of functional changes in this git diff, appropriate for revision history. Stick to the high level. Include a section for bug fixes if there are compelling ones."`
 	return execSync(summaryCommand).toString().trim()
 }
 

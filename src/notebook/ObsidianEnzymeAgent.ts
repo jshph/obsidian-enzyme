@@ -10,6 +10,7 @@ import {
 	EnzymeBlockConstructor,
 	parseEnzymeBlockContents
 } from '../render/EnzymeBlockConstructor'
+import { EditorPosition } from 'obsidian'
 
 export type StrategyMetadata = {
 	strategy: string
@@ -101,7 +102,7 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 	}): Promise<void> {
 		const messagesToHere: ChatMessageWithMetadata[] =
 			this.getMessagesToPosition(startParams.startPos)
-		return this.digest(messagesToHere, startParams.startPos)
+		return this.digest(messagesToHere, startParams.startPos, true)
 	}
 
 	/**
@@ -147,5 +148,50 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 
 	digestContentNotice(): void {
 		new Notice('Digesting content...')
+	}
+
+	async refineDigest(
+		prompt: string,
+		format: string,
+		cursorPos: EditorPosition
+	) {
+		const editor = this.app.workspace.activeEditor?.editor
+		if (!editor) return
+
+		const selection = editor.getSelection()
+		const messagesToHere = this.getMessagesToPosition(cursorPos)
+
+    editor.replaceSelection('')
+
+		// treat the selection as a digest, i.e. from the assistant
+		const digestMessage: ChatMessageWithMetadata = {
+			role: 'assistant',
+			content: selection,
+			metadata: {}
+		}
+		messagesToHere.push(digestMessage)
+
+		let refinementPrompt: string
+
+		let optPromptSuffix = `to address the prompt "${prompt}".`
+		switch (format) {
+			case 'Focus':
+				refinementPrompt = `Expand on the previous message ${optPromptSuffix} Add more detail and incorporate additional sources. Preserve existing markers and key points.`
+				break
+			case 'Style':
+				refinementPrompt = `Rewrite the previous message with a style that matches the prompt "${prompt}". Preserve the key points of the previous message and its markers.`
+				break
+			default:
+				refinementPrompt = `Rewrite the previous message ${optPromptSuffix} Incorporate more sources, preserving the key points of the previous message and its markers.`
+		}
+
+		const refinementMessage: ChatMessageWithMetadata = {
+			role: 'user',
+			content: refinementPrompt,
+			metadata: undefined
+		}
+		messagesToHere.push(refinementMessage)
+
+		await this.digest(messagesToHere, cursorPos)
 	}
 }

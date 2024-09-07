@@ -1,4 +1,4 @@
-import { Plugin, App, PluginManifest, Notice } from 'obsidian'
+import { Plugin, App, PluginManifest, Notice, Modal } from 'obsidian'
 import { AIClient, getSystemPrompts, Server } from 'enzyme-core'
 import { EnzymeSettings, DEFAULT_SETTINGS } from './settings/EnzymeSettings'
 import SettingsTab from './settings/SettingsTab'
@@ -9,6 +9,8 @@ import { DataviewCandidateRetriever } from './source/retrieve/DataviewCandidateR
 import { EnzymeBlockConstructor } from './render/EnzymeBlockConstructor'
 import { DataviewGraphLinker } from './render/DataviewGraphLinker'
 import { ProxyServer } from './notebook/ProxyServer'
+import { Editor } from 'obsidian'
+import { RefinePopup } from './render/RefinePopup'
 
 export class EnzymePlugin extends Plugin {
 	settings: EnzymeSettings
@@ -22,6 +24,7 @@ export class EnzymePlugin extends Plugin {
 	dataviewGraphLinker: DataviewGraphLinker
 	reasonCodeBlockProcessor: any
 	enzymeCodeBlockProcessor: any
+	refinePopup: RefinePopup
 
 	constructor(app: App, pluginManifest: PluginManifest) {
 		super(app, pluginManifest)
@@ -113,8 +116,10 @@ export class EnzymePlugin extends Plugin {
 			this.app,
 			this.obsidianEnzymeAgent,
 			this.candidateRetriever,
-			this.dataviewGraphLinker
+			this.dataviewGraphLinker,
 		)
+
+		this.refinePopup = new RefinePopup(this.obsidianEnzymeAgent.refineDigest.bind(this.obsidianEnzymeAgent))
 
 		try {
 			this.enzymeCodeBlockProcessor = this.registerMarkdownCodeBlockProcessor(
@@ -169,6 +174,18 @@ export class EnzymePlugin extends Plugin {
 			name: 'Trim digest output to highlighted content',
 			editorCallback: (editor) => {
 				this.noteRenderer.trimHighlightedContent(editor)
+			}
+		})
+
+		this.addCommand({
+			id: 'refine-digest',
+			name: 'Refine selected digest',
+			editorCallback: (editor: Editor) => {
+				this.refinePopup.show(editor)
+        if (!editor.getSelection()) {
+          new Notice('No selection')
+          return
+        }
 			}
 		})
 	}

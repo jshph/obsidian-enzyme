@@ -102,7 +102,7 @@ export abstract class BaseExtractor {
 		if (headingRefs) {
 			for (const headingRef of headingRefs) {
 				const templateString = `%${Math.random().toString(16).slice(2, 6)}%`
-				const headingSuffix = headingRef.replace(/#+\s/, '')
+				const headingSuffix = headingRef.replace(/#+\s/, '').replace(/\[\[|\]\]/g, '')
 				const blockRefString = `![[${title}#${headingSuffix}]]`
 				substitutions.push({
 					template: templateString,
