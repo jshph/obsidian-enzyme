@@ -10,7 +10,7 @@ import { EnzymeBlockConstructor } from './render/EnzymeBlockConstructor'
 import { DataviewGraphLinker } from './render/DataviewGraphLinker'
 import { ProxyServer } from './notebook/ProxyServer'
 import { Editor } from 'obsidian'
-import { RefinePopup } from './render/RefinePopup'
+import { renderRefinePopup } from './render/RefinePopup'
 
 export class EnzymePlugin extends Plugin {
 	settings: EnzymeSettings
@@ -24,7 +24,7 @@ export class EnzymePlugin extends Plugin {
 	dataviewGraphLinker: DataviewGraphLinker
 	reasonCodeBlockProcessor: any
 	enzymeCodeBlockProcessor: any
-	refinePopup: RefinePopup
+	refinePopup: any
 
 	constructor(app: App, pluginManifest: PluginManifest) {
 		super(app, pluginManifest)
@@ -119,7 +119,6 @@ export class EnzymePlugin extends Plugin {
 			this.dataviewGraphLinker,
 		)
 
-		this.refinePopup = new RefinePopup(this.obsidianEnzymeAgent.refineDigest.bind(this.obsidianEnzymeAgent))
 
 		try {
 			this.enzymeCodeBlockProcessor = this.registerMarkdownCodeBlockProcessor(
@@ -132,6 +131,9 @@ export class EnzymePlugin extends Plugin {
 				this.noteRenderer.renderEnzyme.bind(this.noteRenderer)
 			)
 		} catch (e) {}
+
+
+		this.refinePopup = renderRefinePopup(this.obsidianEnzymeAgent.refineDigest.bind(this.obsidianEnzymeAgent))
 
 		this.addCommand({
 			id: 'build-enzyme-block-from-selection',
@@ -181,12 +183,15 @@ export class EnzymePlugin extends Plugin {
 			id: 'refine-digest',
 			name: 'Refine selected digest',
 			editorCallback: (editor: Editor) => {
-				this.refinePopup.show(editor)
-        if (!editor.getSelection()) {
-          new Notice('No selection')
-          return
-        }
-			}
+				this.refinePopup.show(() => {
+          const cursorPos = editor.getCursor();
+          const cursorCoords = editor.posToOffset(cursorPos);
+          const { left, top } = editor.cm.coordsAtPos(cursorCoords) || { left: 0, top: 0 };
+          return { left, top };
+        });
+        const cursorPos = editor.getCursor();
+        this.refinePopup.setInsertPosition(cursorPos);
+			} 
 		})
 	}
 

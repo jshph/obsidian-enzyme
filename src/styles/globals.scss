@@ -28,6 +28,11 @@
 	opacity: 0.6;
 }
 
+.enzyme-refine-popup {
+	position: absolute;
+	z-index: 1000;
+}
+
 .enzyme-digest-button {
 	right: 0.5rem;
 }
@@ -191,10 +196,19 @@
 	gap: 10px; // Slightly increased gap
 	backdrop-filter: blur(5px); // Adds a subtle blur effect to the background
 	transition: box-shadow 0.3s ease, width 0.3s ease; // Smooth transition for hover effect
+	opacity: 0;
+	visibility: hidden;
+	transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
-.enzyme-prompt-popup:hover {
-	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15); // Slightly elevated shadow on hover
+.enzyme-prompt-popup.visible {
+	opacity: 1;
+	visibility: visible;
+}
+
+.enzyme-prompt-popup.hidden {
+	opacity: 0;
+	visibility: hidden;
 }
 
 .enzyme-prompt-popup-content {
@@ -244,7 +258,6 @@
 .enzyme-prompt-format-select:focus {
 	box-shadow: var(--input-shadow);
 }
-
 
 .enzyme-prompt-input-container.expanded {
 	width: 400px;
@@ -301,6 +314,7 @@
 
 .enzyme-prompt-tooltip-container {
 	position: fixed;
+  display: none;
 	background-color: var(--background-secondary);
 	color: var(--text-normal);
 	padding: 8px 12px;

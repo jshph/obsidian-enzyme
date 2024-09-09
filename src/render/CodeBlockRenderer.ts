@@ -29,7 +29,6 @@ let dropdownChangeListener: (event: Event) => void
  * elements and integration with the enzymeing engine.
  */
 export class CodeBlockRenderer {
-	enzymeResponseContainer: HTMLElement
 	observerMap: Map<string, MutationObserver>
 	intersectionObserverMap: Map<string, IntersectionObserver>
 	hiddenEnzymeBlocks: Set<string>
