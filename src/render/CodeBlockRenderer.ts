@@ -17,6 +17,7 @@ import dedent from 'dedent-js'
 import { DataviewCandidateRetriever } from '../source/retrieve'
 import { DataviewGraphLinker } from './DataviewGraphLinker'
 import { parseEnzymeBlockContents } from './EnzymeBlockConstructor'
+import { renderCodeBlockRenderer } from './EnzymeBlock'
 
 let dropdownChangeListener: (event: Event) => void
 
@@ -48,214 +49,7 @@ export class CodeBlockRenderer {
 		this.hiddenEnzymeBlocks = new Set()
 	}
 
-	renderIntoEl(
-		el: HTMLElement,
-		content: string,
-		sources: StrategyMetadata[],
-		context: MarkdownPostProcessorContext,
-		executionLock: { isExecuting: boolean },
-		doRenderButton: boolean = true
-	) {
-		el.setText('')
-		const container = el.createEl('div', { cls: 'enzyme-container' })
-		const uniqueId = 'enzyme-' + Math.random().toString(36).substr(2, 9)
-		el.setAttribute('data-unique-id', uniqueId)
-
-		// Create the digest button
-		if (doRenderButton) {
-			this.createDigestButton(container, el, context, executionLock)
-		}
-
-		// Create the sources button
-		if (sources.length > 0) {
-			this.createSourcesButton(container, sources)
-		}
-
-    this.createModelSelectButton(container)
-
-		// Render the content
-		MarkdownRenderer.render(this.app, content, container, '/', new Component())
-
-		const observer = new MutationObserver((mutations) => {
-			for (const mutation of mutations) {
-				if (mutation.type === 'childList') {
-					mutation.removedNodes.forEach((node) => {
-						if (
-							node.nodeType === Node.ELEMENT_NODE &&
-							node.childNodes[0]?.nodeType === Node.ELEMENT_NODE &&
-							(node.childNodes[0] as HTMLElement).getAttribute(
-								'data-unique-id'
-							) === uniqueId &&
-							!this.hiddenEnzymeBlocks.has(uniqueId)
-						) {
-							// Main action: remove sources
-							this.dataviewGraphLinker.removeSources(sources)
-
-							// Cleanup
-							observer.disconnect()
-							this.observerMap.delete(uniqueId)
-							const intersectionObserver =
-								this.intersectionObserverMap.get(uniqueId)
-							if (intersectionObserver) {
-								intersectionObserver.disconnect()
-								this.intersectionObserverMap.delete(uniqueId)
-							}
-						}
-					})
-				}
-			}
-		})
-
-		this.observerMap.set(uniqueId, observer)
-		observer.observe(el.parentElement.parentElement, {
-			childList: true
-		})
-
-		// Temporarily store hidden blocks to avoid "removing sources" if they're not really removed
-		const intersectionObserver = new IntersectionObserver((entries) => {
-			entries.forEach((entry) => {
-				if (!entry.isIntersecting) {
-					this.hiddenEnzymeBlocks.add(uniqueId)
-				} else {
-					this.hiddenEnzymeBlocks.delete(uniqueId)
-				}
-			})
-		})
-
-		this.intersectionObserverMap.set(uniqueId, intersectionObserver)
-		intersectionObserver.observe(el)
-	}
-
-  createModelSelectButton(container: HTMLElement) {
-    const selectEl = container.createEl('div', { cls: 'enzyme-model-select-wrapper' });
-    const selectWrapper = selectEl.createEl('div')
-    selectWrapper.style.position = 'relative'
-
-    const arrow = selectWrapper.createEl('span', { cls: 'enzyme-model-select-arrow' });
-    arrow.setText('▼');
-
-    const modelSelect = selectWrapper.createEl('select', {
-        cls: 'enzyme-model-select'
-    });
-
-    this.getModels().forEach(
-        (label) => {
-            const option = modelSelect.createEl('option', {
-                text: label,
-                value: label
-            });
-
-            modelSelect.appendChild(option)
-        }
-    )
-
-    modelSelect.addEventListener('change', (event) => {
-        if (event.target instanceof HTMLSelectElement) {
-            this.setModel(event.target.value);
-            arrow.setText('▼'); // Always show down arrow
-        }
-    });
-
-    container.appendChild(selectWrapper);
-  }
-
-	createDigestButton(
-		container: HTMLElement,
-		el: HTMLElement,
-		context: MarkdownPostProcessorContext,
-		executionLock: { isExecuting: boolean }
-	) {
-		const button = container.createEl('button', {
-			cls: 'enzyme-digest-button',
-			text: 'Digest'
-		})
-		button.addEventListener('click', async () => {
-			await this.handleDigestButtonClick(el, context, executionLock)
-		})
-	}
-
-	createSourcesButton(container: HTMLElement, sources: StrategyMetadata[]) {
-		const button = container.createEl('button', {
-			cls: 'enzyme-sources-button',
-			text: 'Sources'
-		})
-		const sourcesContent = document.body.createEl('div', {
-			cls: 'enzyme-sources-content'
-		})
-
-		sources.forEach(async (source) => {
-			const sourceBlock =
-				await this.candidateRetriever.obsidianContentRenderer.extractor.renderSourceBlock(
-					source
-				)
-			const sourceEl = sourcesContent.createEl('div', { cls: 'enzyme-source' })
-			MarkdownRenderer.render(
-				this.app,
-				sourceBlock,
-				sourceEl,
-				'/',
-				new Component()
-			)
-		})
-
-		button.addEventListener('click', (event) => {
-			event.stopPropagation()
-			const rect = button.getBoundingClientRect()
-			sourcesContent.style.top = `${rect.bottom + window.scrollY + 5}px`
-			sourcesContent.style.left = `${rect.left + window.scrollX}px`
-			sourcesContent.classList.toggle('show')
-		})
-
-		// Close the sources content when clicking outside
-		document.addEventListener('click', () => {
-			sourcesContent.classList.remove('show')
-		})
-
-		sourcesContent.addEventListener('click', (event) => {
-			event.stopPropagation()
-		})
-	}
-
-	async handleDigestButtonClick(
-		el: HTMLElement,
-		context: MarkdownPostProcessorContext,
-		executionLock: { isExecuting: boolean }
-	) {
-		if (!this.enzymeAgent.checkSetup()) {
-			new Notice(
-				'Please check that Enzyme is set up properly (i.e. API Key, etc.)'
-			)
-			return
-		}
-
-		if (!executionLock.isExecuting) {
-			try {
-				executionLock.isExecuting = true
-				const digestStartPos = this.getDigestStartLine(el, context)
-				await this.enzymeAgent.buildMessagesAndDigest({
-					startPos: digestStartPos
-				})
-			} catch (e) {
-				new Notice('Enzyme encountered an error: ' + e.message)
-			} finally {
-				executionLock.isExecuting = false
-			}
-		} else {
-			new Notice('Please wait for Enzyme to finish.')
-		}
-	}
-
-	/* Renders the 'enzyme' code block in the markdown preview.
-	 *
-	 * This function is responsible for parsing the contents of a 'enzyme' code block,
-	 * creating the necessary HTML elements to display the block within the markdown preview,
-	 * and setting up the interaction logic for the 'Send' button which triggers the enzymeing process.
-	 *
-	 * @param {string} blockContents - The raw text content of the 'enzyme' code block.
-	 * @param {HTMLElement} el - The parent HTML element where the 'enzyme' block will be rendered.
-	 * @param {MarkdownPostProcessorContext} context - The context provided by Obsidian for post-processing the markdown.
-	 */
-	async renderEnzyme(
+  async renderEnzyme(
 		blockContents: string,
 		el: HTMLElement,
 		context: MarkdownPostProcessorContext
@@ -369,6 +163,27 @@ export class CodeBlockRenderer {
 		}
 	}
 
+	renderIntoEl(
+		el: HTMLElement,
+		content: string,
+		sources: StrategyMetadata[],
+		context: MarkdownPostProcessorContext,
+		executionLock: { isExecuting: boolean },
+		doRenderButton: boolean = true
+	) {
+		renderCodeBlockRenderer(el, {
+			app: this.app,
+			enzymeAgent: this.enzymeAgent,
+			candidateRetriever: this.candidateRetriever,
+			dataviewGraphLinker: this.dataviewGraphLinker,
+			getModels: this.getModels,
+			setModel: this.setModel,
+			content,
+			sources,
+			context
+		});
+	}
+
 	buildEnzymeBlockFromCurLine() {
 		const editor = this.app.workspace.activeEditor.editor
 
@@ -391,56 +206,6 @@ export class CodeBlockRenderer {
 				ch: selectedText.length
 			}
 		)
-	}
-
-	getDigestStartLine(
-		el: HTMLElement,
-		context: MarkdownPostProcessorContext
-	): EditorPosition {
-		let endOfCodeFenceLine = context.getSectionInfo(el).lineEnd
-		let editor = this.app.workspace.activeEditor.editor
-
-		// Find the first non-empty line after the code fence
-		let curLine = endOfCodeFenceLine + 1
-		while (
-			curLine < editor.lineCount() &&
-			editor.getLine(curLine).trim() === ''
-		) {
-			curLine++
-		}
-
-		if (curLine >= editor.lineCount()) {
-			curLine = endOfCodeFenceLine + 1
-		}
-
-		// Process any existing markdown highlights immediately following the code block
-		while (
-			curLine < editor.lineCount() &&
-			(editor.getLine(curLine).includes('==') ||
-				editor.getLine(curLine).trim() === '')
-		) {
-			let lineText = editor.getLine(curLine)
-			// If the line contains markdown highlights, skip to the end of the highlight
-			if (lineText.includes('==')) {
-				curLine++
-				while (
-					curLine < editor.lineCount() &&
-					!editor.getLine(curLine).includes('==')
-				) {
-					curLine++
-				}
-			}
-			curLine++
-		}
-
-		if (curLine >= editor.lineCount()) {
-			curLine--
-		}
-
-		// Set the cursor position for the new synthesis container
-		let curCh = 0 // Start from the beginning of the line
-
-		return { line: curLine + 1, ch: curCh }
 	}
 
 	trimHighlightedContent(editor: Editor) {

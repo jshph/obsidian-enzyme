@@ -114,8 +114,8 @@
 	opacity: 0;
 	transform: translateY(-10px);
 	transition:
-		opacity 0.3s ease-in-out,
-		transform 0.3s ease-in-out;
+    opacity 0.3s ease-in-out,
+    transform 0.3s ease-in-out;
 	pointer-events: none;
 	visibility: hidden;
 }
