@@ -48,9 +48,11 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 				})
 		)
 	}
-
 	getMessagesToPosition(startPos: EditorPosition): ChatMessageWithMetadata[] {
-		const rawContent = this.app.workspace.activeEditor.editor.getRange(
+		const editor = this.app.workspace.activeEditor?.editor
+		if (!editor) return []
+
+		const rawContent = editor.getRange(
 			{ ch: 0, line: 0 },
 			startPos
 		)
@@ -60,8 +62,7 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 
 		for (let i = 1; i < blocks.length; i += 2) {
 			const userContent = blocks[i + 1].split('```')[0].trim()
-			const assistantContent =
-				blocks[i + 2]?.split(/```(enzyme|reason)\n/)[0].trim() || ''
+			const assistantContent = blocks[i + 2]?.split(/```(enzyme|reason)\n/)[0].trim() || ''
 
 			const parsedContents = parseEnzymeBlockContents(userContent)
 
@@ -85,6 +86,36 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 					content: assistantContent,
 					metadata: {}
 				})
+			}
+
+			// Add the text between enzyme blocks as assistant messages
+			if (i + 3 < blocks.length) {
+				const textBetweenBlocks = blocks[i + 3].trim()
+				if (textBetweenBlocks) {
+					messages.push({
+						role: 'assistant',
+						content: textBetweenBlocks,
+						metadata: {}
+					})
+				}
+			}
+		}
+
+		// Get the text from the last enzyme block to end of file as last assistant message
+		const lastBlockIndex = rawContent.lastIndexOf('```enzyme') !== -1 
+			? rawContent.lastIndexOf('```enzyme') 
+			: rawContent.lastIndexOf('```reason');
+		
+		if (lastBlockIndex !== -1) {
+			const lastBlockContent = rawContent.slice(lastBlockIndex);
+			const lastAssistantContent = lastBlockContent.split('```')[2]?.trim();
+			
+			if (lastAssistantContent) {
+				messages.push({
+					role: 'assistant',
+					content: lastAssistantContent,
+					metadata: {}
+				});
 			}
 		}
 

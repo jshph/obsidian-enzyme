@@ -12,6 +12,7 @@
 	background-color: var(--background-primary);
 }
 
+.enzyme-model-select,
 .enzyme-digest-button,
 .enzyme-sources-button {
 	position: absolute;
@@ -327,4 +328,40 @@
 	white-space: nowrap;
 }
 
-// ... existing styles ...
+.enzyme-model-select-wrapper {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 0.5rem;
+    display: block;
+    align-items: center;
+    z-index: 2;
+}
+
+.enzyme-model-select-arrow {
+    color: var(--text-normal);
+    font-size: 0.8em;
+    margin-right: 0.2rem;
+    pointer-events: none;
+}
+
+.enzyme-model-select, .enzyme-model-select-arrow {
+    appearance: none;
+    background: none;
+    border: none;
+    color: var(--text-normal);
+    font-size: 0.8em;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s ease-in-out;
+    opacity: 0.6;
+}
+
+.enzyme-container:hover .enzyme-model-select {
+    opacity: 1;
+    transform: translateY(-1px);
+}
+
+.enzyme-model-select:hover {
+    background-color: var(--interactive-hover);
+}

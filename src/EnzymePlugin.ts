@@ -117,6 +117,11 @@ export class EnzymePlugin extends Plugin {
 			this.obsidianEnzymeAgent,
 			this.candidateRetriever,
 			this.dataviewGraphLinker,
+      () => this.settings.models.map(model => model.label),
+      (model: string) => {
+        this.settings.selectedModel = model
+        this.saveSettings()
+      }
 		)
 
 

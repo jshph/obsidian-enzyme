@@ -39,7 +39,9 @@ export class CodeBlockRenderer {
 		public app: App,
 		public enzymeAgent: ObsidianEnzymeAgent,
 		public candidateRetriever: DataviewCandidateRetriever,
-		public dataviewGraphLinker: DataviewGraphLinker
+		public dataviewGraphLinker: DataviewGraphLinker,
+    public getModels: () => string[],
+    public setModel: (label: string) => void
 	) {
 		this.observerMap = new Map()
 		this.intersectionObserverMap = new Map()
@@ -68,6 +70,8 @@ export class CodeBlockRenderer {
 		if (sources.length > 0) {
 			this.createSourcesButton(container, sources)
 		}
+
+    this.createModelSelectButton(container)
 
 		// Render the content
 		MarkdownRenderer.render(this.app, content, container, '/', new Component())
@@ -121,6 +125,39 @@ export class CodeBlockRenderer {
 		this.intersectionObserverMap.set(uniqueId, intersectionObserver)
 		intersectionObserver.observe(el)
 	}
+
+  createModelSelectButton(container: HTMLElement) {
+    const selectEl = container.createEl('div', { cls: 'enzyme-model-select-wrapper' });
+    const selectWrapper = selectEl.createEl('div')
+    selectWrapper.style.position = 'relative'
+
+    const arrow = selectWrapper.createEl('span', { cls: 'enzyme-model-select-arrow' });
+    arrow.setText('▼');
+
+    const modelSelect = selectWrapper.createEl('select', {
+        cls: 'enzyme-model-select'
+    });
+
+    this.getModels().forEach(
+        (label) => {
+            const option = modelSelect.createEl('option', {
+                text: label,
+                value: label
+            });
+
+            modelSelect.appendChild(option)
+        }
+    )
+
+    modelSelect.addEventListener('change', (event) => {
+        if (event.target instanceof HTMLSelectElement) {
+            this.setModel(event.target.value);
+            arrow.setText('▼'); // Always show down arrow
+        }
+    });
+
+    container.appendChild(selectWrapper);
+  }
 
 	createDigestButton(
 		container: HTMLElement,
