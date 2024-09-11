@@ -70,11 +70,10 @@
 // New styles for content pop effect
 .enzyme-container > div {
 	transition: all 0.2s ease-in-out;
-	padding: 0.5rem;
 	border-radius: 4px;
 }
 
-.enzyme-container:hover > div {
+.enzyme-container:hover > button {
 	transform: translateY(-3px);
 	box-shadow: 0 4px 8px var(--background-modifier-box-shadow);
 	background-color: var(--background-primary);
@@ -188,15 +187,15 @@
 .enzyme-prompt-popup {
 	background-color: var(--background-primary);
 	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px; // Increased border radius for a softer look
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); // Softer, more spread out shadow
-	padding: 12px; // Increased padding around the entire popup
+	border-radius: 8px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+	padding: 12px;
 	z-index: 1000;
 	display: flex;
 	flex-direction: column;
-	gap: 10px; // Slightly increased gap
-	backdrop-filter: blur(5px); // Adds a subtle blur effect to the background
-	transition: box-shadow 0.3s ease, width 0.3s ease; // Smooth transition for hover effect
+	gap: 10px;
+	backdrop-filter: blur(5px);
+	transition: box-shadow 0.3s ease, width 0.3s ease;
 	opacity: 0;
 	visibility: hidden;
 	transition: opacity 0.3s ease, visibility 0.3s ease;
@@ -243,7 +242,7 @@
 	max-width: 130px;
 	cursor: pointer;
 	outline: none;
-	height: 100%; // Change this to 100% to match the container height
+	height: 100%;
 	box-shadow: var(--input-shadow);
 	padding-top: 0;
 	padding-bottom: 0;
@@ -274,7 +273,7 @@
 	padding: 0 40px 0 10px;
 	height: 100%;
 	transition: background-color 0.3s ease, width 0.3s ease;
-	width: 60px; // Default narrow width for the input
+	width: 60px;
 }
 
 .enzyme-prompt-popup input:focus {
@@ -283,7 +282,7 @@
 }
 
 .enzyme-prompt-input-container.expanded input {
-	width: 100%; // Full width when expanded
+	width: 100%;
 }
 
 .enzyme-prompt-send-button {
@@ -330,11 +329,11 @@
 
 .enzyme-model-select-wrapper {
     position: absolute;
-    bottom: 0.5rem;
-    left: 0.5rem;
-    display: block;
-    align-items: center;
+    bottom: -0.25rem;
+    left: 1rem;
+    display: flex;
     z-index: 2;
+    padding: 0;
 }
 
 .enzyme-model-select-arrow {
@@ -353,15 +352,22 @@
     padding: 0.2rem 0.5rem;
     cursor: pointer;
     border-radius: 4px;
-    transition: all 0.2s ease-in-out;
+    transition: background-color 0.2s ease-in-out;
     opacity: 0.6;
+    white-space: nowrap;
+}
+
+.enzyme-model-select-wrapper > * {
+    padding: 0;
+    position: relative;
+    box-shadow: none;
 }
 
 .enzyme-container:hover .enzyme-model-select {
     opacity: 1;
-    transform: translateY(-1px);
 }
 
-.enzyme-model-select:hover {
-    background-color: var(--interactive-hover);
+.enzyme-model-select:hover, .enzyme-model-select:focus {
+    background-color: none;
+    box-shadow: none;
 }

@@ -116,6 +116,8 @@ const EnzymeBlock = forwardRef<EnzymeBlockRef, CodeBlockRendererProps>((props, r
     if (!sourcesContentRef.current) {
       return
     }
+    sourcesContentRef.current.innerHTML = ''
+    
     const rect = sourcesButtonRef.current?.getBoundingClientRect()
     if (!rect) {
       return
@@ -175,28 +177,28 @@ const EnzymeBlock = forwardRef<EnzymeBlockRef, CodeBlockRendererProps>((props, r
     <>
       <div ref={contentRef} className="enzyme-container">
         <button className="enzyme-digest-button" onClick={handleDigestButtonClick}>
-        Digest
-      </button>
-      {sources.length > 0 && (
-        <button ref={sourcesButtonRef} className="enzyme-sources-button" onClick={handleSourcesButtonClick}>
-          Sources
+          Digest
         </button>
-      )}
-      <div className="enzyme-model-select-wrapper">
-        <select
-          className="enzyme-model-select"
-          value={selectedModel}
-          onChange={handleModelChange}
-        >
-          {getModels().map((model) => (
-            <option key={model} value={model}>
-              {model}
-            </option>
-          ))}
-        </select>
+        {sources.length > 0 && (
+          <button ref={sourcesButtonRef} className="enzyme-sources-button" onClick={handleSourcesButtonClick}>
+            Sources
+          </button>
+        )}
+        <div className="enzyme-model-select-wrapper">
+          <span className="enzyme-model-select-arrow">▼</span>
+          <select
+            className="enzyme-model-select"
+            value={selectedModel}
+            onChange={handleModelChange}
+          >
+            {getModels().map((model) => (
+              <option key={model} value={model}>
+                {model}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
-      <div ref={contentRef} />
-    </div>
     {/* <div ref={sourcesContentRef} className={`enzyme-sources-content ${showSources ? 'show' : ''}`}></div> */}
     </>
   );
