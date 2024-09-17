@@ -5,12 +5,13 @@ import {
 	ChatMessageWithMetadata,
 	SystemPrompts
 } from 'enzyme-core'
-import { App, EditorPosition, Notice } from 'obsidian'
+import { App, EditorPosition, Notice, TFile } from 'obsidian'
 import {
 	EnzymeBlockConstructor,
 	parseEnzymeBlockContents
 } from '../render/EnzymeBlockConstructor'
-import { EditorPosition } from 'obsidian'
+import { BasicExtractor } from '../source/extract/BasicExtractor'
+import { DataviewCandidateRetriever } from '../source/retrieve'
 
 export type StrategyMetadata = {
 	strategy: string
@@ -27,13 +28,14 @@ export type StrategyMetadata = {
  * systems and the user interface, providing methods to synthesize content
  */
 export class ObsidianEnzymeAgent extends EnzymeAgent {
+	private basicExtractor: BasicExtractor
 	constructor(
 		public app: App,
 		public aiClient: AIClient,
 		public enzymeBlockConstructor: EnzymeBlockConstructor,
 		public candidateRetriever: CandidateRetriever,
 		public getModel: () => string,
-		public checkSetup: () => boolean,
+		public checkSetup: () => Promise<boolean>,
 		protected systemPrompts: SystemPrompts
 	) {
 		super(
@@ -47,22 +49,31 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 					editor: this.app.workspace.activeEditor.editor
 				})
 		)
+
+		this.basicExtractor = new BasicExtractor(
+			app,
+			(candidateRetriever as DataviewCandidateRetriever).dataviewAPI
+		)
 	}
-	getMessagesToPosition(startPos: EditorPosition): ChatMessageWithMetadata[] {
+
+	async getMessagesToPosition(
+		startPos: EditorPosition
+	): Promise<ChatMessageWithMetadata[]> {
 		const editor = this.app.workspace.activeEditor?.editor
 		if (!editor) return []
 
-		const rawContent = editor.getRange(
-			{ ch: 0, line: 0 },
-			startPos
-		)
+		const rawContent = editor.getRange({ ch: 0, line: 0 }, startPos)
 
 		const blocks = rawContent.split(/```(enzyme|reason)\n/)
 		const messages: ChatMessageWithMetadata[] = []
+		const activeFileMetadata = this.app.metadataCache.getFileCache(
+			this.app.workspace.getActiveFile() as TFile
+		)
 
 		for (let i = 1; i < blocks.length; i += 2) {
 			const userContent = blocks[i + 1].split('```')[0].trim()
-			const assistantContent = blocks[i + 2]?.split(/```(enzyme|reason)\n/)[0].trim() || ''
+			let assistantContent =
+				blocks[i + 2]?.split(/```(enzyme|reason)\n/)[0].trim() || ''
 
 			const parsedContents = parseEnzymeBlockContents(userContent)
 
@@ -81,10 +92,18 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 			})
 
 			if (assistantContent) {
+				const { contents: embedReplacedAssistantContent, substitutions } =
+					await this.basicExtractor.replaceEmbeds(
+						assistantContent,
+						activeFileMetadata,
+						true
+					)
 				messages.push({
 					role: 'assistant',
-					content: assistantContent,
-					metadata: {}
+					content: embedReplacedAssistantContent,
+					metadata: {
+						substitutions: substitutions
+					}
 				})
 			}
 
@@ -92,31 +111,64 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 			if (i + 3 < blocks.length) {
 				const textBetweenBlocks = blocks[i + 3].trim()
 				if (textBetweenBlocks) {
+					const {
+						contents: textBetweenBlocksContent,
+						substitutions: textBetweenBlocksSubstitutions
+					} = await this.basicExtractor.replaceEmbeds(
+						textBetweenBlocks,
+						activeFileMetadata,
+						true
+					)
+
 					messages.push({
 						role: 'assistant',
-						content: textBetweenBlocks,
-						metadata: {}
+						content: textBetweenBlocksContent,
+						metadata: {
+							substitutions: textBetweenBlocksSubstitutions
+						}
+					})
+				}
+			}
+			// Get the text from the last enzyme block to end of file as last assistant message
+			const lastBlockIndex =
+				rawContent.lastIndexOf('```enzyme') !== -1
+					? rawContent.lastIndexOf('```enzyme')
+					: rawContent.lastIndexOf('```reason')
+
+			if (lastBlockIndex !== -1) {
+				const lastBlockContent = rawContent.slice(lastBlockIndex)
+				const { contents: lastAssistantContent, substitutions } =
+					await this.basicExtractor.replaceEmbeds(
+						lastBlockContent,
+						activeFileMetadata,
+						true
+					)
+
+				if (lastAssistantContent) {
+					messages.push({
+						role: 'assistant',
+						content: lastAssistantContent,
+						metadata: {
+							substitutions: substitutions
+						}
 					})
 				}
 			}
 		}
 
-		// Get the text from the last enzyme block to end of file as last assistant message
-		const lastBlockIndex = rawContent.lastIndexOf('```enzyme') !== -1 
-			? rawContent.lastIndexOf('```enzyme') 
-			: rawContent.lastIndexOf('```reason');
-		
-		if (lastBlockIndex !== -1) {
-			const lastBlockContent = rawContent.slice(lastBlockIndex);
-			const lastAssistantContent = lastBlockContent.split('```')[2]?.trim();
-			
-			if (lastAssistantContent) {
-				messages.push({
-					role: 'assistant',
-					content: lastAssistantContent,
-					metadata: {}
-				});
-			}
+		// Handle the case when there was no enzyme block
+		if (messages.length === 0) {
+			const { contents: allContent, substitutions } =
+				await this.basicExtractor.replaceEmbeds(
+					rawContent,
+					activeFileMetadata,
+					true
+				)
+			messages.push({
+				role: 'assistant',
+				content: allContent,
+				metadata: { substitutions: substitutions }
+			})
 		}
 
 		return messages
@@ -128,11 +180,12 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 	 * @param {EditorPosition} startPos - The position in the editor where the synthesis process should start.
 	 * @returns {Promise<void>} - A promise that resolves when the synthesis process is complete.
 	 */
-	buildMessagesAndDigest(startParams: {
+	async buildMessagesAndDigest(startParams: {
 		startPos: EditorPosition
 	}): Promise<void> {
-		const messagesToHere: ChatMessageWithMetadata[] =
-			this.getMessagesToPosition(startParams.startPos)
+		const messagesToHere = await this.getMessagesToPosition(
+			startParams.startPos
+		)
 		return this.digest(messagesToHere, startParams.startPos, true)
 	}
 
@@ -187,33 +240,56 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 		cursorPos: EditorPosition
 	) {
 		const editor = this.app.workspace.activeEditor?.editor
+
 		if (!editor) return
 
 		const selection = editor.getSelection()
-		const messagesToHere = this.getMessagesToPosition(cursorPos)
+		const messagesToHere = await this.getMessagesToPosition(cursorPos)
 
-    editor.replaceSelection('')
+		// Replace embeds in the selection
+		const { contents: selectionContent, substitutions } =
+			await this.basicExtractor.replaceEmbeds(
+				selection,
+				this.app.metadataCache.getFileCache(
+					this.app.workspace.getActiveFile() as TFile
+				)!,
+				editor.posToOffset(cursorPos)
+			)
 
-		// treat the selection as a digest, i.e. from the assistant
-		const digestMessage: ChatMessageWithMetadata = {
-			role: 'assistant',
-			content: selection,
-			metadata: {}
-		}
-		messagesToHere.push(digestMessage)
+		const contentCursorPosToEnd = editor.getRange(
+			{
+				ch: 0,
+				line: cursorPos.line
+			},
+			{
+				ch: 0,
+				line: editor.lineCount()
+			}
+		)
+
+		editor.replaceSelection('')
+
+		// Reformat the last message with the selected content
+		const lastMessage = messagesToHere[messagesToHere.length - 1]
+		lastMessage.content +=
+			'\n<selection>\n' + selectionContent + '\n</selection>\n'
+
+		lastMessage.metadata?.substitutions?.push(...substitutions)
+
+		lastMessage.content += contentCursorPosToEnd
 
 		let refinementPrompt: string
 
 		let optPromptSuffix = `to address the prompt "${prompt}".`
 		switch (format) {
 			case 'Focus':
-				refinementPrompt = `Expand on the previous message ${optPromptSuffix} Add more detail and incorporate additional sources. Preserve existing markers and key points.`
+				refinementPrompt = `Expand on the selection ${optPromptSuffix} Add more detail and incorporate additional sources. Preserve existing markers and key points.`
 				break
 			case 'Style':
-				refinementPrompt = `Rewrite the previous message with a style that matches the prompt "${prompt}". Preserve the key points of the previous message and its markers.`
+				refinementPrompt = `Rewrite the selection with a style that matches the prompt "${prompt}". Preserve the key points of the selection and its markers.`
 				break
 			default:
-				refinementPrompt = `Rewrite the previous message ${optPromptSuffix} Incorporate more sources, preserving the key points of the previous message and its markers.`
+				refinementPrompt = `Rewrite the selection ${optPromptSuffix} Incorporate more sources, preserving the key points of the selection and its markers.`
 		}
 
 		const refinementMessage: ChatMessageWithMetadata = {

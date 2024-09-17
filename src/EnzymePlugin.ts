@@ -31,33 +31,36 @@ export class EnzymePlugin extends Plugin {
 		this.settings = DEFAULT_SETTINGS
 		this.dataview = getAPI(this.app)
 		this.aiClient = new AIClient(
-			(baseURL: string) =>
-				new ProxyServer(baseURL, 3123, `http://localhost:3123`)
+			(baseURL: string) => new ProxyServer(baseURL, `http://localhost:3123`)
 		)
 	}
 
 	async initAIClient() {
 		// Check if API key is set for the selected model
 		const selectedModel = this.settings.models.find(
-			(model) => model.label === this.settings.selectedModel
+			(model) => model.model === this.settings.selectedModel
 		)
 
-		if (!selectedModel.apiKey) {
+		if (
+			!selectedModel ||
+			!this.settings.apiKeys[selectedModel.provider?.toLowerCase() ?? '']
+		) {
 			new Notice('No API key provided for selected model')
 			return
 		}
 
 		await this.aiClient.initAIClient(
 			this.settings.models.find(
-				(model) => model.label === this.settings.selectedModel
-			)
+				(model) => model.model === this.settings.selectedModel
+			),
+			this.settings.apiKeys[selectedModel.provider?.toLowerCase() ?? '']
 		)
 	}
 
 	getModel(): string {
 		return this.settings.models.find(
-			(model) => model.label === this.settings.selectedModel
-		).model
+			(model) => model.model === this.settings.selectedModel
+		)?.model
 	}
 
 	async onload() {
@@ -90,23 +93,26 @@ export class EnzymePlugin extends Plugin {
 			() =>
 				(() =>
 					this.settings.models.find(
-						(model) => model.label === this.settings.selectedModel
+						(model) => model.model === this.settings.selectedModel
 					).model)(),
-			() =>
-				(() => {
-					const selectedModel = this.settings.models.find(
-						(model) => model.label === this.settings.selectedModel
-					)
+			async () => {
+				await this.loadSettings()
+				const selectedModel = this.settings.models.find(
+					(model) => model.model === this.settings.selectedModel
+				)
 
-					if (
-						selectedModel.baseURL &&
-						selectedModel.baseURL.contains('localhost')
-					) {
-						return true
-					} else {
-						return selectedModel.apiKey?.length > 0
-					}
-				})(),
+				if (
+					selectedModel?.baseURL &&
+					selectedModel.baseURL.contains('localhost')
+				) {
+					return true
+				} else {
+					return (
+						this.settings.apiKeys[selectedModel?.provider?.toLowerCase() ?? '']
+							?.length > 0
+					)
+				}
+			},
 			prompts
 		)
 
@@ -117,13 +123,22 @@ export class EnzymePlugin extends Plugin {
 			this.obsidianEnzymeAgent,
 			this.candidateRetriever,
 			this.dataviewGraphLinker,
-      () => this.settings.models.map(model => model.label),
-      (model: string) => {
-        this.settings.selectedModel = model
-        this.saveSettings()
-      }
+			async () => {
+				await this.loadSettings()
+				const modelLabels = this.settings.models
+					.map((model) => model.model)
+					.filter((model) => model !== undefined)
+				return modelLabels
+			},
+			() => {
+				return this.settings.selectedModel
+			},
+			(model: string) => {
+				this.settings.selectedModel = model
+				this.saveSettings()
+			},
+			this.initAIClient.bind(this)
 		)
-
 
 		try {
 			this.enzymeCodeBlockProcessor = this.registerMarkdownCodeBlockProcessor(
@@ -137,8 +152,9 @@ export class EnzymePlugin extends Plugin {
 			)
 		} catch (e) {}
 
-
-		this.refinePopup = renderRefinePopup(this.obsidianEnzymeAgent.refineDigest.bind(this.obsidianEnzymeAgent))
+		this.refinePopup = renderRefinePopup(
+			this.obsidianEnzymeAgent.refineDigest.bind(this.obsidianEnzymeAgent)
+		)
 
 		this.addCommand({
 			id: 'build-enzyme-block-from-selection',
@@ -189,14 +205,17 @@ export class EnzymePlugin extends Plugin {
 			name: 'Refine selected digest',
 			editorCallback: (editor: Editor) => {
 				this.refinePopup.show(() => {
-          const cursorPos = editor.getCursor();
-          const cursorCoords = editor.posToOffset(cursorPos);
-          const { left, top } = editor.cm.coordsAtPos(cursorCoords) || { left: 0, top: 0 };
-          return { left, top };
-        });
-        const cursorPos = editor.getCursor();
-        this.refinePopup.setInsertPosition(cursorPos);
-			} 
+					const cursorPos = editor.getCursor('to')
+					const cursorCoords = editor.posToOffset(cursorPos)
+					const { left, top } = editor.cm.coordsAtPos(cursorCoords) || {
+						left: 0,
+						top: 0
+					}
+					return { left, top }
+				})
+				const cursorPos = editor.getCursor('from')
+				this.refinePopup.setInsertPosition(cursorPos)
+			}
 		})
 	}
 
