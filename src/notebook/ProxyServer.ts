@@ -8,9 +8,9 @@ import http from 'http'
  */
 export class ProxyServer {
 	private server: http.Server | null = null
+	private basePort: number = 3123
 	constructor(
 		targetURL: string,
-		private port: number,
 		public baseURL: string
 	) {
 		const app = new Koa()
@@ -21,9 +21,31 @@ export class ProxyServer {
 				changeOrigin: true
 			})
 		)
+		const startServer = () => {
+			return new Promise<void>((resolve, reject) => {
+				this.server = app
+					.listen(this.basePort, () => {
+						console.log(`Server running on port ${this.basePort}`)
+						resolve()
+					})
+					.on('error', (e) => {
+						if (e.code === 'EADDRINUSE') {
+							console.error(
+								`Port ${this.basePort} is in use, trying port ${this.basePort + 1}`
+							)
+							this.basePort += 1
+							startServer().then(resolve).catch(reject)
+						} else {
+							console.error('Error starting server:', e)
+							reject(e)
+						}
+					})
+			})
+		}
 
-		this.server = app.listen(this.port, () => {
-			console.log(`Server running on port ${this.port}`)
+		startServer().catch((e) => {
+			console.error('Failed to start server:', e)
+			throw e
 		})
 	}
 

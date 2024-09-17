@@ -15,34 +15,33 @@ export interface EnzymeSettings {
 	trimFolders: string[]
 
 	visualizeSourceInGraph: boolean
+	apiKeys: {
+		openai: string
+		anthropic: string
+	}
 }
 
 export const DEFAULT_SETTINGS: EnzymeSettings = {
 	models: [
 		{
-			label: 'Haiku',
 			model: 'claude-3-haiku-20240307',
-			baseURL: null,
-			apiKey: null
+			provider: 'anthropic',
+			baseURL: 'https://api.anthropic.com/v1'
 		},
 		{
-			label: 'GPT-3.5 Turbo',
 			model: 'gpt-3.5-turbo-0125',
-			apiKey: null,
-			baseURL: null
+			provider: 'openai',
+			baseURL: 'https://api.openai.com/v1'
 		},
 		{
-			label: 'GPT-4',
 			model: 'gpt-4-0125-preview',
-			apiKey: null,
-			baseURL: null
+			provider: 'openai',
+			baseURL: 'https://api.openai.com/v1'
 		},
 		{
-			label: 'LM Studio',
 			model:
 				'TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q8_0.gguf',
-			baseURL: 'http://localhost:1234/v1',
-			apiKey: ''
+			baseURL: 'http://localhost:1234/v1'
 		}
 	],
 	selectedModel: 'Haiku',
@@ -50,5 +49,9 @@ export const DEFAULT_SETTINGS: EnzymeSettings = {
 	localModelPath: undefined,
 	basicExtractionFolders: [],
 	trimFolders: [],
-	visualizeSourceInGraph: false
+	visualizeSourceInGraph: false,
+	apiKeys: {
+		openai: '',
+		anthropic: ''
+	}
 }

@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian'
 import { EnzymePlugin } from '../EnzymePlugin'
 import { DEFAULT_SETTINGS } from './EnzymeSettings'
+import { ModelConfig } from 'enzyme-core'
 
 const DEFAULT_INPUT_WIDTH = '500px'
 
@@ -12,149 +13,38 @@ export class SettingsTab extends PluginSettingTab {
 		super(app, plugin)
 	}
 
-	createModelSetting(
-		containerEl: HTMLElement,
-		thisModelConfig: {
-			model: string
-			baseURL: string
-			apiKey: string
-			label: string
-		} = {
-			label: '',
-			model: '',
-			baseURL: '',
-			apiKey: ''
-		}
-	) {
-		const div = containerEl.createDiv()
-		var index = this.plugin.settings.models.indexOf(thisModelConfig)
-		if (index === -1) {
-			this.plugin.settings.models.push(thisModelConfig)
-			index = this.plugin.settings.models.length - 1
-		}
-
-		const topSetting = new Setting(div)
-			.setName('Label')
-			.setDesc('Label for the model config')
-			.addText((text) => {
-				text
-					.setPlaceholder('Label')
-					.onChange(async (value) => {
-						thisModelConfig.label = value
-						this.plugin.settings.models[index] = thisModelConfig
-						this.plugin.saveSettings()
-					})
-					.setValue(thisModelConfig.label).inputEl.style.width =
-					DEFAULT_INPUT_WIDTH
-			})
-		topSetting.settingEl.style.borderTop =
-			'1px solid var(--background-modifier-border)'
-		topSetting.settingEl.style.paddingTop = '12px'
-
-		new Setting(div)
-			.setName('Model name')
-			.setDesc('Name of the model from the provider')
-			.addText((text) => {
-				text
-					.setPlaceholder('Model name')
-					.onChange(async (value) => {
-						thisModelConfig.model = value
-						this.plugin.settings.models[index] = thisModelConfig
-						this.plugin.saveSettings()
-					})
-					.setValue(thisModelConfig.model).inputEl.style.width =
-					DEFAULT_INPUT_WIDTH
-			}).settingEl.style.borderTop = 'none'
-
-		new Setting(div)
-			.setName('Base URL')
-			.setDesc('Base URL for the model provider; OpenAI can be empty')
-			.addText((text) => {
-				text
-					.setPlaceholder('Base URL')
-					.onChange(async (value) => {
-						thisModelConfig.baseURL = value
-						this.plugin.settings.models[index] = thisModelConfig
-						this.plugin.saveSettings()
-					})
-					.setValue(thisModelConfig.baseURL).inputEl.style.width =
-					DEFAULT_INPUT_WIDTH
-			}).settingEl.style.borderTop = 'none'
-
-		new Setting(div)
-			.setName('API Key')
-			.setDesc('API Key for a given model provider')
-			.addText((text) => {
-				text
-					.setPlaceholder('API Key')
-					.onChange(async (value) => {
-						thisModelConfig.apiKey = value
-						this.plugin.settings.models[index] = thisModelConfig
-						this.plugin.saveSettings()
-					})
-					.setValue(thisModelConfig.apiKey).inputEl.style.width =
-					DEFAULT_INPUT_WIDTH
-			}).settingEl.style.borderTop = 'none'
-
-		new Setting(div).addButton((button) => {
-			button.setButtonText('X').onClick(() => {
-				div.remove()
-				if (this.plugin.settings.selectedModel === thisModelConfig.label) {
-					this.plugin.settings.selectedModel = DEFAULT_SETTINGS.selectedModel
-				}
-				this.plugin.settings.models.remove(thisModelConfig)
-				this.plugin.saveSettings()
-				this.display()
-			})
-		}).settingEl.style.borderTop = 'none'
-	}
-
 	async display(): Promise<void> {
 		const { containerEl } = this
 		containerEl.empty()
 
-		const loaderSettings = new Setting(containerEl).setName('Set model')
-
-		loaderSettings.addDropdown((dropdown) => {
-			this.plugin.settings.models.forEach((model, index) => {
-				dropdown.addOption(index.toString(), model.label)
+		// API Keys section
+		new Setting(containerEl)
+			.setName('OpenAI API Key')
+			.setDesc('API Key for OpenAI models')
+			.addText((text) => {
+				text
+					.setPlaceholder('OpenAI API Key')
+					.setValue(this.plugin.settings.apiKeys.openai || '')
+					.onChange(async (value) => {
+						this.plugin.settings.apiKeys.openai = value
+						await this.plugin.saveSettings()
+					})
+				text.inputEl.type = 'password'
 			})
-			dropdown.setValue(this.plugin.settings.selectedModel)
-			dropdown.onChange(async (value) => {
-				this.plugin.settings.selectedModel =
-					this.plugin.settings.models[parseInt(value)].label
-				this.plugin.saveSettings()
-				this.plugin.initAIClient()
+
+		new Setting(containerEl)
+			.setName('Anthropic API Key')
+			.setDesc('API Key for Anthropic models')
+			.addText((text) => {
+				text
+					.setPlaceholder('Anthropic API Key')
+					.setValue(this.plugin.settings.apiKeys.anthropic || '')
+					.onChange(async (value) => {
+						this.plugin.settings.apiKeys.anthropic = value
+						await this.plugin.saveSettings()
+					})
+				text.inputEl.type = 'password'
 			})
-		})
-
-		loaderSettings.addButton((button) => {
-			button.setButtonText('Reload Settings').onClick(() => {
-				this.display()
-				this.plugin.loadSettings()
-			}).buttonEl.style.marginLeft = '10px'
-		})
-
-		const modelConfigsSetting = new Setting(containerEl).setName(
-			'Model configs'
-		)
-
-		modelConfigsSetting.settingEl.style.display = 'block'
-		modelConfigsSetting.infoEl.style.paddingBottom = '20px'
-
-		modelConfigsSetting.controlEl.style.display = 'block'
-		modelConfigsSetting.controlEl.style.textAlign = 'left'
-		const modelConfigsContainer = modelConfigsSetting.controlEl.createDiv()
-
-		Object.values(this.plugin.settings.models).forEach((value) => {
-			this.createModelSetting(modelConfigsContainer, value)
-		})
-
-		modelConfigsSetting.addButton((button) => {
-			button.setButtonText('Add model').onClick(() => {
-				this.createModelSetting(modelConfigsContainer)
-			})
-		})
 
 		new Setting(containerEl)
 			.setName('Exclude from Evergreen extraction strategy')
@@ -227,6 +117,185 @@ export class SettingsTab extends PluginSettingTab {
 						await this.plugin.saveSettings()
 					})
 			})
+
+		// Models section
+		const modelsSection = containerEl.createEl('div', {
+			cls: 'enzyme-models-section'
+		})
+		modelsSection.createEl('h3', { text: 'Models' })
+
+		// Default models
+		const defaultModels = [
+			{ name: 'gpt-4o-mini', provider: 'OpenAI' },
+			{ name: 'gpt-4o', provider: 'OpenAI' },
+			{ name: 'claude-3-haiku-20240307', provider: 'Anthropic' },
+			{ name: 'claude-3-opus-20240229', provider: 'Anthropic' },
+			{ name: 'claude-3-5-sonnet-20240620', provider: 'Anthropic' }
+		]
+
+		const baseURLs = {
+			openai: 'https://api.openai.com/v1',
+			anthropic: 'https://api.anthropic.com/v1'
+		}
+
+		defaultModels.forEach((model) => {
+			new Setting(modelsSection)
+				.setName(model.name)
+				.setDesc(`${model.provider} model`)
+				.addToggle((toggle) => {
+					toggle
+						.setValue(
+							this.plugin.settings.models.find(
+								(m) => m.model === model.name
+							) !== undefined
+						)
+						.onChange(async (isEnabled) => {
+							let updatedModels: ModelConfig[] = []
+							if (isEnabled) {
+								// Add the model to the list of enabled models
+								updatedModels = this.plugin.settings.models.map((m) => {
+									if (m.model === model.name) {
+										return {
+											...m,
+											provider: model.provider,
+											baseURL: baseURLs[m.provider?.toLowerCase() ?? '']
+										}
+									}
+									return m
+								})
+								if (!updatedModels.some((m) => m.model === model.name)) {
+									updatedModels.push({
+										model: model.name,
+										provider: model.provider,
+										baseURL: baseURLs[model.provider?.toLowerCase() ?? '']
+									})
+								}
+							} else {
+								// Remove the model from the list of enabled models
+								updatedModels = this.plugin.settings.models.filter(
+									(m) => m.model !== model.name
+								)
+							}
+							this.plugin.settings.models = updatedModels
+							await this.plugin.saveSettings()
+						})
+				})
+		})
+
+		// Select model
+		new Setting(modelsSection)
+			.setName('Select model')
+			.setDesc('Select the model to use for the selected prompt')
+			.addDropdown((dropdown) => {
+				this.plugin.settings.models.forEach((model) => {
+					dropdown.addOption(model.model, model.model)
+				})
+				dropdown
+					.setValue(this.plugin.settings.selectedModel || 'gpt-4o-mini')
+					.onChange(async (value) => {
+						this.plugin.settings.selectedModel = value
+						await this.plugin.initAIClient()
+						await this.plugin.saveSettings()
+					})
+			})
+
+		// Custom models section
+		const customModelsSection = containerEl.createEl('div', {
+			cls: 'enzyme-custom-models-section'
+		})
+		customModelsSection.createEl('h3', { text: 'Custom Models' })
+
+		// Existing custom models
+		this.plugin.settings.models.forEach((model, index) => {
+			if (model.provider !== 'OpenAI' && model.provider !== 'Anthropic') {
+				this.createModelSetting(customModelsSection, model, index)
+			}
+		})
+
+		// Add custom model button
+		new Setting(customModelsSection).addButton((button) => {
+			button.setButtonText('Add Custom Model').onClick(() => {
+				this.createModelSetting(
+					customModelsSection,
+					{
+						model: '',
+						baseURL: '',
+						apiKey: ''
+					},
+					this.plugin.settings.models.length
+				)
+			})
+		})
+	}
+
+	createModelSetting(
+		containerEl: HTMLElement,
+		modelConfig: any,
+		index: number
+	) {
+		const div = containerEl.createDiv({ cls: 'enzyme-custom-model' })
+
+		new Setting(div)
+			.setName('Model name')
+			.setDesc('Name of the model from the provider')
+			.addText((text) => {
+				text
+					.setPlaceholder('Model name')
+					.setValue(modelConfig.model)
+					.onChange(async (value) => {
+						modelConfig.model = value
+						this.plugin.settings.models[index] = modelConfig
+						await this.plugin.saveSettings()
+					})
+				text.inputEl.style.width = DEFAULT_INPUT_WIDTH
+			})
+
+		new Setting(div)
+			.setName('Base URL')
+			.setDesc('Base URL for the model provider; can be empty for OpenAI')
+			.addText((text) => {
+				text
+					.setPlaceholder('Base URL')
+					.setValue(modelConfig.baseURL)
+					.onChange(async (value) => {
+						modelConfig.baseURL = value
+						this.plugin.settings.models[index] = modelConfig
+						await this.plugin.saveSettings()
+					})
+				text.inputEl.style.width = DEFAULT_INPUT_WIDTH
+			})
+
+		new Setting(div)
+			.setName('API Key')
+			.setDesc(
+				'API Key for this specific model (if different from global keys)'
+			)
+			.addText((text) => {
+				text
+					.setPlaceholder('API Key')
+					.setValue(modelConfig.apiKey)
+					.onChange(async (value) => {
+						modelConfig.apiKey = value
+						this.plugin.settings.models[index] = modelConfig
+						await this.plugin.initAIClient()
+						await this.plugin.saveSettings()
+					})
+				text.inputEl.type = 'password'
+				text.inputEl.style.width = DEFAULT_INPUT_WIDTH
+			})
+
+		new Setting(div).addButton((button) => {
+			button
+				.setButtonText('Remove')
+				.setWarning()
+				.onClick(async () => {
+					this.plugin.settings.models.splice(index, 1)
+					await this.plugin.saveSettings()
+					this.display() // Refresh the entire settings page
+				})
+		})
+
+		div.createEl('hr')
 	}
 }
 

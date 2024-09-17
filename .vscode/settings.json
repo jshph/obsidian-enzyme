@@ -7,7 +7,8 @@
 	"files.autoSave": "onFocusChange", // optional but recommended
 	"vs-code-prettier-eslint.prettierLast": "false",
 	"[typescript]": {
-		"editor.defaultFormatter": "esbenp.prettier-vscode"
+		"editor.defaultFormatter": "esbenp.prettier-vscode",
+		"editor.formatOnSave": true // enable format on save for TypeScript
 	}, // set as "true" to run 'prettier' last not first
 	"python.formatting.provider": "black",
 	"python.formatting.blackArgs": ["--line-length", "100"]

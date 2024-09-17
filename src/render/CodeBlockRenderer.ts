@@ -41,15 +41,17 @@ export class CodeBlockRenderer {
 		public enzymeAgent: ObsidianEnzymeAgent,
 		public candidateRetriever: DataviewCandidateRetriever,
 		public dataviewGraphLinker: DataviewGraphLinker,
-    public getModels: () => string[],
-    public setModel: (label: string) => void
+		public getModels: () => Promise<string[]>,
+		public getSelectedModel: () => string,
+		public setModel: (label: string) => void,
+		public initAIClient: () => void
 	) {
 		this.observerMap = new Map()
 		this.intersectionObserverMap = new Map()
 		this.hiddenEnzymeBlocks = new Set()
 	}
 
-  async renderEnzyme(
+	async renderEnzyme(
 		blockContents: string,
 		el: HTMLElement,
 		context: MarkdownPostProcessorContext
@@ -177,11 +179,13 @@ export class CodeBlockRenderer {
 			candidateRetriever: this.candidateRetriever,
 			dataviewGraphLinker: this.dataviewGraphLinker,
 			getModels: this.getModels,
+			getSelectedModel: this.getSelectedModel,
 			setModel: this.setModel,
 			content,
 			sources,
-			context
-		});
+			context,
+			initAIClient: this.initAIClient
+		})
 	}
 
 	buildEnzymeBlockFromCurLine() {

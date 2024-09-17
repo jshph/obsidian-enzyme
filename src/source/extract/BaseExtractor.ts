@@ -102,7 +102,9 @@ export abstract class BaseExtractor {
 		if (headingRefs) {
 			for (const headingRef of headingRefs) {
 				const templateString = `%${Math.random().toString(16).slice(2, 6)}%`
-				const headingSuffix = headingRef.replace(/#+\s/, '').replace(/\[\[|\]\]/g, '')
+				const headingSuffix = headingRef
+					.replace(/#+\s/, '')
+					.replace(/\[\[|\]\]/g, '')
 				const blockRefString = `![[${title}#${headingSuffix}]]`
 				substitutions.push({
 					template: templateString,
@@ -196,15 +198,18 @@ export abstract class BaseExtractor {
 	 * It adjusts the offset for each subsequent replacement to account for the change in content length
 	 * after each replacement.
 	 *
-	 * @param contents The original content containing embed references.
+	 * @param rawContents The original content containing embed references.
 	 * @param metadata The metadata object containing embeds and their positions.
 	 * @returns A Promise that resolves to an object containing the modified content and an array of block reference substitutions.
 	 */
 	async replaceEmbeds(
-		contents: string,
-		metadata: CachedMetadata
+		rawContents: string,
+		metadata: CachedMetadata,
+		offsetAdjustment: number = 0
 	): Promise<{ contents: string; substitutions: BlockRefSubstitution[] }> {
-		let newOffset = 0
+		// rawContents might not be the whole file contents, which would throw off the embed offsets. Handle this by adjusting newOffset to a negative value based on contents.
+		let newOffset = offsetAdjustment
+
 		const allSubstitutions: BlockRefSubstitution[] = []
 
 		// Sort embeds by start position (if not already)
@@ -214,7 +219,7 @@ export abstract class BaseExtractor {
 			)
 		}
 
-		for (let embed of metadata?.embeds || []) {
+		for (let embed of metadata.embeds || []) {
 			if (
 				embed.original.includes('.jpg') ||
 				embed.original.includes('.excalidraw')
@@ -237,25 +242,27 @@ export abstract class BaseExtractor {
 
 			allSubstitutions.push(...substitutions)
 
-			let renderedEmbed = `\nExcerpt from: ${basename} -- \n\n> ${substitutedEmbedContent.split('\n').join('\n> ')}\n`
 			const markerHash = Math.random().toString(16).substring(4, 8)
 			const marker = `%${markerHash}%` // TODO this may lead to a lot of stale markers if there are multiple references to the same file, but that's okay for now
-			renderedEmbed += `${marker}\n`
+			let renderedEmbed = ''
+			renderedEmbed = '\n' + substitutedEmbedContent.trim()
+			// only add marker if the embed content itself doesn't have a marker
+			renderedEmbed += `\n(Excerpt from ${basename}${substitutedEmbedContent.includes('%') ? '' : ' using marker: ' + marker})\n`
 
 			allSubstitutions.push({
 				template: marker,
 				block_reference: embed.original
 			})
 
-			contents =
-				contents.slice(0, newOffset + embed.position.start.offset) +
+			rawContents =
+				rawContents.slice(0, newOffset + embed.position.start.offset) +
 				renderedEmbed +
-				contents.slice(newOffset + embed.position.end.offset)
+				rawContents.slice(newOffset + embed.position.end.offset)
 
 			newOffset +=
 				renderedEmbed.length -
 				(embed.position.end.offset - embed.position.start.offset)
 		}
-		return { contents, substitutions: allSubstitutions }
+		return { contents: rawContents, substitutions: allSubstitutions }
 	}
 }
