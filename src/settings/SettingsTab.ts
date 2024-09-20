@@ -47,6 +47,25 @@ export class SettingsTab extends PluginSettingTab {
 			})
 
 		new Setting(containerEl)
+			.setName('File exclusion patterns')
+			.setDesc(
+				'Patterns to exclude from Dataview queries and synthesis - tags and paths. Separate patterns with newlines.'
+			)
+			.addTextArea((text) => {
+				text
+					.setPlaceholder('Exclusion patterns')
+					.onChange(async (value) => {
+						this.plugin.settings.exclusionPatterns = value.split('\n')
+						this.plugin.saveSettings()
+					})
+					.setValue(
+						this.plugin.settings.exclusionPatterns?.length > 0
+							? this.plugin.settings.exclusionPatterns.join('\n')
+							: ''
+					).inputEl.style.width = DEFAULT_INPUT_WIDTH
+			})
+
+		new Setting(containerEl)
 			.setName('Exclude from Evergreen extraction strategy')
 			.setDesc(
 				'By default, when a [[link]] is mentioned in an Enzyme block, Enzyme will treat mentions of [[link]] as source material (as an evergreen). Add paths to this list to exclude from this strategy. For any files in this list, Enzyme will extract their full contents. Separate paths with newlines.'

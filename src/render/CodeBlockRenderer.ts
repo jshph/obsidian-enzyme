@@ -44,7 +44,8 @@ export class CodeBlockRenderer {
 		public getModels: () => Promise<string[]>,
 		public getSelectedModel: () => string,
 		public setModel: (label: string) => void,
-		public initAIClient: () => void
+		public initAIClient: () => void,
+		public exclusionPatterns: string[]
 	) {
 		this.observerMap = new Map()
 		this.intersectionObserverMap = new Map()

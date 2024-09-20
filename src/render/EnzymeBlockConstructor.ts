@@ -1,6 +1,6 @@
 import { StrategyMetadata } from '../notebook/ObsidianEnzymeAgent'
 import { App } from 'obsidian'
-import { EnzymeSettings } from 'enzyme-core'
+import { EnzymeSettings } from '../settings/EnzymeSettings'
 import { DQLStrategy } from '../source/extract/Strategy'
 import * as yaml from 'yaml'
 
@@ -71,29 +71,44 @@ export class EnzymeBlockConstructor {
 					}
 				})
 
+				let excludedSuffix = ''
+				for (const pattern of this.settings.exclusionPatterns) {
+					if (pattern.startsWith('#')) {
+						if (excludedSuffix.length > 0) {
+							excludedSuffix += ' AND '
+						}
+						excludedSuffix += ` !contains(file.tags, "${pattern}")`
+					} else {
+						if (excludedSuffix.length > 0) {
+							excludedSuffix += ' AND '
+						}
+						excludedSuffix += ` !contains(file.path, "${pattern}")`
+					}
+				}
+
 				switch (entity.type) {
 					case EnzymeSourceType.Note:
 						if (doUseBasicExtraction) {
 							return {
 								strategy: DQLStrategy[DQLStrategy.Basic],
-								dql: `LIST WHERE file.link = ${entity.entity}`
+								dql: `LIST WHERE file.link = ${entity.entity} ${excludedSuffix}`
 							}
 						} else if (doUseLongContent) {
 							return {
 								strategy: DQLStrategy[DQLStrategy.LongContent],
-								dql: `LIST WHERE file.link = ${entity.entity}`
+								dql: `LIST WHERE file.link = ${entity.entity} ${excludedSuffix}`
 							}
 						} else {
 							return {
 								strategy: DQLStrategy[DQLStrategy.SingleEvergreenReferrer],
-								dql: `LIST WHERE contains(file.outlinks, ${entity.entity}) SORT file.ctime DESC LIMIT ${entity.limit}`,
+								dql: `LIST WHERE contains(file.outlinks, ${entity.entity}) ${excludedSuffix} SORT file.ctime DESC LIMIT ${entity.limit}`,
 								evergreen: entity.entity
 							}
 						}
 					case EnzymeSourceType.Tag:
 						return {
 							strategy: DQLStrategy[DQLStrategy.SingleEvergreenReferrer],
-							dql: `LIST WHERE contains(file.tags, "${entity.entity}") SORT file.ctime DESC LIMIT ${entity.limit}`,
+							dql: `LIST WHERE contains(file.tags, "${entity.entity}") ${excludedSuffix} SORT file.ctime DESC LIMIT ${entity.limit}`,
 							evergreen: entity.entity
 						}
 					case EnzymeSourceType.Folder:
@@ -102,14 +117,14 @@ export class EnzymeBlockConstructor {
 						if (doUseBasicExtraction) {
 							return {
 								strategy: DQLStrategy[DQLStrategy.Basic],
-								dql: `LIST FROM "${folder}" SORT file.ctime DESC LIMIT ${entity.limit}`,
+								dql: `LIST FROM "${folder}" ${excludedSuffix ? 'WHERE ' + excludedSuffix : ''} SORT file.ctime DESC LIMIT ${entity.limit}`,
 								folder: folder
 							}
 						} else {
 							// Default to long content
 							return {
 								strategy: DQLStrategy[DQLStrategy.LongContent],
-								dql: `LIST FROM "${folder}" SORT file.ctime DESC LIMIT ${entity.limit}`,
+								dql: `LIST FROM "${folder}" ${excludedSuffix ? 'WHERE ' + excludedSuffix : ''} SORT file.ctime DESC LIMIT ${entity.limit}`,
 								folder: folder
 							}
 						}

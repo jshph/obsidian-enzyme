@@ -19,6 +19,7 @@ export interface EnzymeSettings {
 		openai: string
 		anthropic: string
 	}
+	exclusionPatterns: string[]
 }
 
 export const DEFAULT_SETTINGS: EnzymeSettings = {
@@ -53,5 +54,6 @@ export const DEFAULT_SETTINGS: EnzymeSettings = {
 	apiKeys: {
 		openai: '',
 		anthropic: ''
-	}
+	},
+	exclusionPatterns: ['daily/', '#reason/sample']
 }

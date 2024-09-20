@@ -137,7 +137,8 @@ export class EnzymePlugin extends Plugin {
 				this.settings.selectedModel = model
 				this.saveSettings()
 			},
-			this.initAIClient.bind(this)
+			this.initAIClient.bind(this),
+			this.settings.exclusionPatterns
 		)
 
 		try {
