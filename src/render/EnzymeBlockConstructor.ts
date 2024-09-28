@@ -101,14 +101,14 @@ export class EnzymeBlockConstructor {
 						} else {
 							return {
 								strategy: DQLStrategy[DQLStrategy.SingleEvergreenReferrer],
-								dql: `LIST WHERE contains(file.outlinks, ${entity.entity}) ${excludedSuffix} SORT file.ctime DESC LIMIT ${entity.limit}`,
+								dql: `LIST WHERE contains(file.outlinks, ${entity.entity}) AND ${excludedSuffix} SORT file.ctime DESC LIMIT ${entity.limit}`,
 								evergreen: entity.entity
 							}
 						}
 					case EnzymeSourceType.Tag:
 						return {
 							strategy: DQLStrategy[DQLStrategy.SingleEvergreenReferrer],
-							dql: `LIST WHERE contains(file.tags, "${entity.entity}") ${excludedSuffix} SORT file.ctime DESC LIMIT ${entity.limit}`,
+							dql: `LIST WHERE contains(file.tags, "${entity.entity}") AND ${excludedSuffix} SORT file.ctime DESC LIMIT ${entity.limit}`,
 							evergreen: entity.entity
 						}
 					case EnzymeSourceType.Folder:
