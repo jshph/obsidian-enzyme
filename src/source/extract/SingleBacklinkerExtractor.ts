@@ -34,17 +34,14 @@ export class SingleBacklinkerExtractor extends BaseExtractor {
 		contents = replaced.contents
 		let substitutions = replaced.substitutions
 
-		const cleanedContents = this.cleanContents(contents)
-
 		const referenceContentWindows =
-			await this.lassoExtractor.extractReferenceWindows(
-				cleanedContents,
-				metadata,
-				[strategy.evergreen]
-			)
+			await this.lassoExtractor.extractReferenceWindows(contents, metadata, [
+				strategy.evergreen
+			])
 
 		const referenceContents = referenceContentWindows.map((window) => {
-			return this.substituteBlockReferences(file.basename, window)
+			const cleaned = this.cleanContents(window)
+			return this.substituteBlockReferences(file.basename, cleaned)
 		})
 
 		let allContents = {

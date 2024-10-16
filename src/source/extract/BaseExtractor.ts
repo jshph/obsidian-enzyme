@@ -56,7 +56,7 @@ export abstract class BaseExtractor {
 			: ''
 
 		const evergreenPart = strategy.evergreen
-			? `\nExtracting contents around mentions of: ${strategy.evergreen}\n`
+			? `\nExtracting contents of ${strategy.evergreen} and around mentions of it:\n`
 			: ''
 		return `**Strategy**: ${this.description()}\n${dqlPart}${evergreenPart}${preamblePart}`
 	}

@@ -2,7 +2,7 @@ import { App, TFile } from 'obsidian'
 import { FileContents, CandidateRetriever } from 'enzyme-core'
 import { ObsidianContentRenderer } from './ObsidianContentRenderer'
 import { EnzymeSettings } from '../../settings/EnzymeSettings'
-import { isHighLevelStrategy } from '../extract/Strategy'
+import { DQLStrategy, isHighLevelStrategy } from '../extract/Strategy'
 import { DataviewApi, getAPI } from '../../obsidian-modules/dataview-handler'
 import { StrategyMetadata } from '../../notebook/ObsidianEnzymeAgent'
 
@@ -14,7 +14,7 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 	obsidianContentRenderer: ObsidianContentRenderer
 	dataviewAPI: DataviewApi
 	constructor(
-		settings: EnzymeSettings,
+		public settings: EnzymeSettings,
 		public app: App
 	) {
 		this.obsidianContentRenderer = new ObsidianContentRenderer(app, settings)
@@ -46,8 +46,11 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 	}
 
 	/**
-	 * Retrieves file contents.
-	 * It ensures that duplicate paths are filtered out by creating a Set from the paths array.
+	 * Retrieves file contents using the StrategyMetadata, i.e. utilizing the DQL query.
+	 * If the strategy references an evergreen / a specific note, it's usually best to retrieve
+	 * the note contents in addition to following the strategy to retrieve any mentions of that note
+	 * (i.e. with SingleBacklinkerExtractor).
+	 *
 	 * Each file is then processed to prepare its contents according to the specified strategy
 	 * The resulting array of FileContents is flattened before being returned.
 	 *
@@ -61,20 +64,63 @@ export class DataviewCandidateRetriever implements CandidateRetriever {
 			return []
 		}
 
-		const dql = parameters.dql
+		if (parameters.evergreen) {
+			// Need to handle both links and tags
 
-		const dqlResults = await this.dataviewAPI.tryQuery(dql)
-		const paths = dqlResults.values
-		const realPaths = [...new Set(paths.map((path: any) => path.path))]
-		const files = realPaths.map((path: string) =>
-			this.app.metadataCache.getFirstLinkpathDest(path, '/')
-		)
-		const bodies: FileContents[] = await Promise.all(
-			files.map((file: TFile) =>
-				this.obsidianContentRenderer.prepareFileContents(file, parameters)
+			if (
+				parameters.evergreen.startsWith('[[') &&
+				parameters.evergreen.endsWith(']]')
+			) {
+				// In case evergreen is a link, retrieve the file contents
+
+				// Clean up evergreen as link
+				const evergreen = parameters.evergreen
+					.replaceAll('[', '')
+					.replaceAll(']', '')
+
+				const file = this.app.metadataCache.getFirstLinkpathDest(evergreen, '/')
+				return [
+					await this.obsidianContentRenderer.prepareFileContents(
+						file,
+						parameters
+					)
+				]
+			} else {
+				// In case evergreen is a tag
+
+				// Execute the DQL query for the tag
+				const sources = await this.dataviewAPI.tryQuery(parameters.dql)
+				const files = sources.values.map((value: any) => {
+					return this.app.metadataCache.getFirstLinkpathDest(value.path, '/')
+				})
+
+				return Promise.all(
+					files.map(async (file: TFile) => {
+						return await this.obsidianContentRenderer.prepareFileContents(
+							file,
+							{
+								strategy: DQLStrategy[DQLStrategy.SingleEvergreenReferrer],
+								evergreen: parameters.evergreen
+							}
+						)
+					})
+				)
+			}
+		} else {
+			// Might also be a folder, etc, in which case we execute the DQL query directly
+
+			const sources = await this.dataviewAPI.tryQuery(parameters.dql)
+			const files = sources.values.map((value: any) => {
+				return this.app.metadataCache.getFirstLinkpathDest(value.path, '/')
+			})
+
+			return Promise.all(
+				files.map(async (file: TFile) => {
+					return await this.obsidianContentRenderer.prepareFileContents(file, {
+						strategy: DQLStrategy[DQLStrategy.Basic]
+					})
+				})
 			)
-		)
-
-		return bodies.flat()
+		}
 	}
 }

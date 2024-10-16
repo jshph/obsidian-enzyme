@@ -39,38 +39,6 @@ export class EnzymeBlockConstructor {
 		const entities = this.extractSourcesFromRawContents(contents)
 		if (entities.length > 0) {
 			return entities.map((entity) => {
-				const doUseBasicExtraction = this.settings.basicExtractionFolders?.some(
-					(folder) => {
-						if (entity.type === EnzymeSourceType.Note) {
-							const link = this.app.metadataCache.getFirstLinkpathDest(
-								entity.entity.replace(/\[\[|\]\]/g, ''),
-								''
-							)
-							if (!link) {
-								return false
-							}
-							return link.path.startsWith(folder)
-						} else if (entity.type === EnzymeSourceType.Folder) {
-							return entity.entity.startsWith(folder)
-						}
-					}
-				)
-
-				const doUseLongContent = this.settings.trimFolders?.some((folder) => {
-					if (entity.type === EnzymeSourceType.Note) {
-						const link = this.app.metadataCache.getFirstLinkpathDest(
-							entity.entity.replace(/\[\[|\]\]/g, ''),
-							''
-						)
-						if (!link) {
-							return false
-						}
-						return link.path.startsWith(folder)
-					} else if (entity.type === EnzymeSourceType.Folder) {
-						return entity.entity.startsWith(folder)
-					}
-				})
-
 				let excludedSuffix = ''
 				for (const pattern of this.settings.exclusionPatterns) {
 					if (pattern.startsWith('#')) {
@@ -88,45 +56,24 @@ export class EnzymeBlockConstructor {
 
 				switch (entity.type) {
 					case EnzymeSourceType.Note:
-						if (doUseBasicExtraction) {
-							return {
-								strategy: DQLStrategy[DQLStrategy.Basic],
-								dql: `LIST WHERE file.link = ${entity.entity} ${excludedSuffix}`
-							}
-						} else if (doUseLongContent) {
-							return {
-								strategy: DQLStrategy[DQLStrategy.LongContent],
-								dql: `LIST WHERE file.link = ${entity.entity} ${excludedSuffix}`
-							}
-						} else {
-							return {
-								strategy: DQLStrategy[DQLStrategy.SingleEvergreenReferrer],
-								dql: `LIST WHERE contains(file.outlinks, ${entity.entity}) AND ${excludedSuffix} SORT file.ctime DESC LIMIT ${entity.limit}`,
-								evergreen: entity.entity
-							}
+						return {
+							strategy: DQLStrategy[DQLStrategy.Dynamic],
+							dql: `LIST WHERE contains(file.outlinks, ${entity.entity}) ${excludedSuffix ? 'AND ' + excludedSuffix : ''} SORT file.ctime DESC LIMIT ${entity.limit}`,
+							evergreen: entity.entity
 						}
 					case EnzymeSourceType.Tag:
 						return {
 							strategy: DQLStrategy[DQLStrategy.SingleEvergreenReferrer],
-							dql: `LIST WHERE contains(file.tags, "${entity.entity}") AND ${excludedSuffix} SORT file.ctime DESC LIMIT ${entity.limit}`,
+							dql: `LIST WHERE contains(file.tags, "${entity.entity}") ${excludedSuffix ? 'AND ' + excludedSuffix : ''} SORT file.ctime DESC LIMIT ${entity.limit}`,
 							evergreen: entity.entity
 						}
 					case EnzymeSourceType.Folder:
 						let folder = entity.entity.slice(0, -1)
 
-						if (doUseBasicExtraction) {
-							return {
-								strategy: DQLStrategy[DQLStrategy.Basic],
-								dql: `LIST FROM "${folder}" ${excludedSuffix ? 'WHERE ' + excludedSuffix : ''} SORT file.ctime DESC LIMIT ${entity.limit}`,
-								folder: folder
-							}
-						} else {
-							// Default to long content
-							return {
-								strategy: DQLStrategy[DQLStrategy.LongContent],
-								dql: `LIST FROM "${folder}" ${excludedSuffix ? 'WHERE ' + excludedSuffix : ''} SORT file.ctime DESC LIMIT ${entity.limit}`,
-								folder: folder
-							}
+						return {
+							strategy: DQLStrategy[DQLStrategy.Basic],
+							dql: `LIST FROM "${folder}" ${excludedSuffix ? 'WHERE ' + excludedSuffix : ''} SORT file.ctime DESC LIMIT ${entity.limit}`,
+							folder: folder
 						}
 				}
 			})
@@ -238,18 +185,13 @@ export class EnzymeBlockConstructor {
 			if (sources.filter((s) => s.evergreen).length > 0) {
 				parts += `mentions of ${sources.map((s) => s.evergreen).join(' and ')}`
 			}
-			if (
-				sources.filter(
-					(s) => s.strategy === DQLStrategy[DQLStrategy.LongContent]
-				).length > 0
-			) {
+			const folders = sources
+				.filter((s) => s.folder !== undefined)
+				.map((s) => s.folder)
+			if (folders.length > 0) {
 				if (parts.length > 0) {
 					parts += ' and '
 				}
-				const folders = sources
-					.filter((s) => s.strategy === DQLStrategy[DQLStrategy.LongContent])
-					.map((s) => s.folder)
-					.filter((folder): folder is string => folder !== undefined)
 				parts += `contents in ${folders.join(' and ')}`
 			}
 			prompt += parts + ' to each other.'

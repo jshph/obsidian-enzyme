@@ -103,16 +103,23 @@ ${contents.contents}
 
 		let contentsData = await this.extractor.extract(file, metadata, strategy)
 
-		const renderedContentsData = this.renderFileContents(
-			contentsData,
-			strategy.sourcePreamble
-		)
+		let renderedContentsData: FileContents[] = []
+		let renderedContents: string | undefined = undefined
+
+		if (contentsData.length > 0 && contentsData[0].contents.length > 0) {
+			renderedContentsData = this.renderFileContents(
+				contentsData,
+				strategy?.sourcePreamble
+			)
+
+			renderedContents = renderedContentsData
+				.map((contents) => contents.contents)
+				.join('\n\n')
+		}
 
 		return {
 			title: file.name,
-			contents: renderedContentsData
-				.map((contents) => contents.contents)
-				.join('\n\n'),
+			contents: renderedContents ?? undefined,
 			substitutions: renderedContentsData.flatMap(
 				(contents) => contents.substitutions
 			)
