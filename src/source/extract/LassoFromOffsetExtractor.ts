@@ -53,7 +53,6 @@ export class LassoFromOffsetExtractor {
 			Math.min(contents.length, endBlockBound + characterFallOff)
 		)
 	}
-
 	async extractReferenceWindows(
 		contents: string,
 		metadata: CachedMetadata,
@@ -61,44 +60,91 @@ export class LassoFromOffsetExtractor {
 	): Promise<string[]> {
 		let referenceWindows: string[] = []
 
-		for (let topic of topics) {
-			// Return whole file if it's in frontmatter
-			if (
-				topic.startsWith('#') &&
-				metadata.frontmatter?.tags?.toString().includes(topic.slice(1))
-			) {
-				// TODO just gets the first ~200 words of the doc... not very robust but we don't want to eat tokens
-				referenceWindows.push(
-					contents.substring(0, Math.min(contents.length, 800))
-				)
+		for (const topic of topics) {
+			if (this.isTopicInFrontmatter(topic, metadata)) {
+				referenceWindows.push(this.getInitialContentSnippet(contents))
 				break
 			} else {
-				// Otherwise, there may be multiple references to that tag or link throughout the doc; extract all of the refs and their windows
-				if (topic.startsWith('#')) {
-					for (let tag of metadata.tags || []) {
-						if (tag.tag === topic) {
-							referenceWindows.push(
-								this.lassoContentFromOffset(contents, tag.position, 3, 200)
-							)
-						}
-					}
-				} else if (topic.startsWith('[[')) {
-					for (let link of metadata.links || []) {
-						if (link.original === topic) {
-							referenceWindows.push(
-								this.lassoContentFromOffset(contents, link.position, 3, 200)
-							)
-						}
-					}
-				}
+				this.extractReferencesForTopic(
+					topic,
+					metadata,
+					contents,
+					referenceWindows
+				)
 			}
 		}
 
-		// If this is a book, there may be LOTS of the same ref mentioned. Grab the most recent 8.
-		referenceWindows = referenceWindows.slice(
-			Math.max(0, referenceWindows.length - 8)
-		)
+		return this.limitReferenceWindows(referenceWindows)
+	}
 
-		return referenceWindows
+	private isTopicInFrontmatter(
+		topic: string,
+		metadata: CachedMetadata
+	): boolean {
+		return (
+			topic.startsWith('#') &&
+			metadata.frontmatter?.tags?.toString().includes(topic.slice(1))
+		)
+	}
+
+	private getInitialContentSnippet(contents: string): string {
+		return contents.substring(0, Math.min(contents.length, 800))
+	}
+
+	private extractReferencesForTopic(
+		topic: string,
+		metadata: CachedMetadata,
+		contents: string,
+		referenceWindows: string[]
+	): void {
+		if (topic.startsWith('#')) {
+			this.extractTagReferences(
+				topic,
+				metadata.tags,
+				contents,
+				referenceWindows
+			)
+		} else if (topic.startsWith('[[')) {
+			this.extractLinkReferences(
+				topic,
+				metadata.links,
+				contents,
+				referenceWindows
+			)
+		}
+	}
+
+	private extractTagReferences(
+		topic: string,
+		tags: { tag: string; position: Pos }[] | undefined,
+		contents: string,
+		referenceWindows: string[]
+	): void {
+		tags?.forEach((tag) => {
+			if (tag.tag === topic) {
+				referenceWindows.push(
+					this.lassoContentFromOffset(contents, tag.position, 3, 200)
+				)
+			}
+		})
+	}
+
+	private extractLinkReferences(
+		topic: string,
+		links: { original: string; position: Pos }[] | undefined,
+		contents: string,
+		referenceWindows: string[]
+	): void {
+		links?.forEach((link) => {
+			if (link.original === topic) {
+				referenceWindows.push(
+					this.lassoContentFromOffset(contents, link.position, 3, 200)
+				)
+			}
+		})
+	}
+
+	private limitReferenceWindows(referenceWindows: string[]): string[] {
+		return referenceWindows.slice(Math.max(0, referenceWindows.length - 8))
 	}
 }
