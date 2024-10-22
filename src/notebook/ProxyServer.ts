@@ -28,7 +28,7 @@ export class ProxyServer {
 						console.log(`Server running on port ${this.basePort}`)
 						resolve()
 					})
-					.on('error', (e) => {
+					.on('error', (e: NodeJS.ErrnoException) => {
 						if (e.code === 'EADDRINUSE') {
 							console.error(
 								`Port ${this.basePort} is in use, trying port ${this.basePort + 1}`

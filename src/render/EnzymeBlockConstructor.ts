@@ -29,12 +29,27 @@ const TAG_MATCH_PATTERN = /(#[\w-]+(?:\/[\w-]+)*)(<(\d+))?/
 const FOLDER_MATCH_PATTERN =
 	/([A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*\/)(<(\d+))?/
 
+/**
+ * This class helps generate default sources for the given contents.
+ * It extracts entities from the raw contents and constructs DQL queries
+ * based on the type of each entity (Note, Tag, or Folder). The generated
+ * DQL queries are designed to fetch relevant data without requiring
+ * the user to manually write DQL.
+ *
+ * @param contents - The raw contents from which to extract entities.
+ * @returns An array of StrategyMetadata objects representing the default sources.
+ */
 export class EnzymeBlockConstructor {
 	constructor(
 		public app: App,
 		public settings: EnzymeSettings
 	) {}
 
+	/**
+	 * Generates default sources for the given contents.
+	 * @param contents - The raw contents from which to extract sources.
+	 * @returns An array of StrategyMetadata objects representing the default sources.
+	 */
 	defaultSourcesForContents(contents: string): StrategyMetadata[] {
 		const entities = this.extractSourcesFromRawContents(contents)
 		if (entities.length > 0) {
@@ -86,6 +101,11 @@ export class EnzymeBlockConstructor {
 		}
 	}
 
+	/**
+	 * Extracts entities from the raw contents.
+	 * @param contents - The raw contents from which to extract entities.
+	 * @returns An array of objects containing the extracted entity, its type, and a limit.
+	 */
 	extractSourcesFromRawContents(
 		contents: string
 	): { entity: string; type: EnzymeSourceType; limit: number }[] {
@@ -145,6 +165,11 @@ export class EnzymeBlockConstructor {
 		return entities
 	}
 
+	/**
+	 * Checks if the prompt only contains entities.
+	 * @param prompt - The prompt to check.
+	 * @returns A boolean indicating whether the prompt only contains entities.
+	 */
 	promptOnlyContainsEntities(prompt: string): boolean {
 		// Replace tags and entities with empty strings
 		const strippedPrompt = prompt
