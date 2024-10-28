@@ -153,8 +153,8 @@ export class SettingsTab extends PluginSettingTab {
 		]
 
 		const baseURLs = {
-			openai: 'https://api.openai.com/v1',
-			anthropic: 'https://api.anthropic.com/v1'
+			openai: 'https://api.openai.com/',
+			anthropic: 'https://api.anthropic.com/'
 		}
 
 		defaultModels.forEach((model) => {
@@ -213,7 +213,7 @@ export class SettingsTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.selectedModel || 'gpt-4o-mini')
 					.onChange(async (value) => {
 						this.plugin.settings.selectedModel = value
-						await this.plugin.initAIClient()
+						await this.plugin.initAIClient(value)
 						await this.plugin.saveSettings()
 					})
 			})

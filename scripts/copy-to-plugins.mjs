@@ -10,7 +10,6 @@ export async function copyToPlugins() {
 	)
 	const destDir = path.join(
 		os.homedir(),
-		'Documents',
 		'obsidian',
 		'.obsidian',
 		'plugins',

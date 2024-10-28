@@ -4,12 +4,6 @@
 
 **Version 0.3.0 has undergone a significant rewrite and is now closed-source.**
 
-Visit [enzyme.garden/getting-started](https://www.enzyme.garden/getting-started) for the best guide on how to use Enzyme.
-
-You can also join the conversation on [Discord](https://discord.gg/UmShHCmh)!
-
-![](enzyme_demo.gif)
-
 Enzyme retrieves and helps synthesize your Obsidian notes right in the editor. It features:
 
 - **Chat in markdown**: Chat UI that works entirely in Markdown / YAML (like a Jupyter Notebook for your notes)
@@ -19,3 +13,5 @@ Enzyme retrieves and helps synthesize your Obsidian notes right in the editor. I
 If you enjoy this plugin, please consider supporting its development:
 
 <a href="https://www.buymeacoffee.com/jpham" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40px !important;width: 150px !important;" ></a>
+
+You can also join the conversation on [Discord](https://discord.gg/UmShHCmh)!

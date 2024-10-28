@@ -26,23 +26,20 @@ export const DEFAULT_SETTINGS: EnzymeSettings = {
 	models: [
 		{
 			model: 'claude-3-haiku-20240307',
-			provider: 'anthropic',
-			baseURL: 'https://api.anthropic.com/v1'
+			provider: 'anthropic'
 		},
 		{
 			model: 'gpt-3.5-turbo-0125',
-			provider: 'openai',
-			baseURL: 'https://api.openai.com/v1'
+			provider: 'openai'
 		},
 		{
 			model: 'gpt-4-0125-preview',
-			provider: 'openai',
-			baseURL: 'https://api.openai.com/v1'
+			provider: 'openai'
 		},
 		{
 			model:
 				'TheBloke/Mistral-7B-Instruct-v0.2-GGUF/mistral-7b-instruct-v0.2.Q8_0.gguf',
-			baseURL: 'http://localhost:1234/v1'
+			baseURL: 'http://localhost:1234/'
 		}
 	],
 	selectedModel: 'Haiku',

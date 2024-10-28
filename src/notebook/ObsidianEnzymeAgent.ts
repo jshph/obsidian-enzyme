@@ -12,6 +12,9 @@ import {
 } from '../render/EnzymeBlockConstructor'
 import { BasicExtractor } from '../source/extract/BasicExtractor'
 import { DataviewCandidateRetriever } from '../source/retrieve'
+import Koa from 'koa'
+import cors from '@koa/cors'
+import http from 'http'
 
 export type StrategyMetadata = {
 	strategy: string
@@ -29,6 +32,8 @@ export type StrategyMetadata = {
  */
 export class ObsidianEnzymeAgent extends EnzymeAgent {
 	private basicExtractor: BasicExtractor
+	private server: http.Server
+
 	constructor(
 		public app: App,
 		public aiClient: AIClient,
@@ -54,6 +59,33 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 			app,
 			(candidateRetriever as DataviewCandidateRetriever).dataviewAPI
 		)
+
+		// const serverApp = new Koa()
+		// const router = new Router()
+
+		// serverApp.use(cors())
+		// serverApp.use(bodyParser())
+
+		// router.post('/retrieve', async (ctx) => {
+		// 	const { sources } = await this.enzymeBlockConstructor.processRawContents(
+		// 		ctx.request.body['contents']
+		// 	)
+
+		// 	// TODO validate this behavior for [[wikilinks]]
+
+		// 	const contents: any[] = await Promise.all(
+		// 		sources.map((source) => this.candidateRetriever.retrieve(source))
+		// 	)
+
+		// 	ctx.body = contents
+		// })
+
+		// serverApp.use(router.routes()).use(router.allowedMethods())
+
+		// this.server = http.createServer(serverApp.callback())
+		// this.server.listen(8002, () => {
+		// 	console.log('Server running on http://localhost:8002')
+		// })
 	}
 
 	async getMessagesToPosition(

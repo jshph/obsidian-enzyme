@@ -32,7 +32,7 @@ interface CodeBlockRendererProps {
 	content: string
 	sources: StrategyMetadata[]
 	context: MarkdownPostProcessorContext
-	initAIClient: () => void
+	initAIClient: (selectedModel: string) => void
 }
 
 type EnzymeBlockRef = {}
@@ -153,7 +153,7 @@ const EnzymeBlock = forwardRef<EnzymeBlockRef, CodeBlockRendererProps>(
 
 		const handleModelChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
 			const newModel = event.target.value
-			initAIClient()
+			initAIClient(newModel)
 			setSelectedModel(newModel)
 			setModel(newModel)
 		}

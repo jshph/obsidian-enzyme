@@ -35,25 +35,22 @@ export class EnzymePlugin extends Plugin {
 		)
 	}
 
-	async initAIClient() {
+	async initAIClient(selectedModel: string) {
+		const provider = this.settings.models.find(
+			(model) => model.model === selectedModel
+		)?.provider
 		// Check if API key is set for the selected model
-		const selectedModel = this.settings.models.find(
-			(model) => model.model === this.settings.selectedModel
-		)
-
 		if (
 			!selectedModel ||
-			!this.settings.apiKeys[selectedModel.provider?.toLowerCase() ?? '']
+			!this.settings.apiKeys[provider?.toLowerCase() ?? '']
 		) {
 			new Notice('No API key provided for selected model')
 			return
 		}
 
 		await this.aiClient.initAIClient(
-			this.settings.models.find(
-				(model) => model.model === this.settings.selectedModel
-			),
-			this.settings.apiKeys[selectedModel.provider?.toLowerCase() ?? '']
+			this.settings.models.find((model) => model.model === selectedModel),
+			this.settings.apiKeys[provider?.toLowerCase() ?? '']
 		)
 	}
 
@@ -76,7 +73,7 @@ export class EnzymePlugin extends Plugin {
 			this.app
 		)
 
-		await this.initAIClient()
+		await this.initAIClient(this.getModel())
 
 		const prompts = await getSystemPrompts()
 
