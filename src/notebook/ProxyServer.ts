@@ -8,7 +8,7 @@ import http from 'http'
  */
 export class ProxyServer {
 	private server: http.Server | null = null
-	private basePort: number = 3123
+	private basePort: number = 3144
 	constructor(
 		targetURL: string,
 		public baseURL: string

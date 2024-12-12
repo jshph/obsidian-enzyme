@@ -81,10 +81,17 @@ export class LassoFromOffsetExtractor {
 		topic: string,
 		metadata: CachedMetadata
 	): boolean {
-		return (
-			topic.startsWith('#') &&
-			metadata.frontmatter?.tags?.toString().includes(topic.slice(1))
-		)
+		if (!topic.startsWith('#')) return false
+
+		const tag = topic.slice(1)
+		const frontmatterTags = metadata.frontmatter?.tags || []
+
+		return frontmatterTags.some((frontmatterTag) => {
+			const frontmatterTagName = frontmatterTag.startsWith('#')
+				? frontmatterTag.slice(1)
+				: frontmatterTag
+			return frontmatterTagName === tag
+		})
 	}
 
 	private getInitialContentSnippet(contents: string): string {

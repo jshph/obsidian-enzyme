@@ -1,5 +1,5 @@
 import { Plugin, App, PluginManifest, Notice, Modal } from 'obsidian'
-import { AIClient, getSystemPrompts, Server } from 'enzyme-core'
+import { getSystemPrompts } from 'enzyme-core'
 import { EnzymeSettings, DEFAULT_SETTINGS } from './settings/EnzymeSettings'
 import SettingsTab from './settings/SettingsTab'
 import { CodeBlockRenderer } from './render/CodeBlockRenderer'
@@ -8,7 +8,6 @@ import { DataviewApi, getAPI } from './obsidian-modules/dataview-handler'
 import { DataviewCandidateRetriever } from './source/retrieve/DataviewCandidateRetriever'
 import { EnzymeBlockConstructor } from './render/EnzymeBlockConstructor'
 import { DataviewGraphLinker } from './render/DataviewGraphLinker'
-import { ProxyServer } from './notebook/ProxyServer'
 import { Editor } from 'obsidian'
 import { renderRefinePopup } from './render/RefinePopup'
 
@@ -16,7 +15,6 @@ export class EnzymePlugin extends Plugin {
 	settings: EnzymeSettings
 	obsidianEnzymeAgent: ObsidianEnzymeAgent
 	noteRenderer: CodeBlockRenderer
-	aiClient: AIClient
 	dataview: DataviewApi
 	candidateRetriever: DataviewCandidateRetriever
 	doCollapseEmbeds: boolean = false
@@ -30,34 +28,6 @@ export class EnzymePlugin extends Plugin {
 		super(app, pluginManifest)
 		this.settings = DEFAULT_SETTINGS
 		this.dataview = getAPI(this.app)
-		this.aiClient = new AIClient(
-			(baseURL: string) => new ProxyServer(baseURL, `http://localhost:3123`)
-		)
-	}
-
-	async initAIClient(selectedModel: string) {
-		const provider = this.settings.models.find(
-			(model) => model.model === selectedModel
-		)?.provider
-		// Check if API key is set for the selected model
-		if (
-			!selectedModel ||
-			!this.settings.apiKeys[provider?.toLowerCase() ?? '']
-		) {
-			new Notice('No API key provided for selected model')
-			return
-		}
-
-		await this.aiClient.initAIClient(
-			this.settings.models.find((model) => model.model === selectedModel),
-			this.settings.apiKeys[provider?.toLowerCase() ?? '']
-		)
-	}
-
-	getModel(): string {
-		return this.settings.models.find(
-			(model) => model.model === this.settings.selectedModel
-		)?.model
 	}
 
 	async onload() {
@@ -73,8 +43,6 @@ export class EnzymePlugin extends Plugin {
 			this.app
 		)
 
-		await this.initAIClient(this.getModel())
-
 		const prompts = await getSystemPrompts()
 
 		this.enzymeBlockConstructor = new EnzymeBlockConstructor(
@@ -84,33 +52,10 @@ export class EnzymePlugin extends Plugin {
 
 		this.obsidianEnzymeAgent = new ObsidianEnzymeAgent(
 			this.app,
-			this.aiClient,
 			this.enzymeBlockConstructor,
 			this.candidateRetriever,
-			() =>
-				(() =>
-					this.settings.models.find(
-						(model) => model.model === this.settings.selectedModel
-					).model)(),
-			async () => {
-				await this.loadSettings()
-				const selectedModel = this.settings.models.find(
-					(model) => model.model === this.settings.selectedModel
-				)
-
-				if (
-					selectedModel?.baseURL &&
-					selectedModel.baseURL.contains('localhost')
-				) {
-					return true
-				} else {
-					return (
-						this.settings.apiKeys[selectedModel?.provider?.toLowerCase() ?? '']
-							?.length > 0
-					)
-				}
-			},
-			prompts
+			prompts,
+			this
 		)
 
 		this.addSettingTab(new SettingsTab(this.app, this))
@@ -134,7 +79,6 @@ export class EnzymePlugin extends Plugin {
 				this.settings.selectedModel = model
 				this.saveSettings()
 			},
-			this.initAIClient.bind(this),
 			this.settings.exclusionPatterns
 		)
 

@@ -1,4 +1,4 @@
-import { CandidateRetriever, AIClient, EnzymeAgent } from 'enzyme-core'
+import { CandidateRetriever, EnzymeAgent } from 'enzyme-core'
 import { ObsidianWriter } from '../render/ObsidianWriter'
 import {
 	BlockRefSubstitution,
@@ -12,9 +12,7 @@ import {
 } from '../render/EnzymeBlockConstructor'
 import { BasicExtractor } from '../source/extract/BasicExtractor'
 import { DataviewCandidateRetriever } from '../source/retrieve'
-import Koa from 'koa'
-import cors from '@koa/cors'
-import http from 'http'
+import { EnzymePlugin } from '../EnzymePlugin'
 
 export type StrategyMetadata = {
 	strategy: string
@@ -32,21 +30,16 @@ export type StrategyMetadata = {
  */
 export class ObsidianEnzymeAgent extends EnzymeAgent {
 	private basicExtractor: BasicExtractor
-	private server: http.Server
 
 	constructor(
 		public app: App,
-		public aiClient: AIClient,
 		public enzymeBlockConstructor: EnzymeBlockConstructor,
 		public candidateRetriever: CandidateRetriever,
-		public getModel: () => string,
-		public checkSetup: () => Promise<boolean>,
-		protected systemPrompts: SystemPrompts
+		protected systemPrompts: SystemPrompts,
+		private plugin: EnzymePlugin
 	) {
 		super(
-			aiClient,
 			candidateRetriever,
-			getModel,
 			systemPrompts,
 			(writerParams) =>
 				new ObsidianWriter({
@@ -57,35 +50,9 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 
 		this.basicExtractor = new BasicExtractor(
 			app,
+			this.plugin.settings,
 			(candidateRetriever as DataviewCandidateRetriever).dataviewAPI
 		)
-
-		// const serverApp = new Koa()
-		// const router = new Router()
-
-		// serverApp.use(cors())
-		// serverApp.use(bodyParser())
-
-		// router.post('/retrieve', async (ctx) => {
-		// 	const { sources } = await this.enzymeBlockConstructor.processRawContents(
-		// 		ctx.request.body['contents']
-		// 	)
-
-		// 	// TODO validate this behavior for [[wikilinks]]
-
-		// 	const contents: any[] = await Promise.all(
-		// 		sources.map((source) => this.candidateRetriever.retrieve(source))
-		// 	)
-
-		// 	ctx.body = contents
-		// })
-
-		// serverApp.use(router.routes()).use(router.allowedMethods())
-
-		// this.server = http.createServer(serverApp.callback())
-		// this.server.listen(8002, () => {
-		// 	console.log('Server running on http://localhost:8002')
-		// })
 	}
 
 	async getMessagesToPosition(
@@ -212,13 +179,16 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 	 * @param {EditorPosition} startPos - The position in the editor where the synthesis process should start.
 	 * @returns {Promise<void>} - A promise that resolves when the synthesis process is complete.
 	 */
-	async buildMessagesAndDigest(startParams: {
-		startPos: EditorPosition
-	}): Promise<void> {
+	async buildMessagesAndDigest(
+		startParams: {
+			startPos: EditorPosition
+		},
+		model: string
+	): Promise<void> {
 		const messagesToHere = await this.getMessagesToPosition(
 			startParams.startPos
 		)
-		return this.digest(messagesToHere, startParams.startPos, true)
+		return this.digest(messagesToHere, startParams.startPos, true, model)
 	}
 
 	/**
@@ -269,7 +239,8 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 	async refineDigest(
 		prompt: string,
 		format: string,
-		cursorPos: EditorPosition
+		cursorPos: EditorPosition,
+		model: string
 	) {
 		const editor = this.app.workspace.activeEditor?.editor
 
@@ -331,6 +302,11 @@ export class ObsidianEnzymeAgent extends EnzymeAgent {
 		}
 		messagesToHere.push(refinementMessage)
 
-		await this.digest(messagesToHere, cursorPos)
+		await this.digest(
+			messagesToHere,
+			cursorPos,
+			true,
+			this.plugin.settings.selectedModel
+		)
 	}
 }

@@ -1,7 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian'
 import { EnzymePlugin } from '../EnzymePlugin'
 import { DEFAULT_SETTINGS } from './EnzymeSettings'
-import { ModelConfig } from 'enzyme-core'
 
 const DEFAULT_INPUT_WIDTH = '500px'
 
@@ -28,6 +27,7 @@ export class SettingsTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.apiKeys.openai = value
 						await this.plugin.saveSettings()
+						this.plugin.obsidianEnzymeAgent.aggregator.setOpenAIApiKey(value)
 					})
 				text.inputEl.type = 'password'
 			})
@@ -42,6 +42,7 @@ export class SettingsTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.apiKeys.anthropic = value
 						await this.plugin.saveSettings()
+						this.plugin.obsidianEnzymeAgent.aggregator.setAnthropicApiKey(value)
 					})
 				text.inputEl.type = 'password'
 			})
@@ -145,67 +146,47 @@ export class SettingsTab extends PluginSettingTab {
 
 		// Default models
 		const defaultModels = [
-			{ name: 'gpt-4o-mini', provider: 'OpenAI' },
-			{ name: 'gpt-4o', provider: 'OpenAI' },
-			{ name: 'claude-3-haiku-20240307', provider: 'Anthropic' },
-			{ name: 'claude-3-opus-20240229', provider: 'Anthropic' },
-			{ name: 'claude-3-5-sonnet-20240620', provider: 'Anthropic' }
+			'gpt-4o-mini',
+			'gpt-4o',
+			'claude-3-haiku-20240307',
+			'claude-3-opus-20240229',
+			'claude-3-5-sonnet-20240620'
 		]
 
-		const baseURLs = {
-			openai: 'https://api.openai.com/',
-			anthropic: 'https://api.anthropic.com/'
-		}
-
-		defaultModels.forEach((model) => {
-			new Setting(modelsSection)
-				.setName(model.name)
-				.setDesc(`${model.provider} model`)
-				.addToggle((toggle) => {
-					toggle
-						.setValue(
-							this.plugin.settings.models.find(
-								(m) => m.model === model.name
-							) !== undefined
-						)
-						.onChange(async (isEnabled) => {
-							let updatedModels: ModelConfig[] = []
-							if (isEnabled) {
-								// Add the model to the list of enabled models
-								updatedModels = this.plugin.settings.models.map((m) => {
-									if (m.model === model.name) {
-										return {
-											...m,
-											provider: model.provider,
-											baseURL: baseURLs[m.provider?.toLowerCase() ?? '']
-										}
-									}
-									return m
+		defaultModels.forEach((modelName) => {
+			new Setting(modelsSection).setName(modelName).addToggle((toggle) => {
+				toggle
+					.setValue(
+						this.plugin.settings.models.find((m) => m.model === modelName) !==
+							undefined
+					)
+					.onChange(async (isEnabled) => {
+						let updatedModels = [...this.plugin.settings.models]
+						if (isEnabled) {
+							// Add the model to the list of enabled models if not already present
+							if (!updatedModels.some((m) => m.model === modelName)) {
+								updatedModels.push({
+									model: modelName // baseURL not necessary for default models
 								})
-								if (!updatedModels.some((m) => m.model === model.name)) {
-									updatedModels.push({
-										model: model.name,
-										provider: model.provider,
-										baseURL: baseURLs[model.provider?.toLowerCase() ?? '']
-									})
-								}
-							} else {
-								// Remove the model from the list of enabled models
-								updatedModels = this.plugin.settings.models.filter(
-									(m) => m.model !== model.name
-								)
 							}
-							this.plugin.settings.models = updatedModels
-							await this.plugin.saveSettings()
-						})
-				})
+						} else {
+							// Remove the model from the list of enabled models
+							updatedModels = updatedModels.filter((m) => m.model !== modelName)
+						}
+						this.plugin.settings.models = updatedModels
+						await this.plugin.saveSettings()
+					})
+			})
 		})
 
 		// Select model
 		new Setting(modelsSection)
 			.setName('Select model')
-			.setDesc('Select the model to use for the selected prompt')
+			.setDesc('Select the model to use')
 			.addDropdown((dropdown) => {
+				// Clear existing options
+				dropdown.selectEl.empty()
+				// Add all available models
 				this.plugin.settings.models.forEach((model) => {
 					dropdown.addOption(model.model, model.model)
 				})
@@ -213,7 +194,6 @@ export class SettingsTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.selectedModel || 'gpt-4o-mini')
 					.onChange(async (value) => {
 						this.plugin.settings.selectedModel = value
-						await this.plugin.initAIClient(value)
 						await this.plugin.saveSettings()
 					})
 			})
@@ -222,24 +202,23 @@ export class SettingsTab extends PluginSettingTab {
 		const customModelsSection = containerEl.createEl('div', {
 			cls: 'enzyme-custom-models-section'
 		})
-		customModelsSection.createEl('h3', { text: 'Custom Models' })
+		customModelsSection.createEl('h3', { text: 'Custom Models (e.g. Ollama)' })
 
 		// Existing custom models
 		this.plugin.settings.models.forEach((model, index) => {
-			if (model.provider !== 'OpenAI' && model.provider !== 'Anthropic') {
-				this.createModelSetting(customModelsSection, model, index)
+			if (model.baseURL) {
+				this.createCustomModelSetting(customModelsSection, model, index)
 			}
 		})
 
 		// Add custom model button
 		new Setting(customModelsSection).addButton((button) => {
 			button.setButtonText('Add Custom Model').onClick(() => {
-				this.createModelSetting(
+				this.createCustomModelSetting(
 					customModelsSection,
 					{
 						model: '',
-						baseURL: '',
-						apiKey: ''
+						baseURL: ''
 					},
 					this.plugin.settings.models.length
 				)
@@ -247,16 +226,16 @@ export class SettingsTab extends PluginSettingTab {
 		})
 	}
 
-	createModelSetting(
+	createCustomModelSetting(
 		containerEl: HTMLElement,
-		modelConfig: any,
+		modelConfig: { model: string; baseURL?: string },
 		index: number
 	) {
 		const div = containerEl.createDiv({ cls: 'enzyme-custom-model' })
 
 		new Setting(div)
 			.setName('Model name')
-			.setDesc('Name of the model from the provider')
+			.setDesc('Name of the model (e.g. llama2 for Ollama)')
 			.addText((text) => {
 				text
 					.setPlaceholder('Model name')
@@ -271,35 +250,18 @@ export class SettingsTab extends PluginSettingTab {
 
 		new Setting(div)
 			.setName('Base URL')
-			.setDesc('Base URL for the model provider; can be empty for OpenAI')
+			.setDesc(
+				'Base URL for the model provider (e.g. http://localhost:11434 for Ollama)'
+			)
 			.addText((text) => {
 				text
 					.setPlaceholder('Base URL')
-					.setValue(modelConfig.baseURL)
+					.setValue(modelConfig.baseURL || '')
 					.onChange(async (value) => {
 						modelConfig.baseURL = value
 						this.plugin.settings.models[index] = modelConfig
 						await this.plugin.saveSettings()
 					})
-				text.inputEl.style.width = DEFAULT_INPUT_WIDTH
-			})
-
-		new Setting(div)
-			.setName('API Key')
-			.setDesc(
-				'API Key for this specific model (if different from global keys)'
-			)
-			.addText((text) => {
-				text
-					.setPlaceholder('API Key')
-					.setValue(modelConfig.apiKey)
-					.onChange(async (value) => {
-						modelConfig.apiKey = value
-						this.plugin.settings.models[index] = modelConfig
-						await this.plugin.initAIClient()
-						await this.plugin.saveSettings()
-					})
-				text.inputEl.type = 'password'
 				text.inputEl.style.width = DEFAULT_INPUT_WIDTH
 			})
 

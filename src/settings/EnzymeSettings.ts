@@ -1,7 +1,8 @@
-import { ModelConfig } from 'enzyme-core'
-
 export interface EnzymeSettings {
-	models: ModelConfig[]
+	models: {
+		model: string
+		baseURL?: string
+	}[]
 	selectedModel: string
 	/**
 	 * Enable debug output in the console
@@ -25,16 +26,13 @@ export interface EnzymeSettings {
 export const DEFAULT_SETTINGS: EnzymeSettings = {
 	models: [
 		{
-			model: 'claude-3-haiku-20240307',
-			provider: 'anthropic'
+			model: 'claude-3-haiku-20240307'
 		},
 		{
-			model: 'gpt-3.5-turbo-0125',
-			provider: 'openai'
+			model: 'gpt-3.5-turbo-0125'
 		},
 		{
-			model: 'gpt-4-0125-preview',
-			provider: 'openai'
+			model: 'gpt-4-0125-preview'
 		},
 		{
 			model:

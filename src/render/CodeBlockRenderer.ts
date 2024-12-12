@@ -44,7 +44,6 @@ export class CodeBlockRenderer {
 		public getModels: () => Promise<string[]>,
 		public getSelectedModel: () => string,
 		public setModel: (label: string) => void,
-		public initAIClient: () => void,
 		public exclusionPatterns: string[]
 	) {
 		this.observerMap = new Map()
@@ -184,8 +183,7 @@ export class CodeBlockRenderer {
 			setModel: this.setModel,
 			content,
 			sources,
-			context,
-			initAIClient: this.initAIClient
+			context
 		})
 	}
 

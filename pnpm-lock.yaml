@@ -72,7 +72,7 @@ dependencies:
     specifier: ^2.15.2
     version: 2.15.3
   koa-bodyparser:
-    specifier: ^4.4.1
+    specifier: ^4.3.0
     version: 4.4.1
   koa-proxies:
     specifier: ^0.12.4
@@ -91,7 +91,7 @@ dependencies:
     version: 0.5.67
   openai:
     specifier: ^4.29.2
-    version: 4.58.1
+    version: 4.58.1(zod@3.24.1)
   path:
     specifier: ^0.12.7
     version: 0.12.7
@@ -1915,7 +1915,7 @@ packages:
     dependencies:
       '@anthropic-ai/sdk': 0.22.0
       json-schema: 0.4.0
-      openai: 4.58.1
+      openai: 4.58.1(zod@3.24.1)
     dev: false
 
   /localforage@1.10.0:
@@ -2090,7 +2090,7 @@ packages:
   /obsidian-dataview@0.5.67:
     resolution: {integrity: sha512-nLQrjvZ6Ny5s6mCfi+rv0TsdYkKTV4YfDqyLNixxNkyLCqgE9AXKJlJNnkv3Ic1brGOw2m/0SgtdWykKzobwMQ==}
     dependencies:
-      '@codemirror/language': github.com/lishid/cm-language/2644bfc27afda707a7e1f3aedaf3ca7120f63cd9
+      '@codemirror/language': github.com/lishid/cm-language/be84c19d93fa87ac4e43c1a5874b1d228b5b2a89
       '@codemirror/state': 6.4.1
       '@codemirror/view': 6.33.0
       emoji-regex: 10.4.0
@@ -2131,7 +2131,7 @@ packages:
     resolution: {integrity: sha512-Fvw+Jemq5fjjyWz6CpKx6w9s7xxqo3+JCyM0WXWeCSOboZ8ABkyvP8ID4CZuChA/wxSx+XSJmdOm8rGVyJ1hdQ==}
     dev: false
 
-  /openai@4.58.1:
+  /openai@4.58.1(zod@3.24.1):
     resolution: {integrity: sha512-n9fN4RIjbj4PbZU6IN/FOBBbxHbHEcW18rDZ4nW2cDNfZP2+upm/FM20UCmRNMQTvhOvw/2Tw4vgioQyQb5nlA==}
     hasBin: true
     peerDependencies:
@@ -2149,6 +2149,7 @@ packages:
       formdata-node: 4.4.1
       node-fetch: 2.7.0
       qs: 6.13.0
+      zod: 3.24.1
     transitivePeerDependencies:
       - encoding
     dev: false
@@ -2722,10 +2723,14 @@ packages:
     engines: {node: '>=10'}
     dev: false
 
-  github.com/lishid/cm-language/2644bfc27afda707a7e1f3aedaf3ca7120f63cd9:
-    resolution: {tarball: https://codeload.github.com/lishid/cm-language/tar.gz/2644bfc27afda707a7e1f3aedaf3ca7120f63cd9}
+  /zod@3.24.1:
+    resolution: {integrity: sha512-muH7gBL9sI1nciMZV67X5fTKKBLtwpZ5VBp1vsOQzj1MhrBZ4wlVCm3gedKZWLp0Oyel8sIGfeiz54Su+OVT+A==}
+    dev: false
+
+  github.com/lishid/cm-language/be84c19d93fa87ac4e43c1a5874b1d228b5b2a89:
+    resolution: {tarball: https://codeload.github.com/lishid/cm-language/tar.gz/be84c19d93fa87ac4e43c1a5874b1d228b5b2a89}
     name: '@codemirror/language'
-    version: 6.10.1
+    version: 6.10.3
     prepare: true
     requiresBuild: true
     dependencies:

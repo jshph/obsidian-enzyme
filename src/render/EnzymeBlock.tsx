@@ -32,7 +32,6 @@ interface CodeBlockRendererProps {
 	content: string
 	sources: StrategyMetadata[]
 	context: MarkdownPostProcessorContext
-	initAIClient: (selectedModel: string) => void
 }
 
 type EnzymeBlockRef = {}
@@ -49,8 +48,7 @@ const EnzymeBlock = forwardRef<EnzymeBlockRef, CodeBlockRendererProps>(
 			setModel,
 			content,
 			sources,
-			context,
-			initAIClient
+			context
 		} = props
 
 		const [executionLock, setExecutionLock] = useState({ isExecuting: false })
@@ -83,20 +81,16 @@ const EnzymeBlock = forwardRef<EnzymeBlockRef, CodeBlockRendererProps>(
 		}, [content, sources])
 
 		const handleDigestButtonClick = async () => {
-			if (!(await enzymeAgent.checkSetup())) {
-				new Notice(
-					'Please check that Enzyme is set up properly (i.e. API Key, etc.)'
-				)
-				return
-			}
-
 			if (!executionLock.isExecuting) {
 				try {
 					setExecutionLock({ isExecuting: true })
 					const digestStartPos = getDigestStartLine()
-					await enzymeAgent.buildMessagesAndDigest({
-						startPos: digestStartPos
-					})
+					await enzymeAgent.buildMessagesAndDigest(
+						{
+							startPos: digestStartPos
+						},
+						selectedModel
+					)
 				} catch (e) {
 					new Notice('Enzyme encountered an error: ' + e.message)
 				} finally {
@@ -153,7 +147,6 @@ const EnzymeBlock = forwardRef<EnzymeBlockRef, CodeBlockRendererProps>(
 
 		const handleModelChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
 			const newModel = event.target.value
-			initAIClient(newModel)
 			setSelectedModel(newModel)
 			setModel(newModel)
 		}
