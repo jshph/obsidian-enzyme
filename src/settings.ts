@@ -1,6 +1,6 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian'
 import type EnzymeDigestPlugin from './main'
-import { enzymeInit, isVaultIndexed } from './enzyme'
+import { enzymeInit, isVaultIndexed, isEnzymeInstalled, installEnzyme, clearEnzymeCache } from './enzyme'
 
 export interface EnzymeDigestSettings {
 	apiKey: string
@@ -178,12 +178,18 @@ export class EnzymeDigestSettingTab extends PluginSettingTab {
 	}
 
 	private renderEnzymeInitSection(containerEl: HTMLElement) {
-		containerEl.createEl('h3', { text: 'Vault Indexing' })
+		containerEl.createEl('h3', { text: 'Enzyme Setup' })
+
+		const installed = isEnzymeInstalled()
+
+		if (!installed) {
+			this.renderInstallSection(containerEl)
+			return
+		}
 
 		const vaultPath = this.plugin.getVaultPath()
 		const indexed = isVaultIndexed(vaultPath)
 
-		// Info block
 		const infoEl = containerEl.createEl('div', { cls: 'enzyme-digest-init-info' })
 
 		const aboutP = infoEl.createEl('p')
@@ -275,6 +281,46 @@ export class EnzymeDigestSettingTab extends PluginSettingTab {
 		}
 	}
 
+	private renderInstallSection(containerEl: HTMLElement) {
+		const infoEl = containerEl.createEl('div', { cls: 'enzyme-digest-init-disclaimer' })
+
+		const p1 = infoEl.createEl('p')
+		p1.appendText('The Enzyme CLI is not installed on this machine. Enzyme is a local-first tool that indexes your vault for semantic search. ')
+
+		const learnMore = infoEl.createEl('p', { cls: 'setting-item-description' })
+		const setupLink = learnMore.createEl('a', {
+			text: 'See enzyme.garden/setup',
+			href: 'https://enzyme.garden/setup',
+		})
+		setupLink.setAttr('target', '_blank')
+		learnMore.appendText(' for details on what the installer does and system requirements.')
+
+		new Setting(containerEl)
+			.setName('Install Enzyme CLI')
+			.setDesc('Downloads and installs the enzyme binary via the official installer script.')
+			.addButton((btn) =>
+				btn
+					.setButtonText('Install Enzyme')
+					.setCta()
+					.onClick(() => this.runEnzymeInstall())
+			)
+	}
+
+	private async runEnzymeInstall() {
+		const notice = new Notice('Enzyme: installing...', 0)
+
+		try {
+			await installEnzyme()
+			notice.setMessage('Enzyme: installed successfully!')
+			setTimeout(() => notice.hide(), 4000)
+			this.display()
+		} catch (e: unknown) {
+			notice.hide()
+			const msg = e instanceof Error ? e.message : String(e)
+			new Notice(`Enzyme install failed: ${msg}`, 8000)
+		}
+	}
+
 	private async runEnzymeInit(containerEl: HTMLElement) {
 		const vaultPath = this.plugin.getVaultPath()
 		const notice = new Notice('Enzyme: initializing vault...', 0)
@@ -290,7 +336,6 @@ export class EnzymeDigestSettingTab extends PluginSettingTab {
 			notice.setMessage('Enzyme: vault initialized successfully!')
 			setTimeout(() => notice.hide(), 4000)
 
-			// Re-render settings to show updated state
 			this.display()
 		} catch (e: unknown) {
 			notice.hide()

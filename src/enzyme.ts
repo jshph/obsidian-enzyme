@@ -17,27 +17,65 @@ interface CatalyzeOutput {
 
 const MAX_BUFFER = 1024 * 1024 // 1MB — enzyme output is typically a few KB
 
-// Resolve enzyme binary — Obsidian's Electron doesn't inherit shell PATH
-function findEnzymeBinary(): string {
-	const candidates = [
-		join(homedir(), '.local', 'bin', 'enzyme'),
-		'/usr/local/bin/enzyme',
-		'/opt/homebrew/bin/enzyme',
-		join(homedir(), '.cargo', 'bin', 'enzyme'),
-	]
-	for (const c of candidates) {
+const ENZYME_CANDIDATES = [
+	join(homedir(), '.local', 'bin', 'enzyme'),
+	'/usr/local/bin/enzyme',
+	'/opt/homebrew/bin/enzyme',
+	join(homedir(), '.cargo', 'bin', 'enzyme'),
+]
+
+function findEnzymeBinary(): string | null {
+	for (const c of ENZYME_CANDIDATES) {
 		try {
 			accessSync(c, fsConstants.X_OK)
 			return c
 		} catch {}
 	}
-	return 'enzyme'
+	return null
 }
 
-let _enzymeBin: string | null = null
+let _enzymeBin: string | null | undefined = undefined
 function enzymeBin(): string {
-	if (!_enzymeBin) _enzymeBin = findEnzymeBinary()
+	if (_enzymeBin === undefined) _enzymeBin = findEnzymeBinary()
+	if (!_enzymeBin) {
+		throw new Error('Enzyme CLI is not installed. Install it from enzyme.garden/setup')
+	}
 	return _enzymeBin
+}
+
+export function isEnzymeInstalled(): boolean {
+	if (_enzymeBin === undefined) _enzymeBin = findEnzymeBinary()
+	return _enzymeBin !== null
+}
+
+/** Re-check after install */
+export function clearEnzymeCache(): void {
+	_enzymeBin = undefined
+}
+
+export function installEnzyme(): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const child = spawn('sh', ['-c', 'curl -fsSL https://enzyme.garden/install.sh | sh'], {
+			env: enzymeEnv(),
+			stdio: ['ignore', 'pipe', 'pipe'],
+		})
+
+		let stderr = ''
+		child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString() })
+
+		child.on('close', (code: number) => {
+			if (code !== 0) {
+				reject(new Error(`Install failed (exit ${code}): ${stderr}`))
+			} else {
+				clearEnzymeCache()
+				resolve()
+			}
+		})
+
+		child.on('error', (err: Error) => {
+			reject(new Error(`Failed to run installer: ${err.message}`))
+		})
+	})
 }
 
 let _enzymeEnv: Record<string, string | undefined> | null = null

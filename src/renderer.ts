@@ -131,6 +131,34 @@ export function renderIdle(
 	btn.addEventListener('click', onRun)
 }
 
+export function renderSetupNeeded(
+	container: HTMLElement,
+	reason: 'not-installed' | 'not-indexed'
+) {
+	container.empty()
+	container.addClass('enzyme-digest-container')
+
+	const el = container.createEl('div', { cls: 'enzyme-digest-setup' })
+
+	if (reason === 'not-installed') {
+		el.createEl('p', { text: 'Enzyme CLI is not installed.' })
+		const hint = el.createEl('p', { cls: 'enzyme-digest-error-hint' })
+		hint.appendText('Install it from ')
+		const link = hint.createEl('a', {
+			text: 'enzyme.garden/setup',
+			href: 'https://enzyme.garden/setup',
+		})
+		link.setAttr('target', '_blank')
+		hint.appendText(', or use the Install button in Settings > Enzyme.')
+	} else {
+		el.createEl('p', { text: 'Your vault has not been indexed yet.' })
+		el.createEl('p', {
+			text: 'Open Settings > Enzyme and click "Initialize vault" to get started.',
+			cls: 'enzyme-digest-error-hint',
+		})
+	}
+}
+
 function openSourceNote(app: App, filePath: string) {
 	const relativePath = toRelativeVaultPath(filePath, getVaultBasePath(app))
 	const linkText = relativePath.replace(/\.md$/, '')

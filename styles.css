@@ -113,6 +113,21 @@
   margin: 0;
 }
 
+/* Setup needed */
+.enzyme-digest-setup {
+  padding: 1em;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.enzyme-digest-setup p {
+  margin: 0.3em 0;
+}
+
+.enzyme-digest-setup a {
+  color: var(--interactive-accent);
+}
+
 /* Probe */
 .enzyme-digest-probe {
   font-style: italic;

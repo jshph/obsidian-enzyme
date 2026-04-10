@@ -7,9 +7,9 @@ import {
 	FileSystemAdapter,
 } from 'obsidian'
 import { EnzymeDigestSettings, DEFAULT_SETTINGS, EnzymeDigestSettingTab } from './settings'
-import { catalyzePool, enzymeRefresh, isVaultIndexed, EnrichedResult } from './enzyme'
+import { catalyzePool, enzymeRefresh, isVaultIndexed, isEnzymeInstalled, EnrichedResult } from './enzyme'
 import { generateQueries, weaveDigest, DigestOutput } from './llm'
-import { renderDigest, renderLoading, renderError, renderIdle } from './renderer'
+import { renderDigest, renderLoading, renderError, renderIdle, renderSetupNeeded } from './renderer'
 
 type DigestFreq = 'hourly' | 'daily' | '3d' | 'weekly' | 'manual'
 
@@ -177,6 +177,17 @@ export default class EnzymeDigestPlugin extends Plugin {
 		el: HTMLElement,
 		ctx: MarkdownPostProcessorContext
 	) {
+		if (!isEnzymeInstalled()) {
+			renderSetupNeeded(el, 'not-installed')
+			return
+		}
+
+		const vaultPath = this.getVaultPath()
+		if (vaultPath && !isVaultIndexed(vaultPath)) {
+			renderSetupNeeded(el, 'not-indexed')
+			return
+		}
+
 		const config = parseBlock(source)
 
 		if (!config.prompt) {
