@@ -76,7 +76,7 @@ export function renderDigest(
 	footer.createEl('span', {
 		text: `surfaced ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
 	})
-	footer.createEl('span', { text: ' · enzyme digest', cls: 'enzyme-digest-brand' })
+	footer.createEl('span', { text: ' · enzyme', cls: 'enzyme-digest-brand' })
 }
 
 function formatDate(dateStr: string): string {
@@ -106,7 +106,7 @@ export function renderError(container: HTMLElement, error: string) {
 	const errEl = container.createEl('div', { cls: 'enzyme-digest-error' })
 	errEl.createEl('p', { text: `digest failed: ${error}` })
 	errEl.createEl('p', {
-		text: 'Check your Enzyme Digest settings (API key, model, vault path).',
+		text: 'Check your Enzyme settings (API key, model, vault path).',
 		cls: 'enzyme-digest-error-hint',
 	})
 }

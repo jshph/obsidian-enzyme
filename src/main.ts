@@ -99,7 +99,7 @@ export default class EnzymeDigestPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'insert-enzyme-digest',
-			name: 'Insert Enzyme Digest block',
+			name: 'Insert Enzyme block',
 			editorCallback: (editor) => {
 				const selection = editor.getSelection()?.trim()
 				const prompt = selection || this.settings.defaultPrompt
@@ -119,13 +119,13 @@ export default class EnzymeDigestPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'refresh-enzyme-digests',
-			name: 'Refresh all Enzyme Digest blocks on this page',
+			name: 'Refresh Enzyme blocks on this page',
 			callback: () => {
 				this.digestCache.clear()
 				const leaf = this.app.workspace.getActiveViewOfType(MarkdownView)
 				if (leaf) {
 					leaf.previewMode?.rerender(true)
-					new Notice('Refreshing enzyme digests...')
+					new Notice('Refreshing enzyme blocks...')
 				}
 			},
 		})
@@ -237,7 +237,7 @@ export default class EnzymeDigestPlugin extends Plugin {
 		ctx: MarkdownPostProcessorContext
 	) {
 		if (!this.settings.apiKey) {
-			renderError(el, 'No API key configured. Open Settings > Enzyme Digest.')
+			renderError(el, 'No API key configured. Open Settings > Enzyme.')
 			return
 		}
 

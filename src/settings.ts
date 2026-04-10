@@ -42,7 +42,7 @@ export class EnzymeDigestSettingTab extends PluginSettingTab {
 		const { containerEl } = this
 		containerEl.empty()
 
-		containerEl.createEl('h2', { text: 'Enzyme Digest' })
+		containerEl.createEl('h2', { text: 'Enzyme' })
 		containerEl.createEl('p', {
 			text: 'Surfaces connections across your vault via Enzyme, rendered as a clickable digest that helps you revisit and build on older thinking.',
 			cls: 'setting-item-description',
@@ -187,7 +187,7 @@ export class EnzymeDigestSettingTab extends PluginSettingTab {
 		const infoEl = containerEl.createEl('div', { cls: 'enzyme-digest-init-info' })
 
 		const aboutP = infoEl.createEl('p')
-		aboutP.appendText('Enzyme Digest uses ')
+		aboutP.appendText('This plugin uses ')
 		const enzymeLink = aboutP.createEl('a', {
 			text: 'Enzyme',
 			href: 'https://enzyme.garden',

@@ -14,7 +14,7 @@ if you want to view the source, please visit the github repository of this plugi
 const prod = process.argv[2] === 'production'
 
 function copyToPluginsPlugin() {
-	const destDir = path.join(os.homedir(), 'obsidian', '.obsidian', 'plugins', 'enzyme-digest')
+	const destDir = path.join(os.homedir(), 'obsidian', '.obsidian', 'plugins', 'enzyme')
 	return {
 		name: 'copy-to-plugins',
 		setup(build) {

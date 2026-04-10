@@ -1,7 +1,7 @@
 {
-  "name": "obsidian-enzyme-digest",
+  "name": "enzyme-obsidian-plugin",
   "version": "0.1.0",
-  "description": "Enzyme Digest — codefence block that surfaces vault connections via LLM + enzyme catalyze",
+  "description": "Enzyme — surfaces connections across your vault, rendered as a clickable digest",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
