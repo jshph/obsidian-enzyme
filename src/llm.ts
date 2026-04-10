@@ -79,12 +79,11 @@ export async function generateQueries(
 	}
 }
 
-// --- Stage 2: Weave results into a digest ---
+// --- Stage 2: Weave results into a writing-oriented digest ---
 
 export interface DigestStep {
 	excerpt: string
-	question: string
-	bridge: string
+	probe: string
 	source_file: string
 	title: string
 	author: string
@@ -95,7 +94,14 @@ export interface DigestOutput {
 	steps: DigestStep[]
 }
 
-const WEAVE_SYSTEM = `You are a knowledge archaeologist who surfaces forgotten connections in a personal vault. You sequence reading highlights and notes into a digest that provokes the reader to revisit and build on older thinking. Your style is sparse, evocative, lowercase — meaning emerges from arrangement, not explanation. Each step should pose a question that makes the reader want to click through and re-engage with the source material.`
+const WEAVE_SYSTEM = `You surface forgotten connections in a personal vault to help the writer continue their thinking. Your job is to remind them of what they were already working through — in their own words — and probe them to go further.
+
+You are not a therapist or life coach. You do not ask "how does this make you feel?" You match the register of the source material:
+- If the content is intellectual, theoretical, or research-oriented: probe the IDEAS. Ask what's unresolved in the argument, what the next logical step would be, where two frameworks collide, what would change if an assumption were wrong.
+- If the content is reflective or personal: probe the OBSERVATION. What was being noticed? What hadn't been named yet? What was this heading toward?
+- If the content is practical or project-oriented: probe the DECISION. What was being weighed? What trade-off was being avoided? What would unblock the next move?
+
+Your probes should feel like a sharp collaborator who read the same passage and is pushing the writer to keep going — not summarizing, not asking for feelings, but pointing at the edge of where the thinking stopped.`
 
 function weaveUserPrompt(prompt: string, pool: EnrichedResult[]): string {
 	const poolText = pool
@@ -111,27 +117,31 @@ function weaveUserPrompt(prompt: string, pool: EnrichedResult[]): string {
 ${poolText}
 </highlight_pool>
 
-From this pool, select and sequence 5-8 highlights into a digest that will make the reader revisit their older thinking.
+Select and sequence 5-8 passages from this pool into a digest that will pull the writer back into their older thinking.
 
 For each step:
-- Extract the most evocative 1-3 sentences as the excerpt
-- Pose a question that the excerpt raises — something that makes the reader want to click through to the source note and think further
-- Write a bridge: a single line of sparse, lowercase text connecting to the next step
-- Include the source_file path, title, and author
+- "excerpt": The most striking 1-3 sentences from the source — use their actual words. This is what they'll see first, and it should hit them with recognition. Pick the sentence where the thinking was sharpest, or where it trailed off right before something important.
+- "probe": A single sentence that pushes them to continue. Match the register of the excerpt:
+  * Intellectual content → ask about the idea, the gap, the tension, the next move in the argument
+  * Reflective content → point at what was being noticed, what hadn't been said yet
+  * Practical content → ask about the decision, the trade-off, what was being weighed
+  Do NOT ask generic questions. Do NOT start with "How might you..." or "What if...". Be specific to THIS excerpt. Reference something concrete from it. The probe should make them want to open the note and write more.
+- "source_file": exact file path from the pool
+- "title": from the pool
+- "author": from the pool
 
-For the intro: 1-2 sentences, all lowercase, free-associative. Acknowledge that these threads were already in the reader's vault, waiting to be woven together.
+For "intro": 1-2 sentences, lowercase. Not a summary — an orientation. Tell the writer what these threads have in common, or what surprised you about the pattern across them. Speak to what they seem to be circling around.
 
-Sequencing: create tension and resonance, not logical argument. Move through different facets. Allow meaning to emerge from arrangement.
+Sequencing: arrange for accumulation, not narrative arc. Each step should add a new angle on the prompt. By the end, the reader should feel the shape of something they haven't written yet.
 
-Return JSON matching this schema:
+Return JSON:
 {
   "intro": "string",
   "steps": [
     {
-      "excerpt": "string (1-3 sentences from the source)",
-      "question": "string (a question this raises, inviting the reader to revisit)",
-      "bridge": "string (sparse lowercase connector to next step)",
-      "source_file": "string (file path from the pool)",
+      "excerpt": "string",
+      "probe": "string",
+      "source_file": "string",
       "title": "string",
       "author": "string"
     }

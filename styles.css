@@ -40,6 +40,13 @@
   margin: 0.8em 0;
 }
 
+/* Step separator — lighter than main separator */
+.enzyme-digest-step-separator {
+  border-top: 1px dashed var(--text-faint);
+  margin: 1em 2em;
+  opacity: 0.4;
+}
+
 /* Source link */
 .enzyme-digest-source {
   margin-bottom: 0.3em;
@@ -68,6 +75,7 @@
   color: var(--text-normal);
   background: var(--background-secondary);
   border-radius: 0 4px 4px 0;
+  cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
@@ -80,29 +88,14 @@
   margin: 0;
 }
 
-/* Question — the hook */
-.enzyme-digest-question {
+/* Probe — the push to continue writing */
+.enzyme-digest-probe {
   font-style: italic;
   color: var(--text-accent);
   font-size: 0.88em;
-  margin: 0.3em 0 0.2em 0.4em;
+  margin: 0.4em 0 0.2em 0.4em;
   padding-left: 0.6em;
-  border-left: 2px solid var(--text-faint);
-}
-
-.enzyme-digest-question::before {
-  content: "? ";
-  opacity: 0.5;
-}
-
-/* Bridge */
-.enzyme-digest-bridge {
-  text-align: center;
-  font-style: italic;
-  color: var(--text-faint);
-  font-size: 0.78em;
-  margin: 0.4em 0;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 /* Footer */
@@ -194,4 +187,51 @@
 
 .enzyme-digest-run-btn:hover {
   background: var(--interactive-accent-hover);
+}
+
+/* --- Settings page styles --- */
+
+.enzyme-digest-init-info {
+  margin: 0.5em 0 1em 0;
+  font-size: 0.92em;
+  line-height: 1.5;
+}
+
+.enzyme-digest-init-info p {
+  margin: 0.4em 0;
+}
+
+.enzyme-digest-init-info a {
+  color: var(--interactive-accent);
+}
+
+.enzyme-digest-init-disclaimer {
+  margin: 0.5em 0 1em 0;
+  padding: 0.8em 1em;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  font-size: 0.92em;
+  line-height: 1.5;
+}
+
+.enzyme-digest-init-disclaimer ul {
+  margin: 0.4em 0;
+  padding-left: 1.4em;
+}
+
+.enzyme-digest-init-disclaimer li {
+  margin: 0.2em 0;
+}
+
+.enzyme-digest-init-status {
+  margin: 0.5em 0 1em 0;
+  padding: 0.6em 1em;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  font-size: 0.92em;
+}
+
+.enzyme-digest-init-ok {
+  color: var(--text-success, var(--interactive-accent));
+  font-weight: 600;
 }

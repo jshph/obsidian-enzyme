@@ -1,4 +1,4 @@
-import { App, MarkdownRenderer, Component } from 'obsidian'
+import { App } from 'obsidian'
 import type { DigestOutput, DigestStep } from './llm'
 
 /**
@@ -36,22 +36,20 @@ export function renderDigest(
 			openSourceNote(app, step.source_file)
 		})
 
-		// Excerpt as blockquote
+		// Excerpt as blockquote — clickable to open source
 		const blockquote = stepEl.createEl('blockquote', { cls: 'enzyme-digest-excerpt' })
 		blockquote.createEl('p', { text: step.excerpt })
 		blockquote.addEventListener('click', () => {
 			openSourceNote(app, step.source_file)
 		})
-		blockquote.style.cursor = 'pointer'
 
-		// Question — the hook to revisit
-		const question = stepEl.createEl('div', { cls: 'enzyme-digest-question' })
-		question.createEl('span', { text: step.question })
+		// Probe — the push to continue writing
+		const probe = stepEl.createEl('div', { cls: 'enzyme-digest-probe' })
+		probe.createEl('span', { text: step.probe })
 
-		// Bridge to next (skip on last step)
-		if (i < digest.steps.length - 1 && step.bridge) {
-			container.createEl('div', { cls: 'enzyme-digest-bridge', text: step.bridge })
-			container.createEl('div', { cls: 'enzyme-digest-separator', text: '. . .' })
+		// Separator between steps
+		if (i < digest.steps.length - 1) {
+			container.createEl('div', { cls: 'enzyme-digest-step-separator' })
 		}
 	})
 
@@ -113,18 +111,13 @@ export function renderIdle(
 }
 
 function openSourceNote(app: App, filePath: string) {
-	// Strip leading vault path segments to get a relative path
-	// Try to find the file in the vault
 	let relativePath = filePath
 
-	// If it's an absolute path, try to extract the part after the vault root
 	const vaultRoot = (app.vault.adapter as any).basePath
 	if (vaultRoot && relativePath.startsWith(vaultRoot)) {
 		relativePath = relativePath.slice(vaultRoot.length).replace(/^\//, '')
 	}
 
-	// Remove .md extension for Obsidian's openLinkText
 	const linkText = relativePath.replace(/\.md$/, '')
-
 	app.workspace.openLinkText(linkText, '', false)
 }

@@ -1,6 +1,6 @@
 import { Plugin, MarkdownPostProcessorContext, Notice } from 'obsidian'
 import { EnzymeDigestSettings, DEFAULT_SETTINGS, EnzymeDigestSettingTab } from './settings'
-import { catalyzePool } from './enzyme'
+import { catalyzePool, enzymeRefresh, isVaultIndexed } from './enzyme'
 import { generateQueries, weaveDigest, DigestOutput } from './llm'
 import { renderDigest, renderLoading, renderError, renderIdle } from './renderer'
 
@@ -15,19 +15,21 @@ const digestCache = new Map<string, { digest: DigestOutput; timestamp: number }>
 function parseBlock(source: string): BlockConfig {
 	const lines = source.trim().split('\n')
 	let prompt = ''
-	let freq = 'manual'
+	let freq = 'daily'
 
 	for (const line of lines) {
 		const trimmed = line.trim()
-		if (trimmed.toLowerCase().startsWith('prompt:')) {
-			prompt = trimmed.slice('prompt:'.length).trim()
-		} else if (trimmed.toLowerCase().startsWith('freq:')) {
-			freq = trimmed.slice('freq:'.length).trim()
-		} else if (trimmed && !prompt) {
-			// If no prefix, treat the whole content as the prompt
+		// Strip inline comments (# ...)
+		const withoutComment = trimmed.replace(/\s*#.*$/, '')
+		if (withoutComment.toLowerCase().startsWith('prompt:')) {
+			prompt = withoutComment.slice('prompt:'.length).trim()
+		} else if (withoutComment.toLowerCase().startsWith('freq:')) {
+			freq = withoutComment.slice('freq:'.length).trim()
+		} else if (withoutComment && !prompt) {
+			// If no prefix, treat non-comment content as the prompt
 			prompt = lines
-				.filter((l) => !l.trim().toLowerCase().startsWith('freq:'))
-				.map((l) => l.trim())
+				.map((l) => l.trim().replace(/\s*#.*$/, ''))
+				.filter((l) => l && !l.toLowerCase().startsWith('freq:'))
 				.join(' ')
 			break
 		}
@@ -36,24 +38,38 @@ function parseBlock(source: string): BlockConfig {
 	return { prompt, freq }
 }
 
+function parseFreqToMs(freq: string): number | null {
+	const normalized = freq.trim().toLowerCase()
+	switch (normalized) {
+		case 'hourly':
+			return 60 * 60 * 1000
+		case 'daily':
+			return 24 * 60 * 60 * 1000
+		case '3d':
+		case '3 days':
+			return 3 * 24 * 60 * 60 * 1000
+		case 'weekly':
+		case '1w':
+		case '1 week':
+			return 7 * 24 * 60 * 60 * 1000
+		case 'manual':
+			return null
+		default:
+			return 24 * 60 * 60 * 1000
+	}
+}
+
 function shouldAutoRefresh(freq: string, cacheTimestamp: number | undefined): boolean {
 	if (!cacheTimestamp) return false
-	const now = Date.now()
-	const age = now - cacheTimestamp
-
-	switch (freq) {
-		case 'daily':
-			return age > 24 * 60 * 60 * 1000
-		case 'weekly':
-			return age > 7 * 24 * 60 * 60 * 1000
-		default:
-			return false
-	}
+	const interval = parseFreqToMs(freq)
+	if (interval === null) return false
+	return Date.now() - cacheTimestamp > interval
 }
 
 export default class EnzymeDigestPlugin extends Plugin {
 	settings: EnzymeDigestSettings = DEFAULT_SETTINGS
 	private running = new Set<string>()
+	private refreshIntervalId: number | null = null
 
 	async onload() {
 		await this.loadSettings()
@@ -66,14 +82,23 @@ export default class EnzymeDigestPlugin extends Plugin {
 			this.processDigestBlock.bind(this)
 		)
 
-		// Command to insert a digest block
+		// Command to insert a digest block — uses selected text as prompt if available
 		this.addCommand({
 			id: 'insert-enzyme-digest',
 			name: 'Insert Enzyme Digest block',
 			editorCallback: (editor) => {
-				const prompt = this.settings.defaultPrompt
-				const freq = this.settings.defaultFreq
-				const block = `\`\`\`enzyme-digest\nprompt: ${prompt}\nfreq: ${freq}\n\`\`\`\n`
+				const selection = editor.getSelection()?.trim()
+				const prompt = selection || this.settings.defaultPrompt
+				const freq = 'daily'
+
+				const block = [
+					'```enzyme-digest',
+					`prompt: ${prompt}`,
+					`freq: ${freq}  # replace with: hourly | daily | 3d | weekly | manual`,
+					'```',
+					'',
+				].join('\n')
+
 				editor.replaceSelection(block)
 			},
 		})
@@ -83,9 +108,7 @@ export default class EnzymeDigestPlugin extends Plugin {
 			id: 'refresh-enzyme-digests',
 			name: 'Refresh all Enzyme Digest blocks on this page',
 			callback: () => {
-				// Clear cache to force refresh
 				digestCache.clear()
-				// Trigger a re-render by forcing the active leaf to refresh
 				const leaf = this.app.workspace.getActiveViewOfType(
 					(require('obsidian') as any).MarkdownView
 				)
@@ -95,6 +118,52 @@ export default class EnzymeDigestPlugin extends Plugin {
 				}
 			},
 		})
+
+		// Schedule periodic enzyme refresh on vault open
+		this.scheduleEnzymeRefresh()
+	}
+
+	onunload() {
+		if (this.refreshIntervalId !== null) {
+			window.clearInterval(this.refreshIntervalId)
+		}
+	}
+
+	getVaultPath(): string {
+		return this.settings.vaultPath || (this.app.vault.adapter as any).basePath || ''
+	}
+
+	private scheduleEnzymeRefresh() {
+		// Check once on load, then every 6 hours
+		const checkInterval = 6 * 60 * 60 * 1000
+
+		const maybeRefresh = async () => {
+			const vaultPath = this.getVaultPath()
+			if (!vaultPath || !isVaultIndexed(vaultPath)) return
+
+			const intervalMs = this.settings.refreshIntervalDays * 24 * 60 * 60 * 1000
+			const age = Date.now() - this.settings.lastRefreshTimestamp
+
+			if (age > intervalMs) {
+				try {
+					await enzymeRefresh(vaultPath)
+					this.settings.lastRefreshTimestamp = Date.now()
+					await this.saveSettings()
+				} catch {
+					// Silent — background refresh, don't interrupt the user
+				}
+			}
+		}
+
+		// Run once after app is ready (slight delay to not block startup)
+		setTimeout(() => maybeRefresh(), 10_000)
+
+		// Then periodically
+		this.refreshIntervalId = window.setInterval(
+			() => maybeRefresh(),
+			checkInterval
+		) as unknown as number
+		this.registerInterval(this.refreshIntervalId)
 	}
 
 	async processDigestBlock(
@@ -134,13 +203,12 @@ export default class EnzymeDigestPlugin extends Plugin {
 			return
 		}
 
-		// Auto-run for daily/weekly, or manual with stale cache
+		// Auto-run for daily/weekly/etc, or manual with stale cache
 		await this.runDigest(config, el, ctx)
 	}
 
 	private getEffectiveSettings(): EnzymeDigestSettings {
 		const s = { ...this.settings }
-		// Default vault path to the current Obsidian vault's base path
 		if (!s.vaultPath) {
 			s.vaultPath = (this.app.vault.adapter as any).basePath || ''
 		}

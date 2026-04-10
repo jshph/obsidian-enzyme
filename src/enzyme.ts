@@ -23,7 +23,6 @@ function findEnzymeBinary(): string {
 		'/opt/homebrew/bin/enzyme',
 		join(homedir(), '.cargo', 'bin', 'enzyme'),
 	]
-	// Check if any exist synchronously
 	const fs = require('fs')
 	for (const c of candidates) {
 		try {
@@ -31,7 +30,6 @@ function findEnzymeBinary(): string {
 			return c
 		} catch {}
 	}
-	// Fallback to bare name (hope PATH works)
 	return 'enzyme'
 }
 
@@ -39,6 +37,13 @@ let _enzymeBin: string | null = null
 function enzymeBin(): string {
 	if (!_enzymeBin) _enzymeBin = findEnzymeBinary()
 	return _enzymeBin
+}
+
+function enzymeEnv(): Record<string, string | undefined> {
+	return {
+		...process.env,
+		PATH: `${process.env.PATH || ''}:${join(homedir(), '.local', 'bin')}:/usr/local/bin:/opt/homebrew/bin`,
+	}
 }
 
 /**
@@ -55,12 +60,7 @@ export function enzymeCatalyze(
 		}
 
 		const bin = enzymeBin()
-		const env = {
-			...process.env,
-			PATH: `${process.env.PATH || ''}:${join(homedir(), '.local', 'bin')}:/usr/local/bin:/opt/homebrew/bin`,
-		}
-
-		execFile(bin, args, { maxBuffer: 10 * 1024 * 1024, env }, (error, stdout, stderr) => {
+		execFile(bin, args, { maxBuffer: 10 * 1024 * 1024, env: enzymeEnv() }, (error, stdout, stderr) => {
 			if (error) {
 				reject(new Error(`enzyme catalyze failed (${bin}): ${stderr || error.message}`))
 				return
@@ -73,6 +73,93 @@ export function enzymeCatalyze(
 			}
 		})
 	})
+}
+
+/**
+ * Run `enzyme init` on a vault. Returns a promise that resolves with stdout
+ * or rejects with the error. Streams progress via onProgress callback.
+ */
+export function enzymeInit(
+	vaultPath: string,
+	onProgress?: (msg: string) => void
+): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const bin = enzymeBin()
+		const args = ['init', '-p', vaultPath, '--json-progress']
+
+		const child = require('child_process').spawn(bin, args, {
+			env: enzymeEnv(),
+			stdio: ['ignore', 'pipe', 'pipe'],
+		})
+
+		let stdout = ''
+		let stderr = ''
+
+		child.stdout.on('data', (chunk: Buffer) => {
+			const text = chunk.toString()
+			stdout += text
+			if (onProgress) {
+				// Parse JSON progress lines
+				for (const line of text.split('\n').filter((l: string) => l.trim())) {
+					try {
+						const ev = JSON.parse(line)
+						if (ev.stage) onProgress(ev.stage)
+						else if (ev.message) onProgress(ev.message)
+					} catch {
+						onProgress(line.trim())
+					}
+				}
+			}
+		})
+
+		child.stderr.on('data', (chunk: Buffer) => {
+			stderr += chunk.toString()
+		})
+
+		child.on('close', (code: number) => {
+			if (code !== 0) {
+				reject(new Error(`enzyme init failed (exit ${code}): ${stderr || stdout}`))
+			} else {
+				resolve(stdout)
+			}
+		})
+
+		child.on('error', (err: Error) => {
+			reject(new Error(`Failed to start enzyme: ${err.message}`))
+		})
+	})
+}
+
+/**
+ * Run `enzyme refresh --quiet` on a vault. Lightweight incremental update.
+ */
+export function enzymeRefresh(vaultPath: string): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const bin = enzymeBin()
+		const args = ['refresh', '--quiet', '-p', vaultPath]
+
+		execFile(bin, args, { maxBuffer: 10 * 1024 * 1024, env: enzymeEnv() }, (error, stdout, stderr) => {
+			if (error) {
+				reject(new Error(`enzyme refresh failed: ${stderr || error.message}`))
+				return
+			}
+			resolve(stdout)
+		})
+	})
+}
+
+/**
+ * Check if a vault has been initialized (has .enzyme/enzyme.db).
+ */
+export function isVaultIndexed(vaultPath: string): boolean {
+	const fs = require('fs')
+	const dbPath = join(vaultPath, '.enzyme', 'enzyme.db')
+	try {
+		fs.accessSync(dbPath)
+		return true
+	} catch {
+		return false
+	}
 }
 
 export interface EnrichedResult {
@@ -94,7 +181,6 @@ export async function catalyzePool(
 		queries.map((q) => enzymeCatalyze(q, settings))
 	)
 
-	// If ALL queries failed, throw the first error so the user sees it
 	const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
 	if (failures.length === results.length) {
 		throw new Error(failures[0].reason?.message || 'All enzyme queries failed')
