@@ -6,6 +6,8 @@ interface LLMMessage {
 	content: string
 }
 
+const LLM_TIMEOUT_MS = 90_000
+
 async function llmCall(
 	messages: LLMMessage[],
 	settings: EnzymeDigestSettings
@@ -22,11 +24,12 @@ async function llmCall(
 			temperature: 0.8,
 			response_format: { type: 'json_object' },
 		}),
+		signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
 	})
 
 	if (!resp.ok) {
 		const body = await resp.text()
-		throw new Error(`LLM API error ${resp.status}: ${body}`)
+		throw new Error(`LLM API error ${resp.status}: ${body.slice(0, 300)}`)
 	}
 
 	const data = await resp.json()
@@ -117,7 +120,8 @@ You MUST include at least 1-2 highlights from external sources (books, articles,
 function weaveUserPrompt(prompt: string, pool: EnrichedResult[]): string {
 	const poolText = pool
 		.map((r, i) => {
-			return `[${i}] file: ${r.file_path}\n${r.content.slice(0, 1500)}`
+			const dateLine = r.created ? ` | created: ${r.created}` : ''
+			return `[${i}] file: ${r.file_path}${dateLine}\n${r.content.slice(0, 1500)}`
 		})
 		.join('\n\n')
 
@@ -134,7 +138,7 @@ For each step:
 - "probe": A specific sentence that pushes them to continue. Reference concrete details from THIS excerpt and, where possible, connect to another passage in the pool. No generic questions. No "How might you..." or "What if...". Be as specific as the content allows.
 - "source_file": exact file path from the pool
 - "note_name": a human-readable name for this note. Use the filename (without .md), but clean it up for display — e.g. a timestamp filename like "2025-08-09-11-12-39" can stay as-is, but "A Crazy Holy Grace by Frederick Buechner Highlights" should just be the title.
-- "date": extract any date from the filename or content if present (YYYY-MM-DD format), or null
+- "date": use the "created" date provided in the pool metadata (YYYY-MM-DD format), or null if not provided
 - "is_external": true if this is from an imported source (Readwise, highlights from a book/article/tweet), false if it's the writer's own note. Infer from the file path.
 - "attribution": for external sources, the author or source name (infer from the filename and content). For the writer's own notes, null.
 

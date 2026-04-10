@@ -1,10 +1,7 @@
 import { App } from 'obsidian'
-import type { DigestOutput, DigestStep } from './llm'
+import type { DigestOutput } from './llm'
+import { getVaultBasePath, toRelativeVaultPath } from './main'
 
-/**
- * Render a digest as a timeline of connected notes.
- * Excerpts are clickable — they open the source note in Obsidian.
- */
 export function renderDigest(
 	digest: DigestOutput,
 	container: HTMLElement,
@@ -14,34 +11,26 @@ export function renderDigest(
 	container.empty()
 	container.addClass('enzyme-digest-container')
 
-	// Intro
+	// Intro — left aligned
 	const intro = container.createEl('div', { cls: 'enzyme-digest-intro' })
 	intro.createEl('p', { text: digest.intro })
 
-	// Timeline
-	const timeline = container.createEl('div', { cls: 'enzyme-digest-timeline' })
-
+	// Steps
 	digest.steps.forEach((step, i) => {
-		const stepEl = timeline.createEl('div', {
-			cls: `enzyme-digest-step ${step.is_external ? 'enzyme-digest-step--external' : 'enzyme-digest-step--own'}`,
+		const stepEl = container.createEl('div', {
+			cls: `enzyme-digest-step ${step.is_external ? 'enzyme-digest-step--external' : ''}`,
 		})
 
-		// Timeline node
-		const node = stepEl.createEl('div', { cls: 'enzyme-digest-node' })
+		// Date + note name on one line
+		const header = stepEl.createEl('div', { cls: 'enzyme-digest-header' })
 
-		// Date badge (if available)
 		if (step.date) {
-			node.createEl('span', {
+			header.createEl('span', {
 				cls: 'enzyme-digest-date',
 				text: formatDate(step.date),
 			})
 		}
 
-		// Content column
-		const content = stepEl.createEl('div', { cls: 'enzyme-digest-content' })
-
-		// Header: note name — clickable
-		const header = content.createEl('div', { cls: 'enzyme-digest-header' })
 		const noteLink = header.createEl('a', {
 			cls: 'enzyme-digest-note-link',
 			text: step.note_name,
@@ -51,15 +40,13 @@ export function renderDigest(
 			openSourceNote(app, step.source_file)
 		})
 
-		// Attribution for external sources
 		if (step.is_external && step.attribution) {
 			header.createEl('span', {
 				cls: 'enzyme-digest-attribution',
-				text: ` — ${step.attribution}`,
+				text: `— ${step.attribution}`,
 			})
 		}
 
-		// Source badge
 		if (step.is_external) {
 			header.createEl('span', {
 				cls: 'enzyme-digest-badge',
@@ -67,20 +54,19 @@ export function renderDigest(
 			})
 		}
 
-		// Excerpt as blockquote — clickable
-		const blockquote = content.createEl('blockquote', { cls: 'enzyme-digest-excerpt' })
+		// Excerpt
+		const blockquote = stepEl.createEl('blockquote', { cls: 'enzyme-digest-excerpt' })
 		blockquote.createEl('p', { text: step.excerpt })
 		blockquote.addEventListener('click', () => {
 			openSourceNote(app, step.source_file)
 		})
 
 		// Probe
-		const probe = content.createEl('div', { cls: 'enzyme-digest-probe' })
-		probe.createEl('span', { text: step.probe })
+		stepEl.createEl('div', { cls: 'enzyme-digest-probe' }).createEl('span', { text: step.probe })
 
-		// Connection line to next step
+		// Divider between steps
 		if (i < digest.steps.length - 1) {
-			timeline.createEl('div', { cls: 'enzyme-digest-connector' })
+			container.createEl('hr', { cls: 'enzyme-digest-divider' })
 		}
 	})
 
@@ -94,7 +80,6 @@ export function renderDigest(
 }
 
 function formatDate(dateStr: string): string {
-	// Input: YYYY-MM-DD → output: "Mar 15" or "Mar 15, 2024"
 	const parts = dateStr.split('-')
 	if (parts.length < 3) return dateStr
 	const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
@@ -107,9 +92,6 @@ function formatDate(dateStr: string): string {
 	})
 }
 
-/**
- * Render a loading state.
- */
 export function renderLoading(container: HTMLElement, message: string) {
 	container.empty()
 	container.addClass('enzyme-digest-container')
@@ -118,9 +100,6 @@ export function renderLoading(container: HTMLElement, message: string) {
 	loading.createEl('p', { text: message })
 }
 
-/**
- * Render an error state.
- */
 export function renderError(container: HTMLElement, error: string) {
 	container.empty()
 	container.addClass('enzyme-digest-container')
@@ -132,9 +111,6 @@ export function renderError(container: HTMLElement, error: string) {
 	})
 }
 
-/**
- * Render the idle state with a run button.
- */
 export function renderIdle(
 	container: HTMLElement,
 	prompt: string,
@@ -156,13 +132,7 @@ export function renderIdle(
 }
 
 function openSourceNote(app: App, filePath: string) {
-	let relativePath = filePath
-
-	const vaultRoot = (app.vault.adapter as any).basePath
-	if (vaultRoot && relativePath.startsWith(vaultRoot)) {
-		relativePath = relativePath.slice(vaultRoot.length).replace(/^\//, '')
-	}
-
+	const relativePath = toRelativeVaultPath(filePath, getVaultBasePath(app))
 	const linkText = relativePath.replace(/\.md$/, '')
 	app.workspace.openLinkText(linkText, '', false)
 }

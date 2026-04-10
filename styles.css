@@ -13,9 +13,8 @@
   line-height: 1.6;
 }
 
-/* Intro */
+/* Intro — left aligned */
 .enzyme-digest-intro {
-  text-align: center;
   font-style: italic;
   color: var(--text-muted);
   margin-bottom: 1.2em;
@@ -26,79 +25,32 @@
   margin: 0;
 }
 
-/* Timeline layout */
-.enzyme-digest-timeline {
-  position: relative;
-  padding-left: 1em;
+/* Step */
+.enzyme-digest-step {
+  margin: 0.6em 0;
 }
 
-/* Connector line between steps */
-.enzyme-digest-connector {
-  width: 2px;
-  height: 20px;
-  background: var(--text-faint);
-  margin: 0 0 0 5px;
+/* Divider */
+.enzyme-digest-divider {
+  border: none;
+  border-top: 1px dashed var(--text-faint);
+  margin: 1em 0;
   opacity: 0.4;
 }
 
-/* Step */
-.enzyme-digest-step {
-  display: flex;
-  gap: 0.8em;
-  align-items: flex-start;
-  position: relative;
-}
-
-/* Timeline node — the dot */
-.enzyme-digest-node {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-  min-width: 52px;
-  padding-top: 2px;
-}
-
-.enzyme-digest-node::before {
-  content: '';
-  display: block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--interactive-accent);
-  margin-bottom: 4px;
-  flex-shrink: 0;
-}
-
-.enzyme-digest-step--external .enzyme-digest-node::before {
-  background: transparent;
-  border: 2px solid var(--interactive-accent);
-  width: 6px;
-  height: 6px;
-}
-
-/* Date badge */
-.enzyme-digest-date {
-  font-size: 0.7em;
-  color: var(--text-faint);
-  white-space: nowrap;
-  margin-top: 2px;
-}
-
-/* Content column */
-.enzyme-digest-content {
-  flex: 1;
-  min-width: 0;
-  padding-bottom: 0.4em;
-}
-
-/* Header — note name */
+/* Header: date + note name inline */
 .enzyme-digest-header {
-  margin-bottom: 0.3em;
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 0.4em;
+  gap: 0.5em;
+  margin-bottom: 0.3em;
+}
+
+.enzyme-digest-date {
+  font-size: 0.72em;
+  color: var(--text-faint);
+  white-space: nowrap;
 }
 
 .enzyme-digest-note-link {
@@ -114,24 +66,21 @@
   color: var(--interactive-accent);
 }
 
-/* Attribution for external sources */
 .enzyme-digest-attribution {
   font-size: 0.78em;
   color: var(--text-muted);
   font-style: italic;
 }
 
-/* External source badge */
 .enzyme-digest-badge {
-  font-size: 0.65em;
+  font-size: 0.62em;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-on-accent);
   background: var(--interactive-accent);
-  padding: 1px 6px;
+  padding: 1px 5px;
   border-radius: 3px;
-  opacity: 0.7;
-  vertical-align: middle;
+  opacity: 0.65;
 }
 
 /* Blockquote excerpt */
@@ -169,7 +118,7 @@
   font-style: italic;
   color: var(--text-accent);
   font-size: 0.88em;
-  margin: 0.4em 0 0.2em 0;
+  margin: 0.4em 0 0;
   line-height: 1.5;
 }
 
@@ -231,8 +180,7 @@
 
 /* Idle state */
 .enzyme-digest-idle {
-  text-align: center;
-  padding: 1.2em 1em;
+  padding: 1.2em 0;
 }
 
 .enzyme-digest-prompt-preview {

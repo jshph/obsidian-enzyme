@@ -12,7 +12,6 @@ export interface EnzymeDigestSettings {
 	highlightsPerQuery: number
 	numQueries: number
 	maxPerSource: number
-	enzymeInitialized: boolean
 	refreshIntervalDays: number
 	lastRefreshTimestamp: number
 }
@@ -20,14 +19,13 @@ export interface EnzymeDigestSettings {
 export const DEFAULT_SETTINGS: EnzymeDigestSettings = {
 	apiKey: '',
 	baseURL: 'https://openrouter.ai/api/v1',
-	model: 'google/gemini-2.0-flash-001',
+	model: 'google/gemini-3-flash-preview',
 	vaultPath: '',
 	defaultPrompt: 'what threads connect my recent thinking?',
 	defaultFreq: 'daily',
 	highlightsPerQuery: 8,
 	numQueries: 5,
 	maxPerSource: 3,
-	enzymeInitialized: false,
 	refreshIntervalDays: 3,
 	lastRefreshTimestamp: 0,
 }
@@ -87,11 +85,11 @@ export class EnzymeDigestSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Model')
-			.setDesc('Model identifier (e.g. google/gemini-2.0-flash-001, gpt-4o-mini)')
+			.setDesc('Model identifier (e.g. google/gemini-3-flash-preview, gpt-4o-mini)')
 			.addText((text) => {
 				text.inputEl.style.width = '300px'
 				text
-					.setPlaceholder('google/gemini-2.0-flash-001')
+					.setPlaceholder('google/gemini-3-flash-preview')
 					.setValue(this.plugin.settings.model)
 					.onChange(async (value) => {
 						this.plugin.settings.model = value
@@ -286,7 +284,6 @@ export class EnzymeDigestSettingTab extends PluginSettingTab {
 				notice.setMessage(`Enzyme: ${msg}`)
 			})
 
-			this.plugin.settings.enzymeInitialized = true
 			this.plugin.settings.lastRefreshTimestamp = Date.now()
 			await this.plugin.saveSettings()
 
@@ -295,9 +292,10 @@ export class EnzymeDigestSettingTab extends PluginSettingTab {
 
 			// Re-render settings to show updated state
 			this.display()
-		} catch (e: any) {
+		} catch (e: unknown) {
 			notice.hide()
-			new Notice(`Enzyme init failed: ${e.message}`, 8000)
+			const msg = e instanceof Error ? e.message : String(e)
+			new Notice(`Enzyme init failed: ${msg}`, 8000)
 		}
 	}
 }

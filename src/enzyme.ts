@@ -1,6 +1,7 @@
-import { execFile } from 'child_process'
+import { execFile, spawn } from 'child_process'
+import { accessSync, constants as fsConstants } from 'fs'
 import { homedir } from 'os'
-import { join } from 'path'
+import { basename, join } from 'path'
 import type { EnzymeDigestSettings } from './settings'
 
 export interface EnzymeResult {
@@ -9,11 +10,12 @@ export interface EnzymeResult {
 	similarity: number
 }
 
-export interface CatalyzeOutput {
+interface CatalyzeOutput {
 	results: EnzymeResult[]
-	top_contributing_catalysts?: any[]
 	query: string
 }
+
+const MAX_BUFFER = 1024 * 1024 // 1MB — enzyme output is typically a few KB
 
 // Resolve enzyme binary — Obsidian's Electron doesn't inherit shell PATH
 function findEnzymeBinary(): string {
@@ -23,10 +25,9 @@ function findEnzymeBinary(): string {
 		'/opt/homebrew/bin/enzyme',
 		join(homedir(), '.cargo', 'bin', 'enzyme'),
 	]
-	const fs = require('fs')
 	for (const c of candidates) {
 		try {
-			fs.accessSync(c, fs.constants.X_OK)
+			accessSync(c, fsConstants.X_OK)
 			return c
 		} catch {}
 	}
@@ -39,16 +40,17 @@ function enzymeBin(): string {
 	return _enzymeBin
 }
 
+let _enzymeEnv: Record<string, string | undefined> | null = null
 function enzymeEnv(): Record<string, string | undefined> {
-	return {
-		...process.env,
-		PATH: `${process.env.PATH || ''}:${join(homedir(), '.local', 'bin')}:/usr/local/bin:/opt/homebrew/bin`,
+	if (!_enzymeEnv) {
+		_enzymeEnv = {
+			...process.env,
+			PATH: `${process.env.PATH || ''}:${join(homedir(), '.local', 'bin')}:/usr/local/bin:/opt/homebrew/bin`,
+		}
 	}
+	return _enzymeEnv
 }
 
-/**
- * Shell out to `enzyme catalyze` with the given query.
- */
 export function enzymeCatalyze(
 	query: string,
 	settings: EnzymeDigestSettings
@@ -59,35 +61,27 @@ export function enzymeCatalyze(
 			args.push('-p', settings.vaultPath)
 		}
 
-		const bin = enzymeBin()
-		execFile(bin, args, { maxBuffer: 10 * 1024 * 1024, env: enzymeEnv() }, (error, stdout, stderr) => {
+		execFile(enzymeBin(), args, { maxBuffer: MAX_BUFFER, env: enzymeEnv() }, (error, stdout, stderr) => {
 			if (error) {
-				reject(new Error(`enzyme catalyze failed (${bin}): ${stderr || error.message}`))
+				reject(new Error(`enzyme catalyze failed: ${stderr || error.message}`))
 				return
 			}
 			try {
 				const data: CatalyzeOutput = JSON.parse(stdout)
 				resolve(data.results || [])
-			} catch (e) {
-				reject(new Error(`Failed to parse enzyme output: ${e}`))
+			} catch {
+				reject(new Error('Failed to parse enzyme catalyze output'))
 			}
 		})
 	})
 }
 
-/**
- * Run `enzyme init` on a vault. Returns a promise that resolves with stdout
- * or rejects with the error. Streams progress via onProgress callback.
- */
 export function enzymeInit(
 	vaultPath: string,
 	onProgress?: (msg: string) => void
 ): Promise<string> {
 	return new Promise((resolve, reject) => {
-		const bin = enzymeBin()
-		const args = ['init', '-p', vaultPath, '--json-progress']
-
-		const child = require('child_process').spawn(bin, args, {
+		const child = spawn(enzymeBin(), ['init', '-p', vaultPath, '--json-progress'], {
 			env: enzymeEnv(),
 			stdio: ['ignore', 'pipe', 'pipe'],
 		})
@@ -99,12 +93,10 @@ export function enzymeInit(
 			const text = chunk.toString()
 			stdout += text
 			if (onProgress) {
-				// Parse JSON progress lines
 				for (const line of text.split('\n').filter((l: string) => l.trim())) {
 					try {
 						const ev = JSON.parse(line)
-						if (ev.stage) onProgress(ev.stage)
-						else if (ev.message) onProgress(ev.message)
+						onProgress(ev.stage || ev.message || line.trim())
 					} catch {
 						onProgress(line.trim())
 					}
@@ -130,15 +122,12 @@ export function enzymeInit(
 	})
 }
 
-/**
- * Run `enzyme refresh --quiet` on a vault. Lightweight incremental update.
- */
 export function enzymeRefresh(vaultPath: string): Promise<string> {
 	return new Promise((resolve, reject) => {
-		const bin = enzymeBin()
-		const args = ['refresh', '--quiet', '-p', vaultPath]
-
-		execFile(bin, args, { maxBuffer: 10 * 1024 * 1024, env: enzymeEnv() }, (error, stdout, stderr) => {
+		execFile(enzymeBin(), ['refresh', '--quiet', '-p', vaultPath], {
+			maxBuffer: MAX_BUFFER,
+			env: enzymeEnv(),
+		}, (error, stdout, stderr) => {
 			if (error) {
 				reject(new Error(`enzyme refresh failed: ${stderr || error.message}`))
 				return
@@ -148,14 +137,9 @@ export function enzymeRefresh(vaultPath: string): Promise<string> {
 	})
 }
 
-/**
- * Check if a vault has been initialized (has .enzyme/enzyme.db).
- */
 export function isVaultIndexed(vaultPath: string): boolean {
-	const fs = require('fs')
-	const dbPath = join(vaultPath, '.enzyme', 'enzyme.db')
 	try {
-		fs.accessSync(dbPath)
+		accessSync(join(vaultPath, '.enzyme', 'enzyme.db'))
 		return true
 	} catch {
 		return false
@@ -167,11 +151,9 @@ export interface EnrichedResult {
 	content: string
 	similarity: number
 	noteName: string
+	created: string | null
 }
 
-/**
- * Run multiple catalyze queries in parallel, deduplicate and cap per-source.
- */
 export async function catalyzePool(
 	queries: string[],
 	settings: EnzymeDigestSettings
@@ -193,8 +175,8 @@ export async function catalyzePool(
 	const sourceCount: Record<string, number> = {}
 	const pool: EnrichedResult[] = []
 
-	for (const results of allResults) {
-		for (const r of results) {
+	for (const batch of allResults) {
+		for (const r of batch) {
 			const key = `${r.file_path}::${r.content.slice(0, 200)}`
 			if (seen.has(key)) continue
 			seen.add(key)
@@ -203,16 +185,9 @@ export async function catalyzePool(
 			if (count >= settings.maxPerSource) continue
 			sourceCount[r.file_path] = count + 1
 
-			const noteName = extractNoteName(r.file_path)
-			pool.push({ ...r, noteName })
+			pool.push({ ...r, noteName: basename(r.file_path, '.md'), created: null })
 		}
 	}
 
 	return pool
-}
-
-function extractNoteName(filePath: string): string {
-	const parts = filePath.replace(/\\/g, '/').split('/')
-	const filename = parts[parts.length - 1] || ''
-	return filename.replace(/\.md$/, '')
 }
