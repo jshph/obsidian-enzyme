@@ -85,8 +85,10 @@ export interface DigestStep {
 	excerpt: string
 	probe: string
 	source_file: string
-	title: string
-	author: string
+	note_name: string
+	date: string | null
+	is_external: boolean
+	attribution: string | null
 }
 
 export interface DigestOutput {
@@ -94,45 +96,51 @@ export interface DigestOutput {
 	steps: DigestStep[]
 }
 
-const WEAVE_SYSTEM = `You surface forgotten connections in a personal vault to help the writer continue their thinking. Your job is to remind them of what they were already working through — in their own words — and probe them to go further.
+const WEAVE_SYSTEM = `You surface forgotten connections in a personal vault to help the writer continue their thinking.
 
-You are not a therapist or life coach. You do not ask "how does this make you feel?" You match the register of the source material:
-- If the content is intellectual, theoretical, or research-oriented: probe the IDEAS. Ask what's unresolved in the argument, what the next logical step would be, where two frameworks collide, what would change if an assumption were wrong.
-- If the content is reflective or personal: probe the OBSERVATION. What was being noticed? What hadn't been named yet? What was this heading toward?
-- If the content is practical or project-oriented: probe the DECISION. What was being weighed? What trade-off was being avoided? What would unblock the next move?
+The pool contains notes from different parts of the vault. Some are the writer's own notes and reflections. Others are highlights the writer saved from books, articles, podcasts, and tweets — you can tell from the file path (e.g. paths containing "Readwise", "Books", "Articles", "Tweets", or filenames with "Highlights" are external sources the writer imported). Use the full file path to make this judgment.
 
-Your probes should feel like a sharp collaborator who read the same passage and is pushing the writer to keep going — not summarizing, not asking for feelings, but pointing at the edge of where the thinking stopped.`
+Your job is to remind them of what they were already working through — using their own words where possible, and connecting those to things they've read. When you include a saved highlight from something they read, the connection should feel earned: it should resonate with or challenge something from the writer's own notes.
+
+CRITICAL RULES FOR PROBES:
+- Do NOT ask abstract, ideological questions like "what new elements might become part of X?" or "what shifts in the relationship between X and Y?"
+- Do NOT paraphrase catalyst questions from the pool. Write your own.
+- INSTEAD, be specific. Name a concrete detail, experience, or idea from the excerpt and ask about its relationship to something else in the pool. Point at where two ideas collide, where an experience contradicts a theory, where the writer said one thing here and something different there.
+- Good probe: "You wrote about friction as empowering here, but in [other note] you described removing friction from the receipt printer workflow — what's the actual boundary?"
+- Bad probe: "How might productive friction reshape the future of interface design?"
+- If the content is intellectual: probe the specific tension, the gap in the argument, the unstated assumption
+- If the content is from experience: probe what was noticed, what happened next, what this reminded them of
+- Probes should make the writer want to open the note and add to it
+
+You MUST include at least 1-2 highlights from external sources (books, articles, tweets the writer saved — identifiable from the path). These should feel like meaningful resonances with the writer's own thinking, not filler.`
 
 function weaveUserPrompt(prompt: string, pool: EnrichedResult[]): string {
 	const poolText = pool
-		.map(
-			(r, i) =>
-				`[${i}] source: ${r.author} — ${r.title} (${r.file_path})\n${r.content.slice(0, 1500)}`
-		)
+		.map((r, i) => {
+			return `[${i}] file: ${r.file_path}\n${r.content.slice(0, 1500)}`
+		})
 		.join('\n\n')
 
 	return `The user's exploration prompt: "${prompt}"
 
-<highlight_pool>
+<pool>
 ${poolText}
-</highlight_pool>
+</pool>
 
-Select and sequence 5-8 passages from this pool into a digest that will pull the writer back into their older thinking.
+Select and sequence 5-8 passages from this pool into a digest. You MUST include at least 1-2 passages from external sources (books, articles, tweets the writer saved — you can identify these from the file path, e.g. paths containing "Readwise", "Books", "Articles", "Tweets", or filenames with "Highlights").
 
 For each step:
-- "excerpt": The most striking 1-3 sentences from the source — use their actual words. This is what they'll see first, and it should hit them with recognition. Pick the sentence where the thinking was sharpest, or where it trailed off right before something important.
-- "probe": A single sentence that pushes them to continue. Match the register of the excerpt:
-  * Intellectual content → ask about the idea, the gap, the tension, the next move in the argument
-  * Reflective content → point at what was being noticed, what hadn't been said yet
-  * Practical content → ask about the decision, the trade-off, what was being weighed
-  Do NOT ask generic questions. Do NOT start with "How might you..." or "What if...". Be specific to THIS excerpt. Reference something concrete from it. The probe should make them want to open the note and write more.
+- "excerpt": 1-3 sentences from the source. Pick where the thinking was sharpest or trailed off.
+- "probe": A specific sentence that pushes them to continue. Reference concrete details from THIS excerpt and, where possible, connect to another passage in the pool. No generic questions. No "How might you..." or "What if...". Be as specific as the content allows.
 - "source_file": exact file path from the pool
-- "title": from the pool
-- "author": from the pool
+- "note_name": a human-readable name for this note. Use the filename (without .md), but clean it up for display — e.g. a timestamp filename like "2025-08-09-11-12-39" can stay as-is, but "A Crazy Holy Grace by Frederick Buechner Highlights" should just be the title.
+- "date": extract any date from the filename or content if present (YYYY-MM-DD format), or null
+- "is_external": true if this is from an imported source (Readwise, highlights from a book/article/tweet), false if it's the writer's own note. Infer from the file path.
+- "attribution": for external sources, the author or source name (infer from the filename and content). For the writer's own notes, null.
 
-For "intro": 1-2 sentences, lowercase. Not a summary — an orientation. Tell the writer what these threads have in common, or what surprised you about the pattern across them. Speak to what they seem to be circling around.
+For "intro": 1-2 sentences, lowercase. Not a summary. Tell the writer what pattern you see across these fragments — what they seem to be circling around, and where it connects to things they've read.
 
-Sequencing: arrange for accumulation, not narrative arc. Each step should add a new angle on the prompt. By the end, the reader should feel the shape of something they haven't written yet.
+Sequence by date when possible — show the writer the arc of their thinking over time. The reader should see how their ideas evolved, and where their reading intersected with their own development.
 
 Return JSON:
 {
@@ -142,8 +150,10 @@ Return JSON:
       "excerpt": "string",
       "probe": "string",
       "source_file": "string",
-      "title": "string",
-      "author": "string"
+      "note_name": "string",
+      "date": "string or null",
+      "is_external": true/false,
+      "attribution": "string or null"
     }
   ]
 }`

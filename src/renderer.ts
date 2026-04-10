@@ -2,7 +2,7 @@ import { App } from 'obsidian'
 import type { DigestOutput, DigestStep } from './llm'
 
 /**
- * Render a digest into the given container element.
+ * Render a digest as a timeline of connected notes.
  * Excerpts are clickable — they open the source note in Obsidian.
  */
 export function renderDigest(
@@ -18,38 +18,69 @@ export function renderDigest(
 	const intro = container.createEl('div', { cls: 'enzyme-digest-intro' })
 	intro.createEl('p', { text: digest.intro })
 
-	// Separator
-	container.createEl('div', { cls: 'enzyme-digest-separator', text: '. . . . .' })
+	// Timeline
+	const timeline = container.createEl('div', { cls: 'enzyme-digest-timeline' })
 
-	// Steps
 	digest.steps.forEach((step, i) => {
-		const stepEl = container.createEl('div', { cls: 'enzyme-digest-step' })
-
-		// Source header — clickable to open the note
-		const sourceHeader = stepEl.createEl('div', { cls: 'enzyme-digest-source' })
-		const sourceLink = sourceHeader.createEl('a', {
-			cls: 'enzyme-digest-source-link',
-			text: `${step.author} — ${step.title}`,
+		const stepEl = timeline.createEl('div', {
+			cls: `enzyme-digest-step ${step.is_external ? 'enzyme-digest-step--external' : 'enzyme-digest-step--own'}`,
 		})
-		sourceLink.addEventListener('click', (e) => {
+
+		// Timeline node
+		const node = stepEl.createEl('div', { cls: 'enzyme-digest-node' })
+
+		// Date badge (if available)
+		if (step.date) {
+			node.createEl('span', {
+				cls: 'enzyme-digest-date',
+				text: formatDate(step.date),
+			})
+		}
+
+		// Content column
+		const content = stepEl.createEl('div', { cls: 'enzyme-digest-content' })
+
+		// Header: note name — clickable
+		const header = content.createEl('div', { cls: 'enzyme-digest-header' })
+		const noteLink = header.createEl('a', {
+			cls: 'enzyme-digest-note-link',
+			text: step.note_name,
+		})
+		noteLink.addEventListener('click', (e) => {
 			e.preventDefault()
 			openSourceNote(app, step.source_file)
 		})
 
-		// Excerpt as blockquote — clickable to open source
-		const blockquote = stepEl.createEl('blockquote', { cls: 'enzyme-digest-excerpt' })
+		// Attribution for external sources
+		if (step.is_external && step.attribution) {
+			header.createEl('span', {
+				cls: 'enzyme-digest-attribution',
+				text: ` — ${step.attribution}`,
+			})
+		}
+
+		// Source badge
+		if (step.is_external) {
+			header.createEl('span', {
+				cls: 'enzyme-digest-badge',
+				text: 'highlight',
+			})
+		}
+
+		// Excerpt as blockquote — clickable
+		const blockquote = content.createEl('blockquote', { cls: 'enzyme-digest-excerpt' })
 		blockquote.createEl('p', { text: step.excerpt })
 		blockquote.addEventListener('click', () => {
 			openSourceNote(app, step.source_file)
 		})
 
-		// Probe — the push to continue writing
-		const probe = stepEl.createEl('div', { cls: 'enzyme-digest-probe' })
+		// Probe
+		const probe = content.createEl('div', { cls: 'enzyme-digest-probe' })
 		probe.createEl('span', { text: step.probe })
 
-		// Separator between steps
+		// Connection line to next step
 		if (i < digest.steps.length - 1) {
-			container.createEl('div', { cls: 'enzyme-digest-step-separator' })
+			timeline.createEl('div', { cls: 'enzyme-digest-connector' })
 		}
 	})
 
@@ -60,6 +91,20 @@ export function renderDigest(
 		text: `surfaced ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
 	})
 	footer.createEl('span', { text: ' · enzyme digest', cls: 'enzyme-digest-brand' })
+}
+
+function formatDate(dateStr: string): string {
+	// Input: YYYY-MM-DD → output: "Mar 15" or "Mar 15, 2024"
+	const parts = dateStr.split('-')
+	if (parts.length < 3) return dateStr
+	const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]))
+	const now = new Date()
+	const sameYear = date.getFullYear() === now.getFullYear()
+	return date.toLocaleDateString('en-US', {
+		month: 'short',
+		day: 'numeric',
+		...(sameYear ? {} : { year: 'numeric' }),
+	})
 }
 
 /**

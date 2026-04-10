@@ -166,8 +166,7 @@ export interface EnrichedResult {
 	file_path: string
 	content: string
 	similarity: number
-	title: string
-	author: string
+	noteName: string
 }
 
 /**
@@ -204,23 +203,16 @@ export async function catalyzePool(
 			if (count >= settings.maxPerSource) continue
 			sourceCount[r.file_path] = count + 1
 
-			const { author, title } = extractAuthorTitle(r.file_path)
-			pool.push({ ...r, author, title })
+			const noteName = extractNoteName(r.file_path)
+			pool.push({ ...r, noteName })
 		}
 	}
 
 	return pool
 }
 
-function extractAuthorTitle(filePath: string): { author: string; title: string } {
+function extractNoteName(filePath: string): string {
 	const parts = filePath.replace(/\\/g, '/').split('/')
 	const filename = parts[parts.length - 1] || ''
-	const title = filename.replace(/\.md$/, '')
-	const parent = parts.length >= 2 ? parts[parts.length - 2] : ''
-
-	if (parent === 'Tweets' && title.startsWith('Tweets From ')) {
-		return { author: title.replace('Tweets From ', ''), title: 'Tweets' }
-	}
-
-	return { author: parent || 'Unknown', title }
+	return filename.replace(/\.md$/, '')
 }

@@ -1,8 +1,8 @@
-/* Enzyme Digest — receipt-inspired rendering */
+/* Enzyme Digest */
 
 .enzyme-digest-container {
   font-family: 'Menlo', 'Consolas', 'Liberation Mono', monospace;
-  max-width: 520px;
+  max-width: 560px;
   margin: 1em auto;
   padding: 1.2em 1.5em;
   border-top: 2px dashed var(--text-muted);
@@ -18,7 +18,7 @@
   text-align: center;
   font-style: italic;
   color: var(--text-muted);
-  margin-bottom: 0.8em;
+  margin-bottom: 1.2em;
   line-height: 1.55;
 }
 
@@ -26,45 +26,112 @@
   margin: 0;
 }
 
-/* Separator dots */
-.enzyme-digest-separator {
-  text-align: center;
-  color: var(--text-faint);
-  margin: 0.6em 0;
-  letter-spacing: 0.3em;
-  font-size: 0.8em;
+/* Timeline layout */
+.enzyme-digest-timeline {
+  position: relative;
+  padding-left: 1em;
+}
+
+/* Connector line between steps */
+.enzyme-digest-connector {
+  width: 2px;
+  height: 20px;
+  background: var(--text-faint);
+  margin: 0 0 0 5px;
+  opacity: 0.4;
 }
 
 /* Step */
 .enzyme-digest-step {
-  margin: 0.8em 0;
+  display: flex;
+  gap: 0.8em;
+  align-items: flex-start;
+  position: relative;
 }
 
-/* Step separator — lighter than main separator */
-.enzyme-digest-step-separator {
-  border-top: 1px dashed var(--text-faint);
-  margin: 1em 2em;
-  opacity: 0.4;
+/* Timeline node — the dot */
+.enzyme-digest-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 52px;
+  padding-top: 2px;
 }
 
-/* Source link */
-.enzyme-digest-source {
+.enzyme-digest-node::before {
+  content: '';
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--interactive-accent);
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+.enzyme-digest-step--external .enzyme-digest-node::before {
+  background: transparent;
+  border: 2px solid var(--interactive-accent);
+  width: 6px;
+  height: 6px;
+}
+
+/* Date badge */
+.enzyme-digest-date {
+  font-size: 0.7em;
+  color: var(--text-faint);
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+/* Content column */
+.enzyme-digest-content {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 0.4em;
+}
+
+/* Header — note name */
+.enzyme-digest-header {
   margin-bottom: 0.3em;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.4em;
 }
 
-.enzyme-digest-source-link {
+.enzyme-digest-note-link {
   font-weight: 600;
-  font-size: 0.78em;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 0.85em;
   color: var(--text-normal);
   text-decoration: none;
   cursor: pointer;
   transition: color 0.15s ease;
 }
 
-.enzyme-digest-source-link:hover {
+.enzyme-digest-note-link:hover {
   color: var(--interactive-accent);
+}
+
+/* Attribution for external sources */
+.enzyme-digest-attribution {
+  font-size: 0.78em;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* External source badge */
+.enzyme-digest-badge {
+  font-size: 0.65em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+  padding: 1px 6px;
+  border-radius: 3px;
+  opacity: 0.7;
+  vertical-align: middle;
 }
 
 /* Blockquote excerpt */
@@ -79,6 +146,15 @@
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
+.enzyme-digest-step--external .enzyme-digest-excerpt {
+  border-left-style: dashed;
+  border-left-color: var(--text-muted);
+}
+
+.enzyme-digest-step--external .enzyme-digest-excerpt:hover {
+  border-left-color: var(--interactive-accent);
+}
+
 .enzyme-digest-excerpt:hover {
   border-left-color: var(--interactive-accent-hover);
   background: var(--background-modifier-hover);
@@ -88,13 +164,12 @@
   margin: 0;
 }
 
-/* Probe — the push to continue writing */
+/* Probe */
 .enzyme-digest-probe {
   font-style: italic;
   color: var(--text-accent);
   font-size: 0.88em;
-  margin: 0.4em 0 0.2em 0.4em;
-  padding-left: 0.6em;
+  margin: 0.4em 0 0.2em 0;
   line-height: 1.5;
 }
 
