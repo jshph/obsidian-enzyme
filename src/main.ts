@@ -154,7 +154,7 @@ export default class EnzymeDigestPlugin extends Plugin {
 
 			if (age > intervalMs) {
 				try {
-					await enzymeRefresh(vaultPath)
+					await enzymeRefresh(vaultPath, this.settings)
 					this.settings.lastRefreshTimestamp = Date.now()
 					await this.saveSettings()
 				} catch (e: unknown) {

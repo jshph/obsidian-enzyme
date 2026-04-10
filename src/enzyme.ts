@@ -56,7 +56,7 @@ export function clearEnzymeCache(): void {
 export function installEnzyme(): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const child = spawn('sh', ['-c', 'curl -fsSL https://enzyme.garden/install.sh | sh'], {
-			env: enzymeEnv(),
+			env: baseEnv(),
 			stdio: ['ignore', 'pipe', 'pipe'],
 		})
 
@@ -78,15 +78,33 @@ export function installEnzyme(): Promise<void> {
 	})
 }
 
-let _enzymeEnv: Record<string, string | undefined> | null = null
-function enzymeEnv(): Record<string, string | undefined> {
-	if (!_enzymeEnv) {
-		_enzymeEnv = {
+let _baseEnv: Record<string, string | undefined> | null = null
+function baseEnv(): Record<string, string | undefined> {
+	if (!_baseEnv) {
+		_baseEnv = {
 			...process.env,
 			PATH: `${process.env.PATH || ''}:${join(homedir(), '.local', 'bin')}:/usr/local/bin:/opt/homebrew/bin`,
 		}
 	}
-	return _enzymeEnv
+	return _baseEnv
+}
+
+/**
+ * Build env for enzyme subprocesses. Passes LLM settings as env vars
+ * so enzyme init/refresh use the same provider as the digest block.
+ */
+function enzymeEnvWithSettings(settings?: EnzymeDigestSettings): Record<string, string | undefined> {
+	const env = { ...baseEnv() }
+	if (settings?.apiKey) {
+		env.OPENAI_API_KEY = settings.apiKey
+	}
+	if (settings?.baseURL) {
+		env.OPENAI_BASE_URL = settings.baseURL
+	}
+	if (settings?.model) {
+		env.OPENAI_MODEL = settings.model
+	}
+	return env
 }
 
 export function enzymeCatalyze(
@@ -99,7 +117,7 @@ export function enzymeCatalyze(
 			args.push('-p', settings.vaultPath)
 		}
 
-		execFile(enzymeBin(), args, { maxBuffer: MAX_BUFFER, env: enzymeEnv() }, (error, stdout, stderr) => {
+		execFile(enzymeBin(), args, { maxBuffer: MAX_BUFFER, env: enzymeEnvWithSettings(settings) }, (error, stdout, stderr) => {
 			if (error) {
 				reject(new Error(`enzyme catalyze failed: ${stderr || error.message}`))
 				return
@@ -116,11 +134,12 @@ export function enzymeCatalyze(
 
 export function enzymeInit(
 	vaultPath: string,
+	settings?: EnzymeDigestSettings,
 	onProgress?: (msg: string) => void
 ): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const child = spawn(enzymeBin(), ['init', '-p', vaultPath, '--json-progress'], {
-			env: enzymeEnv(),
+			env: enzymeEnvWithSettings(settings),
 			stdio: ['ignore', 'pipe', 'pipe'],
 		})
 
@@ -160,11 +179,11 @@ export function enzymeInit(
 	})
 }
 
-export function enzymeRefresh(vaultPath: string): Promise<string> {
+export function enzymeRefresh(vaultPath: string, settings?: EnzymeDigestSettings): Promise<string> {
 	return new Promise((resolve, reject) => {
 		execFile(enzymeBin(), ['refresh', '--quiet', '-p', vaultPath], {
 			maxBuffer: MAX_BUFFER,
-			env: enzymeEnv(),
+			env: enzymeEnvWithSettings(settings),
 		}, (error, stdout, stderr) => {
 			if (error) {
 				reject(new Error(`enzyme refresh failed: ${stderr || error.message}`))

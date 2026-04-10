@@ -48,11 +48,12 @@ export class EnzymeDigestSettingTab extends PluginSettingTab {
 			cls: 'setting-item-description',
 		})
 
-		// --- Enzyme Vault Indexing ---
-		this.renderEnzymeInitSection(containerEl)
-
-		// --- LLM Configuration ---
+		// --- LLM Configuration (above Enzyme Setup so it's clear these affect enzyme too) ---
 		containerEl.createEl('h3', { text: 'LLM Configuration' })
+		containerEl.createEl('p', {
+			text: 'Used by both Enzyme (for catalyst generation during indexing) and the digest block (for query generation and weaving).',
+			cls: 'setting-item-description',
+		})
 
 		new Setting(containerEl)
 			.setName('API Key')
@@ -97,7 +98,10 @@ export class EnzymeDigestSettingTab extends PluginSettingTab {
 					})
 			})
 
-		// --- Enzyme Tuning ---
+		// --- Enzyme Vault Indexing ---
+		this.renderEnzymeInitSection(containerEl)
+
+		// --- Retrieval Tuning ---
 		containerEl.createEl('h3', { text: 'Retrieval Tuning' })
 
 		new Setting(containerEl)
@@ -326,7 +330,7 @@ export class EnzymeDigestSettingTab extends PluginSettingTab {
 		const notice = new Notice('Enzyme: initializing vault...', 0)
 
 		try {
-			await enzymeInit(vaultPath, (msg) => {
+			await enzymeInit(vaultPath, this.plugin.settings, (msg) => {
 				notice.setMessage(`Enzyme: ${msg}`)
 			})
 
