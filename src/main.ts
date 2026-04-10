@@ -1,3 +1,4 @@
+import { resolve as resolvePath } from 'path'
 import {
 	Plugin,
 	MarkdownPostProcessorContext,
@@ -139,7 +140,12 @@ export default class EnzymeDigestPlugin extends Plugin {
 	}
 
 	getVaultPath(): string {
-		return this.settings.vaultPath || getVaultBasePath(this.app)
+		const base = getVaultBasePath(this.app)
+		const configured = this.settings.vaultPath
+		if (!configured) return base
+		if (configured.startsWith('/')) return configured
+		// Resolve relative paths against the vault root
+		return base ? resolvePath(base, configured) : configured
 	}
 
 	private scheduleEnzymeRefresh() {
