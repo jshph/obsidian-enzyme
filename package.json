@@ -1,0 +1,19 @@
+{
+  "name": "obsidian-enzyme-digest",
+  "version": "0.1.0",
+  "description": "Enzyme Digest — codefence block that surfaces vault connections via LLM + enzyme catalyze",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+  },
+  "dependencies": {
+    "obsidian": "^1.5.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "builtin-modules": "3.3.0",
+    "esbuild": "0.19.11",
+    "typescript": "^5.3.3"
+  }
+}

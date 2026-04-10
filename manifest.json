@@ -1,0 +1,10 @@
+{
+  "id": "enzyme-digest",
+  "name": "Enzyme Digest",
+  "version": "0.1.0",
+  "minAppVersion": "1.1.10",
+  "description": "A codefence block that surfaces connections across your vault via Enzyme, rendering a clickable digest of older thinking to revisit.",
+  "author": "Joshua Pham",
+  "authorUrl": "https://jpham.space",
+  "isDesktopOnly": true
+}

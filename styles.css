@@ -1,0 +1,197 @@
+/* Enzyme Digest — receipt-inspired rendering */
+
+.enzyme-digest-container {
+  font-family: 'Menlo', 'Consolas', 'Liberation Mono', monospace;
+  max-width: 520px;
+  margin: 1em auto;
+  padding: 1.2em 1.5em;
+  border-top: 2px dashed var(--text-muted);
+  border-bottom: 2px dashed var(--text-muted);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 0.82em;
+  line-height: 1.6;
+}
+
+/* Intro */
+.enzyme-digest-intro {
+  text-align: center;
+  font-style: italic;
+  color: var(--text-muted);
+  margin-bottom: 0.8em;
+  line-height: 1.55;
+}
+
+.enzyme-digest-intro p {
+  margin: 0;
+}
+
+/* Separator dots */
+.enzyme-digest-separator {
+  text-align: center;
+  color: var(--text-faint);
+  margin: 0.6em 0;
+  letter-spacing: 0.3em;
+  font-size: 0.8em;
+}
+
+/* Step */
+.enzyme-digest-step {
+  margin: 0.8em 0;
+}
+
+/* Source link */
+.enzyme-digest-source {
+  margin-bottom: 0.3em;
+}
+
+.enzyme-digest-source-link {
+  font-weight: 600;
+  font-size: 0.78em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-normal);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.enzyme-digest-source-link:hover {
+  color: var(--interactive-accent);
+}
+
+/* Blockquote excerpt */
+.enzyme-digest-excerpt {
+  border-left: 3px solid var(--interactive-accent);
+  padding: 0.4em 0.8em;
+  margin: 0.3em 0;
+  color: var(--text-normal);
+  background: var(--background-secondary);
+  border-radius: 0 4px 4px 0;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.enzyme-digest-excerpt:hover {
+  border-left-color: var(--interactive-accent-hover);
+  background: var(--background-modifier-hover);
+}
+
+.enzyme-digest-excerpt p {
+  margin: 0;
+}
+
+/* Question — the hook */
+.enzyme-digest-question {
+  font-style: italic;
+  color: var(--text-accent);
+  font-size: 0.88em;
+  margin: 0.3em 0 0.2em 0.4em;
+  padding-left: 0.6em;
+  border-left: 2px solid var(--text-faint);
+}
+
+.enzyme-digest-question::before {
+  content: "? ";
+  opacity: 0.5;
+}
+
+/* Bridge */
+.enzyme-digest-bridge {
+  text-align: center;
+  font-style: italic;
+  color: var(--text-faint);
+  font-size: 0.78em;
+  margin: 0.4em 0;
+  line-height: 1.4;
+}
+
+/* Footer */
+.enzyme-digest-footer {
+  text-align: center;
+  margin-top: 1em;
+  padding-top: 0.6em;
+  font-size: 0.72em;
+  color: var(--text-faint);
+}
+
+.enzyme-digest-brand {
+  opacity: 0.6;
+}
+
+/* Loading */
+.enzyme-digest-loading {
+  text-align: center;
+  padding: 2em 1em;
+  color: var(--text-muted);
+}
+
+.enzyme-digest-loading p {
+  margin: 0.5em 0 0 0;
+  font-size: 0.85em;
+}
+
+.enzyme-digest-spinner {
+  width: 20px;
+  height: 20px;
+  margin: 0 auto;
+  border: 2px solid var(--text-faint);
+  border-top-color: var(--interactive-accent);
+  border-radius: 50%;
+  animation: enzyme-digest-spin 0.8s linear infinite;
+}
+
+@keyframes enzyme-digest-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error */
+.enzyme-digest-error {
+  padding: 1em;
+  color: var(--text-error);
+  background: var(--background-modifier-error);
+  border-radius: 4px;
+}
+
+.enzyme-digest-error p {
+  margin: 0.2em 0;
+}
+
+.enzyme-digest-error-hint {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+/* Idle state */
+.enzyme-digest-idle {
+  text-align: center;
+  padding: 1.2em 1em;
+}
+
+.enzyme-digest-prompt-preview {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.88em;
+  margin: 0 0 0.3em 0;
+}
+
+.enzyme-digest-freq-preview {
+  color: var(--text-faint);
+  font-size: 0.78em;
+  margin: 0 0 0.8em 0;
+}
+
+.enzyme-digest-run-btn {
+  font-family: 'Menlo', 'Consolas', 'Liberation Mono', monospace;
+  font-size: 0.82em;
+  padding: 0.4em 1.2em;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.enzyme-digest-run-btn:hover {
+  background: var(--interactive-accent-hover);
+}
