@@ -10,7 +10,7 @@
  */
 
 import { App, TFile } from 'obsidian'
-import type { Tool, ToolResult } from '../core/types.js'
+import type { Tool, ToolResult } from '@jshph/digest'
 
 export function createObsidianReadFileTool(app: App): Tool {
   return {

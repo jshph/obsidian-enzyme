@@ -23,13 +23,15 @@ import {
   FileSystemAdapter,
   setIcon,
 } from 'obsidian'
-import { Agent } from '../core/agent.js'
-import { createOpenAIProvider } from '../core/providers/openai.js'
-import { buildSystemPrompt } from '../prompt/system.js'
-import { createVaultSearchTool } from '../tools/vault-search.js'
-import { createEnzymePrefetch } from '../context/prefetch.js'
+import {
+  Agent,
+  createOpenAIProvider,
+  buildSystemPrompt,
+  createVaultSearchTool,
+  createEnzymePrefetch,
+} from '@jshph/digest'
+import type { ToolResult } from '@jshph/digest'
 import { createObsidianReadFileTool, createObsidianWriteFileTool } from './tools.js'
-import type { ToolResult } from '../core/types.js'
 import type DigestPlugin from './DigestPlugin.js'
 
 export const VIEW_TYPE_DIGEST = 'digest-chat-view'

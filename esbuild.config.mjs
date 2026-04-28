@@ -13,6 +13,27 @@ if you want to view the source, please visit the github repository of this plugi
 
 const prod = process.argv[2] === 'production'
 
+/**
+ * Resolve @jshph/digest from source (.ts) rather than requiring a pre-built
+ * dist/. This way GitHub installs (no dist/) and local file: links both work.
+ * esbuild handles the TS→JS compilation during bundling.
+ */
+function resolveDigestPlugin() {
+	return {
+		name: 'resolve-digest',
+		setup(build) {
+			build.onResolve({ filter: /^@jshph\/digest$/ }, args => {
+				return { path: require.resolve('@jshph/digest/src/index.ts') }
+			})
+			// Also resolve sub-path imports like @jshph/digest/core/types
+			build.onResolve({ filter: /^@jshph\/digest\// }, args => {
+				const sub = args.path.replace('@jshph/digest/', '')
+				return { path: require.resolve(`@jshph/digest/src/${sub}`) }
+			})
+		}
+	}
+}
+
 function copyToPluginsPlugin() {
 	return {
 		name: 'copy-to-plugins',
@@ -69,7 +90,7 @@ const context = await esbuild.context({
 	sourcemap: prod ? false : 'inline',
 	treeShaking: true,
 	outdir: './',
-	plugins: [copyToPluginsPlugin()]
+	plugins: [resolveDigestPlugin(), copyToPluginsPlugin()]
 })
 
 if (prod) {
