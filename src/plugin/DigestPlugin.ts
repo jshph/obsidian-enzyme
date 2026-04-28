@@ -1,10 +1,12 @@
-import { Plugin, WorkspaceLeaf } from 'obsidian'
+import { Plugin, WorkspaceLeaf, FileSystemAdapter } from 'obsidian'
 import { DigestView, VIEW_TYPE_DIGEST } from './DigestView.js'
 import { DigestSettingsTab, DEFAULT_SETTINGS } from './DigestSettings.js'
+import { EnzymeManager } from './EnzymeManager.js'
 import type { DigestSettings } from './DigestSettings.js'
 
 export default class DigestPlugin extends Plugin {
   settings: DigestSettings = DEFAULT_SETTINGS
+  enzymeManager: EnzymeManager | null = null
 
   async onload() {
     await this.loadSettings()
@@ -17,6 +19,12 @@ export default class DigestPlugin extends Plugin {
       if (!current.includes(p)) {
         process.env.PATH = `${current}:${p}`
       }
+    }
+
+    // Create EnzymeManager for the vault
+    const adapter = this.app.vault.adapter
+    if (adapter instanceof FileSystemAdapter) {
+      this.enzymeManager = new EnzymeManager(adapter.getBasePath())
     }
 
     this.registerView(VIEW_TYPE_DIGEST, leaf => new DigestView(leaf, this))

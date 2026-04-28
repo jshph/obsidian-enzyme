@@ -32,6 +32,8 @@ import {
 } from '@jshph/digest'
 import type { ToolResult } from '@jshph/digest'
 import { createObsidianReadFileTool, createObsidianWriteFileTool } from './tools.js'
+import { MentionDropdown } from './MentionDropdown.js'
+import { SelectionTracker } from './SelectionTracker.js'
 import type DigestPlugin from './DigestPlugin.js'
 
 export const VIEW_TYPE_DIGEST = 'digest-chat-view'
@@ -54,6 +56,11 @@ export class DigestView extends ItemView {
   private renderTimer: ReturnType<typeof setTimeout> | null = null
   private sessionTokens = { input: 0, output: 0, cacheRead: 0 }
 
+  // Context injection
+  private mentionDropdown!: MentionDropdown
+  private selectionTracker!: SelectionTracker
+  private contextChipsEl!: HTMLElement
+
   constructor(leaf: WorkspaceLeaf, plugin: DigestPlugin) {
     super(leaf)
     this.plugin = plugin
@@ -73,12 +80,15 @@ export class DigestView extends ItemView {
 
   async onOpen(): Promise<void> {
     this.buildUI()
+    this.initSelectionTracker()
     await this.initAgent()
   }
 
   async onClose(): Promise<void> {
     this.agent?.abort()
     if (this.renderTimer) clearTimeout(this.renderTimer)
+    this.mentionDropdown?.destroy()
+    this.selectionTracker?.destroy()
   }
 
   // ── UI Construction ─────────────────────────────────────────────
@@ -125,6 +135,7 @@ export class DigestView extends ItemView {
     // Input area
     const inputArea = contentEl.createDiv({ cls: 'digest-input-area' })
 
+    this.contextChipsEl = inputArea.createDiv({ cls: 'digest-context-chips digest-hidden' })
     this.statusEl = inputArea.createDiv({ cls: 'digest-status' })
     this.updateStatus()
 
@@ -132,15 +143,17 @@ export class DigestView extends ItemView {
 
     this.inputEl = inputRow.createEl('textarea', {
       cls: 'digest-input',
-      attr: { placeholder: 'Ask about your vault...', rows: '1' },
+      attr: { placeholder: 'Ask about your vault... (@ to mention files)', rows: '1' },
     })
     this.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === 'Enter' && !e.shiftKey && !this.mentionDropdown.isActive()) {
         e.preventDefault()
         this.sendMessage()
       }
     })
     this.inputEl.addEventListener('input', () => this.autoGrow())
+
+    this.mentionDropdown = new MentionDropdown(this.app, this.inputEl, inputArea)
 
     const btnGroup = inputRow.createDiv({ cls: 'digest-btn-group' })
 
@@ -167,6 +180,30 @@ export class DigestView extends ItemView {
     this.inputEl.style.height = Math.min(this.inputEl.scrollHeight, 150) + 'px'
   }
 
+  private initSelectionTracker(): void {
+    this.selectionTracker = new SelectionTracker(this.app)
+    this.selectionTracker.onChange(sel => {
+      this.contextChipsEl.empty()
+      if (sel) {
+        this.contextChipsEl.removeClass('digest-hidden')
+        const chip = this.contextChipsEl.createDiv({ cls: 'digest-context-chip' })
+        const basename = sel.filePath.split('/').pop()?.replace(/\.md$/, '') || sel.filePath
+        chip.createSpan({
+          cls: 'digest-context-chip-label',
+          text: `${sel.lineCount} line${sel.lineCount > 1 ? 's' : ''} from "${basename}"`,
+        })
+        const dismiss = chip.createSpan({ cls: 'digest-context-chip-dismiss', text: '\u00d7' })
+        dismiss.addEventListener('click', () => {
+          this.selectionTracker.dismiss()
+          this.contextChipsEl.addClass('digest-hidden')
+          this.contextChipsEl.empty()
+        })
+      } else {
+        this.contextChipsEl.addClass('digest-hidden')
+      }
+    })
+  }
+
   // ── Agent Initialization ────────────────────────────────────────
 
   async initAgent(): Promise<void> {
@@ -184,8 +221,12 @@ export class DigestView extends ItemView {
     }
     const vaultPath = adapter.getBasePath()
 
-    // Check enzyme availability
-    const enzymeAvailable = await this.checkEnzyme()
+    // Check enzyme via manager
+    const mgr = this.plugin.enzymeManager
+    const enzymeInstalled = mgr ? await mgr.isInstalled() : false
+    const enzymeInitialized = mgr ? mgr.isInitialized() : false
+    const enzymeAvailable = enzymeInstalled && enzymeInitialized
+
     let enzymeOverview: string | undefined
     if (enzymeAvailable) {
       enzymeOverview = await this.getEnzymeOverview(vaultPath)
@@ -228,11 +269,13 @@ export class DigestView extends ItemView {
 
     this.updateStatus()
 
-    if (!enzymeAvailable) {
+    if (!enzymeInstalled) {
       this.showSystemMessage(
-        'Enzyme not found. Install from enzyme.garden for semantic search. ' +
+        'Enzyme not found. Install from Settings \u2192 Digest for semantic search. ' +
         'ReadFile and WriteFile still work without it.'
       )
+    } else if (!enzymeInitialized) {
+      this.showEnzymeInitBanner()
     }
   }
 
@@ -317,10 +360,58 @@ export class DigestView extends ItemView {
 
     this.inputEl.value = ''
     this.inputEl.style.height = 'auto'
-    this.addUserMessage(text)
+
+    // Resolve @mentions to file contents
+    const mentionedFiles = this.mentionDropdown.getResolvedMentions(text)
+    const displayText = this.mentionDropdown.stripMentions(text)
+    this.addUserMessage(displayText)
+
+    // Build context-augmented prompt
+    const contextParts: string[] = []
+
+    // Selection context
+    const selection = this.selectionTracker?.getSelection()
+    if (selection) {
+      const selText = selection.text.length > 2000
+        ? selection.text.slice(0, 2000) + '\n[Truncated]'
+        : selection.text
+      const basename = selection.filePath.split('/').pop()?.replace(/\.md$/, '') || selection.filePath
+      contextParts.push(`[Selected text from "${basename}" (${selection.filePath})]\n${selText}`)
+    }
+
+    let prompt = text
+    if (mentionedFiles.length > 0) {
+      const fileSections: string[] = []
+      let totalChars = 0
+      const MAX_PER_FILE = 4000
+      const MAX_TOTAL = 12000
+
+      for (const file of mentionedFiles) {
+        if (totalChars >= MAX_TOTAL) break
+        try {
+          let content = await this.app.vault.read(file)
+          if (content.length > MAX_PER_FILE) {
+            content = content.slice(0, MAX_PER_FILE) + `\n\n[Truncated — ${content.length} chars total]`
+          }
+          fileSections.push(`## ${file.path}\n${content}`)
+          totalChars += content.length
+        } catch { /* skip unreadable files */ }
+      }
+
+      if (fileSections.length > 0) {
+        // Strip @path references from prompt text sent to model
+        const cleanText = text.replace(/(?:^|\s)@[\w/\-. ]+\.md(?=\s|$)/g, '').trim()
+        prompt = `[Attached files]\n\n${fileSections.join('\n\n')}\n\n[User message]\n${cleanText}`
+      }
+    }
+
+    // Prepend context if we have any
+    if (contextParts.length > 0) {
+      prompt = contextParts.join('\n\n') + '\n\n' + prompt
+    }
 
     try {
-      await this.agent.prompt(text)
+      await this.agent.prompt(prompt)
     } catch (err) {
       this.showError(err instanceof Error ? err.message : String(err))
       this.finishProcessing()
@@ -520,18 +611,6 @@ export class DigestView extends ItemView {
 
   // ── Enzyme Helpers ──────────────────────────────────────────────
 
-  private async checkEnzyme(): Promise<boolean> {
-    try {
-      const { execFile } = require('child_process')
-      const { promisify } = require('util')
-      const exec = promisify(execFile)
-      await exec('enzyme', ['--version'], { timeout: 5000 })
-      return true
-    } catch {
-      return false
-    }
-  }
-
   private async getEnzymeOverview(vaultPath: string): Promise<string | undefined> {
     try {
       const { execFile } = require('child_process')
@@ -555,25 +634,41 @@ export class DigestView extends ItemView {
   }
 
   private spawnEnzymeRefresh(): void {
-    try {
-      const adapter = this.app.vault.adapter
-      if (!(adapter instanceof FileSystemAdapter)) return
-      const vaultPath = adapter.getBasePath()
-      const { spawn } = require('child_process')
-      const child = spawn('enzyme', ['refresh', '--quiet', '-p', vaultPath], {
-        detached: true,
-        stdio: 'ignore',
-        env: {
-          ...process.env,
-          ...(this.plugin.settings.apiKey && { OPENAI_API_KEY: this.plugin.settings.apiKey }),
-          ...(this.plugin.settings.baseURL && { OPENAI_BASE_URL: this.plugin.settings.baseURL }),
-          ...(this.plugin.settings.model && { OPENAI_MODEL: this.plugin.settings.model }),
-        },
-      })
-      child.unref()
-    } catch {
-      // Not critical
-    }
+    const mgr = this.plugin.enzymeManager
+    if (!mgr) return
+    const settings = this.plugin.settings
+    mgr.spawnBackgroundRefresh({
+      ...(settings.apiKey && { OPENAI_API_KEY: settings.apiKey }),
+      ...(settings.baseURL && { OPENAI_BASE_URL: settings.baseURL }),
+      ...(settings.model && { OPENAI_MODEL: settings.model }),
+    })
+  }
+
+  private showEnzymeInitBanner(): void {
+    const banner = this.messagesEl.createDiv({ cls: 'digest-enzyme-banner' })
+    banner.createSpan({ text: 'Enzyme is not initialized for this vault.' })
+    const btn = banner.createEl('button', {
+      cls: 'digest-enzyme-init-btn',
+      text: 'Initialize',
+    })
+    btn.addEventListener('click', async () => {
+      const mgr = this.plugin.enzymeManager
+      if (!mgr) return
+      btn.disabled = true
+      btn.setText('Initializing...')
+      try {
+        await mgr.init(event => {
+          btn.setText(event.message || event.stage || 'Initializing...')
+        })
+        banner.remove()
+        new Notice('Vault initialized')
+        this.clearConversation()
+      } catch (err) {
+        btn.disabled = false
+        btn.setText('Initialize')
+        new Notice(`Init failed: ${err instanceof Error ? err.message : err}`)
+      }
+    })
   }
 
   // ── Utilities ───────────────────────────────────────────────────

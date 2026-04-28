@@ -413,6 +413,131 @@
   background: rgba(var(--color-red-rgb, 220, 38, 38), 0.15);
 }
 
+/* ── Context Chips ─────────────────────────────────────────────── */
+
+.digest-context-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 2px 6px;
+}
+
+.digest-context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.digest-context-chip-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.digest-context-chip-dismiss {
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.digest-context-chip-dismiss:hover {
+  color: var(--text-normal);
+}
+
+/* ── @ Mention Dropdown ────────────────────────────────────────── */
+
+.digest-mention-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  margin-bottom: 4px;
+}
+
+.digest-mention-divider {
+  padding: 4px 10px 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.digest-mention-item {
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.digest-mention-item:hover,
+.digest-mention-item.is-selected {
+  background: var(--background-modifier-hover);
+}
+
+.digest-mention-folder {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.digest-mention-name {
+  color: var(--text-normal);
+}
+
+/* ── Enzyme Init Banner ────────────────────────────────────────── */
+
+.digest-enzyme-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: 4px 0;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.digest-enzyme-init-btn {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  font-size: 12px;
+  border-radius: var(--radius-s);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  cursor: pointer;
+}
+
+.digest-enzyme-init-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.digest-enzyme-init-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* ── Utility ────────────────────────────────────────────────────── */
 
 .digest-hidden {

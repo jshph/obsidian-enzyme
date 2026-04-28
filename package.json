@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@jshph/digest": "github:jshph/digest",
-    "obsidian": "^1.5.7"
+    "obsidian": "^1.5.7",
+    "smol-toml": "^1.6.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
