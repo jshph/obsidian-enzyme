@@ -1,64 +1,27 @@
 {
-	"name": "obsidian-enzyme",
-	"version": "0.0.1",
-	"module": "src/index.ts",
-	"scripts": {
-		"preinstall": "node scripts/check-prod.js",
-		"dev": "node esbuild.config.mjs",
-		"build": "node esbuild.config.mjs production",
-		"version": "node scripts/bump-version.js",
-		"postinstall": "node scripts/check-prod.js && ([ \"$NODE_ENV\" != \"production\" ] && [ \"$BUILD_PROD\" != \"true\" ] && pnpm link ../enzyme-core || true)",
-		"prebuild": "node scripts/remove-links.js",
-		"postbuild": "node scripts/remove-links.js"
-	},
-	"keywords": [],
-	"author": "",
-	"include": [
-		"src/**/*.ts"
-	],
-	"types": "src/types.d.ts",
-	"exclude": [
-		"node_modules",
-		"dist"
-	],
-	"dependencies": {
-		"@anthropic-ai/sdk": "0.22.0",
-		"@popperjs/core": "^2.11.8",
-		"@types/node": "^20.11.30",
-		"@typescript-eslint/eslint-plugin": "6.18.1",
-		"@typescript-eslint/parser": "6.18.1",
-		"builtin-modules": "3.3.0",
-		"codemirror": "5.64.0",
-		"@codemirror/state": "6.0.0",
-		"@codemirror/view": "6.0.0",
-		"@codemirror/language": "6.0.0",
-		"@codemirror/commands": "6.0.0",
-		"@codemirror/autocomplete": "6.0.0",
-		"dedent-js": "^1.0.1",
-		"enzyme-core": "github:jshph/enzyme-core",
-		"esbuild": "0.19.11",
-		"esbuild-sass-plugin": "2.16.1",
-		"eslint": "^8.57.0",
-		"localforage": "^1.10.0",
-		"obsidian": "^1.5.7",
-		"obsidian-dataview": "latest",
-		"openai": "^4.29.2",
-		"path": "^0.12.7",
-		"prettier": "^3.2.5",
-		"react": "^17.0.2",
-		"react-dom": "^17.0.2",
-		"ts-node": "^10.9.2",
-		"tslib": "2.4.0",
-		"typedoc": "^0.25.12",
-		"typescript": "4.7.4",
-		"yaml": "^2.4.1",
-		"yarn": "^1.22.22"
-	},
-	"overrides": {
-		"@codemirror/state": "6.0.0"
-	},
-	"devDependencies": {
-		"@types/react": "^17.0.0",
-		"@types/react-dom": "^17.0.0"
-	}
+  "name": "@jshph/digest",
+  "version": "0.2.0",
+  "description": "Token-efficient writing and thinking agent for Obsidian vaults",
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production",
+    "cli:build": "tsc",
+    "cli:dev": "tsc --watch",
+    "cli:start": "node dist/main.js"
+  },
+  "dependencies": {
+    "obsidian": "^1.5.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.21.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "AGPL-3.0-only"
 }

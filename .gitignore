@@ -1,0 +1,6 @@
+node_modules
+main.js
+data.json
+.env
+.npmrc
+dist/
