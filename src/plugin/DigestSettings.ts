@@ -11,7 +11,7 @@ export interface DigestSettings {
 export const DEFAULT_SETTINGS: DigestSettings = {
   apiKey: '',
   baseURL: 'https://openrouter.ai/api/v1',
-  model: 'google/gemini-3-flash-preview',
+  model: '',
 }
 
 export class DigestSettingsTab extends PluginSettingTab {
@@ -76,15 +76,38 @@ export class DigestSettingsTab extends PluginSettingTab {
     const mgr = this.plugin.enzymeManager
     if (!mgr) return
 
-    containerEl.createEl('h2', { text: 'Enzyme' })
+    // Header with info tooltip
+    const headerEl = containerEl.createDiv({ cls: 'digest-enzyme-header' })
+    headerEl.createEl('h2', { text: 'Enzyme' })
+    const infoIcon = headerEl.createSpan({ cls: 'digest-enzyme-info', attr: { 'aria-label': 'What is Enzyme?' } })
+    infoIcon.setText('?')
+    infoIcon.title = [
+      'Enzyme is a local-first knowledge indexer for your vault.',
+      '',
+      'It reads your existing tags, links, and folder structure to build',
+      'a semantic index with AI-generated "catalyst questions" for each',
+      'concept. When you ask Digest a question, Enzyme finds relevant',
+      'content in ~8ms — no cloud embeddings, no token cost for retrieval.',
+      '',
+      'Without Enzyme, Digest still works (ReadFile / WriteFile) but',
+      'cannot search your vault semantically.',
+      '',
+      'Learn more: https://enzyme.garden',
+    ].join('\n')
 
     const status = await mgr.getStatus()
+
     this.renderEnzymeStatus(containerEl, status)
 
     if (!status.installed) {
+      const descFrag = document.createDocumentFragment()
+      descFrag.appendText('Install the local Enzyme binary before signing in or indexing this vault. ')
+      const link = descFrag.createEl('a', { text: 'What is Enzyme?', href: 'https://enzyme.garden' })
+      link.setAttr('target', '_blank')
+
       new Setting(containerEl)
         .setName('Install Enzyme')
-        .setDesc('Download and install the enzyme binary (~52 MB)')
+        .setDesc(descFrag)
         .addButton(btn =>
           btn.setButtonText('Install').setCta().onClick(async () => {
             btn.setDisabled(true).setButtonText('Installing...')
@@ -101,28 +124,85 @@ export class DigestSettingsTab extends PluginSettingTab {
       return
     }
 
-    // Login
-    new Setting(containerEl)
+    // Account
+    const accountDesc = document.createDocumentFragment()
+    const setAccountDesc = (message: string, href?: string) => {
+      while (accountDesc.firstChild) accountDesc.removeChild(accountDesc.firstChild)
+      accountDesc.appendText(message)
+      if (href) {
+        accountDesc.appendText(' ')
+        const link = accountDesc.createEl('a', { text: 'Open sign-in page', href })
+        link.setAttr('target', '_blank')
+      }
+    }
+    setAccountDesc(
+      status.loggedIn
+        ? `Signed in${status.email ? ` as ${status.email}` : ''}. Enzyme can initialize and refresh this vault.`
+        : 'Sign in to enzyme.garden before initializing or refreshing this vault.'
+    )
+
+    const accountSetting = new Setting(containerEl)
       .setName('Account')
-      .setDesc(status.apiKey ? 'Logged in to enzyme.garden' : 'Sign in for catalyst generation')
-      .addButton(btn =>
-        btn.setButtonText(status.apiKey ? 'Re-login' : 'Login').onClick(async () => {
+      .setDesc(accountDesc)
+      .addButton(btn => {
+        btn.setButtonText(status.loggedIn ? 'Re-login' : 'Sign in')
+        if (!status.loggedIn) btn.setCta()
+        btn.onClick(async () => {
           btn.setDisabled(true).setButtonText('Waiting for browser...')
           try {
-            await mgr.login()
-            new Notice('Logged in to enzyme.garden')
+            await mgr.login(event => {
+              if (event.event === 'device_authorization') {
+                btn.setButtonText('Waiting for approval...')
+                setAccountDesc(
+                  event.opened_browser
+                    ? 'Complete sign-in in the browser, then return to Obsidian.'
+                    : 'Complete sign-in in your browser, then return to Obsidian.',
+                  event.verification_uri,
+                )
+                accountSetting.setDesc(accountDesc)
+              } else if (event.event === 'already_logged_in') {
+                btn.setButtonText('Already signed in')
+                setAccountDesc(`Already signed in${event.email ? ` as ${event.email}` : ''}.`)
+                accountSetting.setDesc(accountDesc)
+              }
+            })
+            new Notice('Signed in to enzyme.garden')
             this.display()
           } catch (err) {
-            new Notice(`Login failed: ${err instanceof Error ? err.message : err}`)
-            btn.setDisabled(false).setButtonText('Login')
+            new Notice(`Sign-in failed: ${err instanceof Error ? err.message : err}`)
+            btn.setDisabled(false).setButtonText(status.loggedIn ? 'Re-login' : 'Sign in')
+          }
+        })
+      })
+
+    if (status.loggedIn) {
+      accountSetting.addButton(btn =>
+        btn.setButtonText('Sign out').onClick(async () => {
+          btn.setDisabled(true).setButtonText('Signing out...')
+          try {
+            await mgr.logout()
+            new Notice('Signed out of enzyme.garden')
+            this.display()
+          } catch (err) {
+            new Notice(`Sign-out failed: ${err instanceof Error ? err.message : err}`)
+            btn.setDisabled(false).setButtonText('Sign out')
           }
         })
       )
+    }
+
+    if (!status.loggedIn) {
+      new Setting(containerEl)
+        .setName('Initialize vault')
+        .setDesc('Sign in first. Initialization uses your Enzyme account for catalyst generation and credits.')
+        .addButton(btn => btn.setButtonText('Initialize').setDisabled(true))
+      return
+    }
 
     if (!status.initialized) {
       new Setting(containerEl)
         .setName('Initialize vault')
-        .setDesc('Scan vault, extract entities, generate catalysts. Takes 1-3 minutes.')
+        .setDesc('Scan this vault, select entities, and generate catalysts. Usually takes 1-3 minutes.')
         .addButton(btn =>
           btn.setButtonText('Initialize').setCta().onClick(async () => {
             btn.setDisabled(true).setButtonText('Initializing...')
@@ -181,15 +261,21 @@ export class DigestSettingsTab extends PluginSettingTab {
             })
         )
     }
+
   }
 
   private renderEnzymeStatus(containerEl: HTMLElement, status: EnzymeStatus): void {
     const parts: string[] = []
     if (!status.installed) {
       parts.push('Not installed')
+    } else if (!status.loggedIn) {
+      parts.push('Installed')
+      parts.push('not signed in')
     } else if (!status.initialized) {
-      parts.push('Installed, not initialized')
+      parts.push('Signed in')
+      parts.push('not initialized')
     } else {
+      parts.push('Ready')
       if (status.documents !== undefined) parts.push(`${status.documents} docs`)
       if (status.entities !== undefined) parts.push(`${status.entities} entities`)
       if (status.catalysts !== undefined) parts.push(`${status.catalysts} catalysts`)

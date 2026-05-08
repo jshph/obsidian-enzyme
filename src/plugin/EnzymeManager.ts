@@ -11,6 +11,8 @@ import * as TOML from 'smol-toml'
 export interface EnzymeStatus {
   installed: boolean
   initialized: boolean
+  loggedIn?: boolean
+  email?: string
   documents?: number
   embedded?: number
   entities?: number
@@ -31,6 +33,20 @@ export interface InitProgress {
   message: string
   progress?: number
   total?: number
+}
+
+export interface LoginEvent {
+  event: string
+  verification_uri?: string
+  email?: string
+  message?: string
+  opened_browser?: boolean
+}
+
+export interface EnzymeAccount {
+  apiKey: string
+  userId: string
+  email: string
 }
 
 export class EnzymeManager {
@@ -55,16 +71,49 @@ export class EnzymeManager {
     return fs.existsSync(path.join(this.vaultPath, '.enzyme', 'enzyme.db'))
   }
 
+  getAccount(): EnzymeAccount | null {
+    const fs = require('fs')
+    try {
+      const auth = JSON.parse(fs.readFileSync(this.authPath(), 'utf-8'))
+      if (!auth || typeof auth.api_key !== 'string') return null
+      return {
+        apiKey: auth.api_key,
+        userId: typeof auth.user_id === 'string' ? auth.user_id : '',
+        email: typeof auth.email === 'string' ? auth.email : '',
+      }
+    } catch {
+      return null
+    }
+  }
+
+  isLoggedIn(): boolean {
+    return this.getAccount() !== null
+  }
+
   async getStatus(): Promise<EnzymeStatus> {
     const installed = await this.isInstalled()
     if (!installed) return { installed: false, initialized: false }
 
+    const account = this.getAccount()
     const initialized = this.isInitialized()
-    if (!initialized) return { installed: true, initialized: false }
+    if (!initialized) {
+      return {
+        installed: true,
+        initialized: false,
+        loggedIn: account !== null,
+        email: account?.email,
+        apiKey: account !== null,
+      }
+    }
 
     try {
       const { stdout } = await this.exec('enzyme', ['status', '-p', this.vaultPath])
-      const status: EnzymeStatus = { installed: true, initialized: true }
+      const status: EnzymeStatus = {
+        installed: true,
+        initialized: true,
+        loggedIn: account !== null,
+        email: account?.email,
+      }
 
       // Parse "Documents:  6266" etc.
       const docMatch = stdout.match(/Documents:\s+(\d+)/)
@@ -82,11 +131,17 @@ export class EnzymeManager {
       const modelMatch = stdout.match(/Model:\s+(\S+)/)
       if (modelMatch) status.model = modelMatch[1]
 
-      status.apiKey = stdout.includes('API key:') && stdout.includes('configured')
+      status.apiKey = account !== null || (stdout.includes('API key:') && stdout.includes('configured'))
 
       return status
     } catch {
-      return { installed: true, initialized: true }
+      return {
+        installed: true,
+        initialized: true,
+        loggedIn: account !== null,
+        email: account?.email,
+        apiKey: account !== null,
+      }
     }
   }
 
@@ -101,9 +156,55 @@ export class EnzymeManager {
     onProgress?.('Enzyme installed.')
   }
 
-  async login(): Promise<void> {
-    // Device flow OAuth — opens browser, CLI handles polling
-    await this.exec('enzyme', ['login', '-p', this.vaultPath], 300000)
+  async login(onEvent?: (event: LoginEvent) => void): Promise<void> {
+    const { spawn } = require('child_process')
+
+    return new Promise((resolve, reject) => {
+      const child = spawn('enzyme', ['login', '--json'], {
+        env: process.env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+
+      let output = ''
+      let stdoutBuf = ''
+      let stderrBuf = ''
+
+      const handleJsonLines = (chunk: Buffer) => {
+        stdoutBuf += chunk.toString()
+        const lines = stdoutBuf.split('\n')
+        stdoutBuf = lines.pop() || ''
+        for (const line of lines) {
+          if (!line.trim()) continue
+          output += `${line}\n`
+          try {
+            onEvent?.(JSON.parse(line) as LoginEvent)
+          } catch {
+            // Ignore non-JSON stdout from older enzyme binaries.
+          }
+        }
+      }
+
+      child.stdout.on('data', handleJsonLines)
+      child.stderr.on('data', (chunk: Buffer) => {
+        stderrBuf += chunk.toString()
+        output += chunk.toString()
+      })
+
+      child.on('close', (code: number) => {
+        if (stdoutBuf.trim()) {
+          try {
+            onEvent?.(JSON.parse(stdoutBuf.trim()) as LoginEvent)
+          } catch {
+            output += stdoutBuf
+          }
+        }
+
+        if (code === 0) resolve()
+        else reject(new Error(this.extractUsefulError(output || stderrBuf, `enzyme login exited with code ${code}`)))
+      })
+
+      child.on('error', (err: Error) => reject(err))
+    })
   }
 
   async init(onProgress?: (event: InitProgress) => void): Promise<void> {
@@ -137,7 +238,7 @@ export class EnzymeManager {
 
       child.on('close', (code: number) => {
         if (code === 0) resolve()
-        else reject(new Error(`enzyme init exited with code ${code}`))
+        else reject(new Error(this.extractUsefulError(stderrBuf, `enzyme init exited with code ${code}`)))
       })
 
       child.on('error', (err: Error) => reject(err))
@@ -166,6 +267,10 @@ export class EnzymeManager {
 
       child.on('error', (err: Error) => reject(err))
     })
+  }
+
+  async logout(): Promise<void> {
+    await this.exec('enzyme', ['logout'], 30000)
   }
 
   /** Spawn a detached background refresh (fire-and-forget). */
@@ -246,6 +351,22 @@ export class EnzymeManager {
     const { promisify } = require('util')
     const execFileAsync = promisify(execFile)
     return execFileAsync(cmd, args, { timeout, env: process.env })
+  }
+
+  private authPath(): string {
+    const path = require('path')
+    const enzymeHome = process.env.ENZYME_HOME || path.join(process.env.HOME || '', '.enzyme')
+    return path.join(enzymeHome, 'auth.json')
+  }
+
+  private extractUsefulError(output: string, fallback: string): string {
+    const clean = output
+      .split('\n')
+      .map(line => line.replace(/\x1b\[[0-9;]*m/g, '').trim())
+      .filter(Boolean)
+      .filter(line => !line.startsWith('{'))
+
+    return clean.length > 0 ? clean[clean.length - 1] : fallback
   }
 
   private async execStream(

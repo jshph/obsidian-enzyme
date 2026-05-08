@@ -16,18 +16,11 @@ The result: responses that reference what you've actually written, quote specifi
 ## Install
 
 1. Clone or download this repo into your vault's `.obsidian/plugins/digest/` folder
-2. Install [Enzyme](https://enzyme.garden) and run `enzyme init` in your vault
-3. Enable "Digest" in Settings → Community Plugins
-4. Open Settings → Digest and add your API key + model
+2. Enable "Digest" in Settings → Community Plugins
+3. Open Settings → Digest and add your model settings
+4. In the Enzyme section, install Enzyme, sign in, then initialize the vault
 
-```bash
-# Install Enzyme (one-time)
-curl -fsSL enzyme.garden/install.sh | bash
-cd ~/your-vault && enzyme init
-
-# Or with Homebrew
-brew install steipete/tap/enzyme
-```
+Digest can install and initialize Enzyme from its settings page. If you prefer Homebrew, `brew install steipete/tap/enzyme` works too.
 
 ## Setup
 
@@ -35,9 +28,9 @@ In **Settings → Digest**, configure:
 
 | Setting | Example | Notes |
 |---------|---------|-------|
-| API Key | `sk-or-...` | Any OpenAI-compatible key |
+| API Key | `sk-or-...` | Any OpenAI-compatible key. Leave blank only if your endpoint does not require one |
 | Base URL | `https://openrouter.ai/api/v1` | Or `http://localhost:8080` for local |
-| Model | `google/gemini-3-flash-preview` | Anything the endpoint serves |
+| Model | `openai/gpt-4.1-mini` | Anything the endpoint serves |
 | Max context | `32768` | Match your model's window |
 
 Works with OpenRouter, OpenAI, Anthropic (via proxy), llama-server, Ollama, vLLM — anything that speaks the OpenAI chat completions API.

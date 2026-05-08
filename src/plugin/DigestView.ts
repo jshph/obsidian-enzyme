@@ -407,7 +407,7 @@ export class DigestView extends ItemView {
     if ((!text && this.attachedFiles.length === 0) || this.isProcessing) return
 
     if (!this.agent) {
-      new Notice('Configure Digest settings first (API key and model)')
+      new Notice('Configure a model in Digest settings first')
       return
     }
 
@@ -669,6 +669,7 @@ export class DigestView extends ItemView {
     const mgr = this.plugin.enzymeManager
     if (!mgr) return
     if (!mgr.isInitialized() || !(await mgr.isInstalled())) return
+    if (!mgr.isLoggedIn()) return
 
     const settings = this.plugin.settings
     mgr.spawnBackgroundRefresh({
@@ -680,14 +681,26 @@ export class DigestView extends ItemView {
 
   private showEnzymeInitBanner(): void {
     const banner = this.messagesEl.createDiv({ cls: 'digest-enzyme-banner' })
-    banner.createSpan({ text: 'Enzyme is not initialized for this vault.' })
+    const mgr = this.plugin.enzymeManager
+    const loggedIn = mgr?.isLoggedIn() ?? false
+    banner.createSpan({
+      text: loggedIn
+        ? 'Enzyme is not initialized for this vault.'
+        : 'Sign in to Enzyme from Digest settings before initializing this vault.',
+    })
     const btn = banner.createEl('button', {
       cls: 'digest-enzyme-init-btn',
-      text: 'Initialize',
+      text: loggedIn ? 'Initialize' : 'Open settings',
     })
     btn.addEventListener('click', async () => {
       const mgr = this.plugin.enzymeManager
       if (!mgr) return
+      if (!mgr.isLoggedIn()) {
+        const setting = (this.app as any).setting
+        setting?.open?.()
+        setting?.openTabById?.(this.plugin.manifest.id)
+        return
+      }
       btn.disabled = true
       btn.setText('Initializing...')
       try {
