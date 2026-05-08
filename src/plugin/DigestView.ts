@@ -286,7 +286,8 @@ export class DigestView extends ItemView {
       {
         text: [
           'When using VaultSearch results, cite the notes you rely on with their provided Obsidian links.',
-          'Pair claims with short quoted excerpts or tight paraphrases from the search results.',
+          'When quoting evidence, render short excerpts as Markdown blockquotes immediately after the linked note.',
+          'Use tight paraphrases only when a quote would be noisy or repetitive.',
           'Keep links attached to the relevant point, not collected at the end.',
         ].join(' '),
         cache: true,
