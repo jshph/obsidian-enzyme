@@ -11,9 +11,9 @@ export default class DigestPlugin extends Plugin {
   async onload() {
     await this.loadSettings()
 
-    // Extend PATH so child_process can find enzyme in common locations
+    // Extend PATH so child_process can find enzyme in the same order EnzymeManager prefers.
     const home = process.env.HOME || ''
-    const extra = ['/usr/local/bin', '/opt/homebrew/bin', `${home}/.local/bin`, `${home}/.cargo/bin`]
+    const extra = [`${home}/.cargo/bin`, `${home}/.local/bin`, '/opt/homebrew/bin', '/usr/local/bin']
     const pathParts = (process.env.PATH || '').split(':').filter(Boolean)
     for (const p of extra) {
       if (p && !pathParts.includes(p)) {
@@ -55,7 +55,9 @@ export default class DigestPlugin extends Plugin {
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
+    const data = await this.loadData() as Partial<DigestSettings> & { enzymeAIProvider?: unknown } | null
+    if (data) delete data.enzymeAIProvider
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, data)
   }
 
   async saveSettings() {

@@ -51,6 +51,7 @@ export interface EnzymeAccount {
 
 export class EnzymeManager {
   private vaultPath: string
+  private enzymeCommand: string | null = null
 
   constructor(vaultPath: string) {
     this.vaultPath = vaultPath
@@ -58,7 +59,7 @@ export class EnzymeManager {
 
   async isInstalled(): Promise<boolean> {
     try {
-      await this.exec('enzyme', ['--version'])
+      await this.exec(this.getEnzymeCommand(), ['--version'])
       return true
     } catch {
       return false
@@ -107,7 +108,7 @@ export class EnzymeManager {
     }
 
     try {
-      const { stdout } = await this.exec('enzyme', ['status', '-p', this.vaultPath])
+      const { stdout } = await this.exec(this.getEnzymeCommand(), ['status', '-p', this.vaultPath])
       const status: EnzymeStatus = {
         installed: true,
         initialized: true,
@@ -158,9 +159,10 @@ export class EnzymeManager {
 
   async login(onEvent?: (event: LoginEvent) => void): Promise<void> {
     const { spawn } = require('child_process')
+    const cmd = this.getEnzymeCommand()
 
     return new Promise((resolve, reject) => {
-      const child = spawn('enzyme', ['login', '--json'], {
+      const child = spawn(cmd, ['login', '--json'], {
         env: process.env,
         stdio: ['ignore', 'pipe', 'pipe'],
       })
@@ -200,26 +202,37 @@ export class EnzymeManager {
         }
 
         if (code === 0) resolve()
-        else reject(new Error(this.extractUsefulError(output || stderrBuf, `enzyme login exited with code ${code}`)))
+        else {
+          this.logCommandFailure(cmd, ['login', '--json'], output || stderrBuf, code)
+          reject(new Error(this.extractUsefulError(output || stderrBuf, `enzyme login exited with code ${code}`)))
+        }
       })
 
-      child.on('error', (err: Error) => reject(err))
+      child.on('error', (err: Error) => {
+        console.error(`Failed to start ${cmd} login --json`, err)
+        reject(err)
+      })
     })
   }
 
   async init(onProgress?: (event: InitProgress) => void, env?: Record<string, string>): Promise<void> {
     const { spawn } = require('child_process')
+    const cmd = this.getEnzymeCommand()
 
     return new Promise((resolve, reject) => {
-      const child = spawn('enzyme', ['init', '-p', this.vaultPath, '--json-progress'], {
+      const args = ['init', '-p', this.vaultPath, '--json-progress']
+      const child = spawn(cmd, args, {
         env: { ...process.env, ...env },
         stdio: ['ignore', 'pipe', 'pipe'],
       })
 
       // JSON progress events come on stderr
       let stderrBuf = ''
+      let output = ''
       child.stderr.on('data', (chunk: Buffer) => {
-        stderrBuf += chunk.toString()
+        const text = chunk.toString()
+        stderrBuf += text
+        output += text
         const lines = stderrBuf.split('\n')
         stderrBuf = lines.pop() || ''
         for (const line of lines) {
@@ -234,19 +247,28 @@ export class EnzymeManager {
         }
       })
 
-      child.stdout.on('data', () => { /* discard stdout */ })
+      child.stdout.on('data', (chunk: Buffer) => {
+        output += chunk.toString()
+      })
 
       child.on('close', (code: number) => {
         if (code === 0) resolve()
-        else reject(new Error(this.extractUsefulError(stderrBuf, `enzyme init exited with code ${code}`)))
+        else {
+          this.logCommandFailure(cmd, args, output || stderrBuf, code)
+          reject(new Error(this.extractUsefulError(output || stderrBuf, `enzyme init exited with code ${code}`)))
+        }
       })
 
-      child.on('error', (err: Error) => reject(err))
+      child.on('error', (err: Error) => {
+        console.error(`Failed to start ${cmd} ${args.join(' ')}`, err)
+        reject(err)
+      })
     })
   }
 
   async refresh(quiet = true, env?: Record<string, string>): Promise<void> {
     const { spawn } = require('child_process')
+    const cmd = this.getEnzymeCommand()
     const args = ['refresh', '-p', this.vaultPath]
     if (quiet) args.push('--quiet')
 
@@ -255,34 +277,60 @@ export class EnzymeManager {
       // may spawn background processes that inherit stdio. execFile
       // waits for all pipes to close, but spawn's 'close' event fires
       // when the main process exits.
-      const child = spawn('enzyme', args, {
+      const child = spawn(cmd, args, {
         env: { ...process.env, ...env },
-        stdio: ['ignore', 'ignore', 'ignore'],
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+
+      let output = ''
+      child.stdout.on('data', (chunk: Buffer) => {
+        output += chunk.toString()
+      })
+      child.stderr.on('data', (chunk: Buffer) => {
+        output += chunk.toString()
       })
 
       child.on('close', (code: number) => {
         if (code === 0) resolve()
-        else reject(new Error(`enzyme refresh exited with code ${code}`))
+        else {
+          this.logCommandFailure(cmd, args, output, code)
+          reject(new Error(this.extractUsefulError(output, `enzyme refresh exited with code ${code}`)))
+        }
       })
 
-      child.on('error', (err: Error) => reject(err))
+      child.on('error', (err: Error) => {
+        console.error(`Failed to start ${cmd} ${args.join(' ')}`, err)
+        reject(err)
+      })
     })
   }
 
   async logout(): Promise<void> {
-    await this.exec('enzyme', ['logout'], 30000)
+    await this.exec(this.getEnzymeCommand(), ['logout'], 30000)
   }
 
   /** Spawn a detached background refresh (fire-and-forget). */
   spawnBackgroundRefresh(env?: Record<string, string>): void {
     const { spawn } = require('child_process')
-    const child = spawn('enzyme', ['refresh', '--quiet', '-p', this.vaultPath], {
+    const cmd = this.getEnzymeCommand()
+    const args = ['refresh', '--quiet', '-p', this.vaultPath]
+    const child = spawn(cmd, args, {
       detached: true,
-      stdio: 'ignore',
+      stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, ...env },
     })
+    let output = ''
+    child.stdout.on('data', (chunk: Buffer) => {
+      output += chunk.toString()
+    })
+    child.stderr.on('data', (chunk: Buffer) => {
+      output += chunk.toString()
+    })
+    child.on('close', (code: number) => {
+      if (code !== 0) this.logCommandFailure(cmd, args, output, code)
+    })
     child.on('error', (err: Error) => {
-      console.warn('Failed to start enzyme background refresh:', err.message)
+      console.error(`Failed to start ${cmd} ${args.join(' ')}`, err)
     })
     child.unref()
   }
@@ -342,6 +390,33 @@ export class EnzymeManager {
 
   // ── Helpers ─────────────────────────────────────────────────────
 
+  private getEnzymeCommand(): string {
+    if (this.enzymeCommand) return this.enzymeCommand
+
+    const fs = require('fs')
+    const path = require('path')
+    const home = process.env.HOME || ''
+    const candidates = [
+      path.join(home, '.cargo', 'bin', 'enzyme'),
+      path.join(home, '.local', 'bin', 'enzyme'),
+      '/opt/homebrew/bin/enzyme',
+      '/usr/local/bin/enzyme',
+    ]
+
+    for (const candidate of candidates) {
+      try {
+        fs.accessSync(candidate, fs.constants.X_OK)
+        this.enzymeCommand = candidate
+        return candidate
+      } catch {
+        // Try the next preferred install location.
+      }
+    }
+
+    this.enzymeCommand = 'enzyme'
+    return this.enzymeCommand
+  }
+
   private async exec(
     cmd: string,
     args: string[],
@@ -367,6 +442,22 @@ export class EnzymeManager {
       .filter(line => !line.startsWith('{'))
 
     return clean.length > 0 ? clean[clean.length - 1] : fallback
+  }
+
+  private logCommandFailure(cmd: string, args: string[], output: string, code: number | null): void {
+    const command = `${cmd} ${args.join(' ')}`
+    const message = code === null
+      ? `Enzyme command failed: ${command}`
+      : `Enzyme command failed with code ${code}: ${command}`
+
+    const clean = output
+      .split('\n')
+      .map(line => line.replace(/\x1b\[[0-9;]*m/g, '').trimEnd())
+      .filter(Boolean)
+      .join('\n')
+
+    if (clean) console.error(`${message}\n${clean}`)
+    else console.error(message)
   }
 
   private async execStream(

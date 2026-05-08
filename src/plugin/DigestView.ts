@@ -27,11 +27,10 @@ import {
 import {
   Agent,
   createOpenAIProvider,
-  createVaultSearchTool,
   createEnzymePrefetch,
 } from '@jshph/digest'
 import type { SystemPromptBlock, ToolResult } from '@jshph/digest'
-import { createObsidianReadFileTool, createObsidianWriteFileTool } from './tools.js'
+import { createObsidianReadFileTool, createObsidianVaultSearchTool, createObsidianWriteFileTool } from './tools.js'
 import { MentionSuggest } from './MentionDropdown.js'
 import { SelectionTracker } from './SelectionTracker.js'
 import type DigestPlugin from './DigestPlugin.js'
@@ -292,7 +291,7 @@ export class DigestView extends ItemView {
       apiKey: settings.apiKey,
     })
 
-    const vaultSearchTool = enzymeAvailable ? createVaultSearchTool(vaultPath) : null
+    const vaultSearchTool = enzymeAvailable ? createObsidianVaultSearchTool(vaultPath) : null
     if (vaultSearchTool) {
       delete vaultSearchTool.definition.parameters.limit
     }
@@ -671,17 +670,9 @@ export class DigestView extends ItemView {
     if (!mgr.isInitialized() || !(await mgr.isInstalled())) return
 
     const settings = this.plugin.settings
-    if (settings.enzymeAIProvider === 'enzyme') {
-      if (mgr.isLoggedIn()) {
-        mgr.spawnBackgroundRefresh()
-        return
-      }
-      if (!settings.enzymeApiKey || !settings.enzymeBaseURL || !settings.enzymeModel) {
-        if (process.env.OPENAI_API_KEY && process.env.OPENAI_BASE_URL && process.env.OPENAI_MODEL) {
-          mgr.spawnBackgroundRefresh()
-        }
-        return
-      }
+    if (mgr.isLoggedIn()) {
+      mgr.spawnBackgroundRefresh()
+      return
     }
 
     if (settings.enzymeApiKey && settings.enzymeBaseURL && settings.enzymeModel) {

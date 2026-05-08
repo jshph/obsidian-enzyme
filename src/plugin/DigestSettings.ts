@@ -6,7 +6,6 @@ export interface DigestSettings {
   apiKey: string
   baseURL: string
   model: string
-  enzymeAIProvider: 'custom' | 'enzyme'
   enzymeApiKey: string
   enzymeBaseURL: string
   enzymeModel: string
@@ -17,7 +16,6 @@ export const DEFAULT_SETTINGS: DigestSettings = {
   apiKey: '',
   baseURL: 'https://openrouter.ai/api/v1',
   model: '',
-  enzymeAIProvider: 'enzyme',
   enzymeApiKey: '',
   enzymeBaseURL: 'https://openrouter.ai/api/v1',
   enzymeModel: '',
@@ -304,24 +302,14 @@ export class DigestSettingsTab extends PluginSettingTab {
   }
 
   private renderEnzymeAdvancedSetting(containerEl: HTMLElement): void {
-    const usingOwnCredentials = this.plugin.settings.enzymeAIProvider === 'custom'
-
     new Setting(containerEl)
       .setName('Advanced')
-      .setDesc(usingOwnCredentials
-        ? 'Using your own AI credentials.'
-        : 'Use your own AI provider.')
+      .setDesc('Optional AI credentials for Enzyme indexing when you are not signed in.')
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.enzymeShowAdvanced)
           .onChange(async value => {
             this.plugin.settings.enzymeShowAdvanced = value
-            if (value && !usingOwnCredentials && !this.plugin.enzymeManager?.isLoggedIn()) {
-              this.plugin.settings.enzymeAIProvider = 'custom'
-            }
-            if (!value && !usingOwnCredentials) {
-              this.plugin.settings.enzymeAIProvider = 'enzyme'
-            }
             await this.plugin.saveSettings()
             this.display()
           })
@@ -330,25 +318,8 @@ export class DigestSettingsTab extends PluginSettingTab {
 
     if (!this.plugin.settings.enzymeShowAdvanced) return
 
-    new Setting(containerEl)
-      .setName('Indexing AI')
-      .setDesc('Choose how Enzyme gets AI credentials for catalyst generation.')
-      .addDropdown(dropdown =>
-        dropdown
-          .addOption('enzyme', 'Use Enzyme account')
-          .addOption('custom', 'Use my own credentials')
-          .setValue(this.plugin.settings.enzymeAIProvider)
-          .onChange(async value => {
-            this.plugin.settings.enzymeAIProvider = value as DigestSettings['enzymeAIProvider']
-            await this.plugin.saveSettings()
-            this.display()
-          })
-      )
-
-    if (this.plugin.settings.enzymeAIProvider !== 'custom') return
-
     const envDesc = document.createDocumentFragment()
-    envDesc.appendText('Fill all three fields, or leave them blank to use existing process environment variables.')
+    envDesc.appendText('Signed-in Enzyme accounts are used first. Otherwise, fill all three fields or launch Obsidian with matching process environment variables.')
 
     new Setting(containerEl)
       .setName('Own credentials')
@@ -396,24 +367,12 @@ export class DigestSettingsTab extends PluginSettingTab {
       )
   }
 
-  private getEffectiveEnzymeAIProvider(status: EnzymeStatus): DigestSettings['enzymeAIProvider'] {
-    if (this.plugin.settings.enzymeAIProvider === 'custom') return 'custom'
-    if (status.loggedIn) return 'enzyme'
-
-    const { enzymeApiKey, enzymeBaseURL, enzymeModel } = this.plugin.settings
-    const hasSavedEnv = Boolean(enzymeApiKey && enzymeBaseURL && enzymeModel)
-    const hasProcessEnv = Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_BASE_URL && process.env.OPENAI_MODEL)
-    return hasSavedEnv || hasProcessEnv ? 'custom' : 'enzyme'
-  }
-
   private canRunEnzymeAI(status: EnzymeStatus): boolean {
     return this.getEnzymeAIEnv(status) !== false
   }
 
   private getEnzymeAIEnv(status: EnzymeStatus): Record<string, string> | undefined | false {
-    if (this.getEffectiveEnzymeAIProvider(status) !== 'custom') {
-      return status.loggedIn ? undefined : false
-    }
+    if (status.loggedIn) return undefined
 
     const { enzymeApiKey, enzymeBaseURL, enzymeModel } = this.plugin.settings
     if (!enzymeApiKey || !enzymeBaseURL || !enzymeModel) {

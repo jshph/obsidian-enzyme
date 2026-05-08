@@ -34,12 +34,7 @@ In **Settings → Digest**, configure the chat model Digest should use:
 
 Works with OpenRouter, OpenAI, Anthropic (via proxy), llama-server, Ollama, vLLM — anything that speaks the OpenAI chat completions API.
 
-The **Enzyme Indexing AI** setting controls what Enzyme uses when it initializes or refreshes catalysts:
-
-| Option | What happens |
-|--------|--------------|
-| Enzyme account | Recommended for most users. Sign in and Enzyme handles indexing credentials |
-| Own credentials | Advanced. Digest passes your Enzyme-specific `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `OPENAI_MODEL` to the Enzyme child process for initialization and refresh. You can also leave these fields blank and launch Obsidian with those environment variables already set |
+For Enzyme initialization and refresh, Digest uses your signed-in Enzyme account when available. If you are not signed in, advanced settings can pass `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `OPENAI_MODEL` to the Enzyme child process. You can also leave those fields blank and launch Obsidian with the same environment variables already set.
 
 Local semantic search uses Enzyme's on-device index and does not call an AI provider. Catalyst generation does use AI. See [Enzyme's privacy details](https://www.enzyme.garden/privacy).
 

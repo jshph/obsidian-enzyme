@@ -5,12 +5,56 @@
  * calls. This ensures Obsidian detects changes immediately without filesystem
  * polling delays, and respects vault abstractions (e.g. .obsidian exclusion).
  *
- * VaultSearch stays as the enzyme CLI wrapper (child_process) since it calls
+ * VaultSearch stays as an enzyme CLI wrapper (child_process) since it calls
  * an external binary. ReadFile and WriteFile use app.vault directly.
  */
 
 import { App, TFile } from 'obsidian'
 import type { Tool, ToolResult } from '@jshph/digest'
+
+export function createObsidianVaultSearchTool(vaultPath: string): Tool {
+  return {
+    definition: {
+      name: 'VaultSearch',
+      description:
+        'Search the vault by concept using Enzyme. Finds notes that resonate with ' +
+        'the query by meaning, not keyword. Use for themes, ideas, and questions.',
+      parameters: {
+        query: {
+          type: 'string',
+          description: 'The concept, theme, or question to search for',
+        },
+        limit: {
+          type: 'number',
+          description: 'Max results (default: 5)',
+        },
+      },
+      required: ['query'],
+    },
+
+    async execute(args): Promise<ToolResult> {
+      const query = args.query as string
+      const limit = (args.limit as number) || 5
+      const cmd = getEnzymeCommand()
+      const commandArgs = ['catalyze', query, '-n', String(limit), '-p', vaultPath]
+
+      try {
+        const { stdout, stderr } = await execFile(cmd, commandArgs, 30_000)
+        if (stderr.trim()) {
+          console.warn(`Enzyme command stderr: ${cmd} ${commandArgs.join(' ')}\n${stderr.trim()}`)
+        }
+        return { content: formatVaultSearchResults(stdout, vaultPath, query), isError: false }
+      } catch (err) {
+        logToolCommandError(cmd, commandArgs, err)
+        const msg = getErrorMessage(err)
+        if (msg.includes('not initialized')) {
+          return { content: 'Vault not indexed. Run `enzyme init` first.', isError: true }
+        }
+        return { content: `Search failed: ${msg}`, isError: true }
+      }
+    },
+  }
+}
 
 export function createObsidianReadFileTool(app: App): Tool {
   return {
@@ -56,6 +100,98 @@ export function createObsidianReadFileTool(app: App): Tool {
       }
     },
   }
+}
+
+function getEnzymeCommand(): string {
+  const fs = require('fs')
+  const path = require('path')
+  const home = process.env.HOME || ''
+  const candidates = [
+    path.join(home, '.cargo', 'bin', 'enzyme'),
+    path.join(home, '.local', 'bin', 'enzyme'),
+    '/opt/homebrew/bin/enzyme',
+    '/usr/local/bin/enzyme',
+  ]
+
+  for (const candidate of candidates) {
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK)
+      return candidate
+    } catch {
+      // Try the next preferred install location.
+    }
+  }
+
+  return 'enzyme'
+}
+
+async function execFile(
+  cmd: string,
+  args: string[],
+  timeout: number,
+): Promise<{ stdout: string; stderr: string }> {
+  const { execFile } = require('child_process')
+  const { promisify } = require('util')
+  const execFileAsync = promisify(execFile)
+  return execFileAsync(cmd, args, { timeout, env: process.env })
+}
+
+function formatVaultSearchResults(stdout: string, vaultPath: string, query: string): string {
+  const response = JSON.parse(stdout)
+  const results = (response.results || []) as Array<{
+    file_path: string
+    content: string
+    similarity: number
+  }>
+
+  if (results.length === 0) {
+    const catalysts = (response.top_contributing_catalysts || []) as Array<{ text?: string; entity?: string }>
+    console.warn(
+      `VaultSearch returned no results for "${query}". ` +
+      `top_contributing_catalysts=${catalysts.length}`
+    )
+    if (catalysts.length > 0) {
+      console.warn(`VaultSearch catalysts:\n${catalysts
+        .slice(0, 5)
+        .map(c => `- ${c.text || '(missing text)'} (${c.entity || 'unknown'})`)
+        .join('\n')}`)
+    }
+    return 'No results found.'
+  }
+
+  const formatted = results.map(r => {
+    const path = r.file_path.replace(`${vaultPath}/`, '')
+    const excerpt = r.content.trim()
+    return `**${path}** (${(r.similarity * 100).toFixed(0)}%)\n${excerpt}`
+  })
+
+  const catalysts = (response.top_contributing_catalysts || [])
+    .slice(0, 3)
+    .map((c: any) => `- ${c.text} (${c.entity})`)
+
+  let output = formatted.join('\n\n---\n\n')
+  if (catalysts.length > 0) {
+    output += `\n\nConnecting themes:\n${catalysts.join('\n')}`
+  }
+  return output
+}
+
+function logToolCommandError(cmd: string, args: string[], err: unknown): void {
+  const command = `${cmd} ${args.join(' ')}`
+  const anyErr = err as any
+  const parts = [
+    `Enzyme command failed: ${command}`,
+    typeof anyErr?.code === 'number' ? `exit code: ${anyErr.code}` : '',
+    typeof anyErr?.stdout === 'string' && anyErr.stdout.trim() ? `stdout:\n${anyErr.stdout.trim()}` : '',
+    typeof anyErr?.stderr === 'string' && anyErr.stderr.trim() ? `stderr:\n${anyErr.stderr.trim()}` : '',
+    getErrorMessage(err),
+  ].filter(Boolean)
+
+  console.error(parts.join('\n'))
+}
+
+function getErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
 }
 
 export function createObsidianWriteFileTool(app: App): Tool {
