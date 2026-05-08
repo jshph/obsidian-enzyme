@@ -282,7 +282,16 @@ export class DigestView extends ItemView {
     const enzymeInitialized = mgr ? mgr.isInitialized() : false
     const enzymeAvailable = enzymeInstalled && enzymeInitialized
 
-    const systemPrompt: SystemPromptBlock[] = []
+    const systemPrompt: SystemPromptBlock[] = [
+      {
+        text: [
+          'When using VaultSearch results, cite the notes you rely on with their provided Obsidian links.',
+          'Pair claims with short quoted excerpts or tight paraphrases from the search results.',
+          'Keep links attached to the relevant point, not collected at the end.',
+        ].join(' '),
+        cache: true,
+      },
+    ]
 
     const provider = createOpenAIProvider({
       baseURL: settings.baseURL || 'https://openrouter.ai/api/v1',

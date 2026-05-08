@@ -161,8 +161,9 @@ function formatVaultSearchResults(stdout: string, vaultPath: string, query: stri
 
   const formatted = results.map(r => {
     const path = r.file_path.replace(`${vaultPath}/`, '')
+    const noteLink = toWikiLink(path)
     const excerpt = r.content.trim()
-    return `**${path}** (${(r.similarity * 100).toFixed(0)}%)\n${excerpt}`
+    return `${noteLink} (${(r.similarity * 100).toFixed(0)}%)\n${excerpt}`
   })
 
   const catalysts = (response.top_contributing_catalysts || [])
@@ -192,6 +193,12 @@ function logToolCommandError(cmd: string, args: string[], err: unknown): void {
 
 function getErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
+}
+
+function toWikiLink(path: string): string {
+  const withoutExt = path.replace(/\.md$/i, '')
+  const label = withoutExt.split('/').pop() || withoutExt
+  return `[[${withoutExt}|${label}]]`
 }
 
 export function createObsidianWriteFileTool(app: App): Tool {
