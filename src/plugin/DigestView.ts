@@ -32,6 +32,7 @@ import {
 } from '@jshph/digest'
 import type { SystemPromptBlock, ToolResult } from '@jshph/digest'
 import { createObsidianReadFileTool, createObsidianVaultSearchTool, createObsidianWriteFileTool } from './tools.js'
+import { GraphHighlighter } from './GraphHighlighter.js'
 import { MentionSuggest } from './MentionDropdown.js'
 import { SelectionTracker } from './SelectionTracker.js'
 import type DigestPlugin from './DigestPlugin.js'
@@ -61,6 +62,7 @@ export class DigestView extends ItemView {
   // Context injection
   private mentionSuggest!: MentionSuggest
   private selectionTracker!: SelectionTracker
+  private graphHighlighter!: GraphHighlighter
   private contextChipsEl!: HTMLElement
   private attachedFiles: TFile[] = []
 
@@ -83,12 +85,14 @@ export class DigestView extends ItemView {
 
   async onOpen(): Promise<void> {
     this.buildUI()
+    this.graphHighlighter = new GraphHighlighter(this.app)
     this.initSelectionTracker()
     await this.initAgent()
   }
 
   async onClose(): Promise<void> {
     this.agent?.abort()
+    this.graphHighlighter?.clear()
     if (this.renderTimer) clearTimeout(this.renderTimer)
     this.mentionSuggest?.close()
     this.selectionTracker?.destroy()
@@ -265,11 +269,16 @@ export class DigestView extends ItemView {
 
   // ── Agent Initialization ────────────────────────────────────────
 
-  async initAgent(): Promise<void> {
+  async initAgent(showSetupMessages = true): Promise<void> {
     const settings = this.plugin.settings
+    const model = settings.model.trim()
 
-    if (!settings.model) {
-      this.showSystemMessage('Configure a model in Digest settings to get started.')
+    if (!model) {
+      this.agent = null
+      this.updateStatus()
+      if (showSetupMessages) {
+        this.showSystemMessage('Configure a model in Digest settings to get started.')
+      }
       return
     }
 
@@ -300,7 +309,7 @@ export class DigestView extends ItemView {
 
     const provider = createOpenAIProvider({
       baseURL: settings.baseURL || 'https://openrouter.ai/api/v1',
-      model: settings.model,
+      model,
       maxTokens: DEFAULT_MAX_TOKENS,
       apiKey: settings.apiKey,
     })
@@ -335,12 +344,12 @@ export class DigestView extends ItemView {
 
     this.updateStatus()
 
-    if (!enzymeInstalled) {
+    if (showSetupMessages && !enzymeInstalled) {
       this.showSystemMessage(
         'Enzyme not found. Install from Settings \u2192 Digest for semantic search. ' +
         'ReadFile and WriteFile still work without it.'
       )
-    } else if (!enzymeInitialized) {
+    } else if (showSetupMessages && !enzymeInitialized) {
       this.showEnzymeInitBanner()
     }
   }
@@ -374,6 +383,10 @@ export class DigestView extends ItemView {
 
         case 'tool_call_end':
           this.updateToolCallSection(event.id, event.name, event.result)
+          if (event.name === 'VaultSearch' && !event.result.isError) {
+            const sourcePath = this.app.workspace.getActiveFile()?.path ?? ''
+            this.graphHighlighter.highlightVaultSearchResultLinks(event.result.content, sourcePath)
+          }
           // Show thinking while waiting for synthesis turn
           this.showThinkingIndicator()
           break
@@ -423,6 +436,8 @@ export class DigestView extends ItemView {
       new Notice('Configure a model in Digest settings first')
       return
     }
+
+    this.graphHighlighter.clear()
 
     const attachedFiles = [...this.attachedFiles]
     this.clearInput()
@@ -688,10 +703,18 @@ export class DigestView extends ItemView {
     this.currentStreamingEl = null
     this.currentStreamingText = ''
     this.sessionTokens = { input: 0, output: 0, cacheRead: 0 }
+    this.graphHighlighter.clear()
     this.messagesEl.empty()
     this.finishProcessing()
     this.showSystemMessage('New conversation started.')
     this.initAgent()
+  }
+
+  async reloadAgentFromSettings(): Promise<void> {
+    if (this.isProcessing) return
+    this.agent?.abort()
+    this.agent = null
+    await this.initAgent(false)
   }
 
   // ── Status Bar ──────────────────────────────────────────────────

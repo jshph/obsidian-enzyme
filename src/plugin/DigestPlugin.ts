@@ -7,6 +7,7 @@ import type { DigestSettings } from './DigestSettings.js'
 export default class DigestPlugin extends Plugin {
   settings: DigestSettings = DEFAULT_SETTINGS
   enzymeManager: EnzymeManager | null = null
+  private chatSettingsReloadTimer: ReturnType<typeof window.setTimeout> | null = null
 
   async onload() {
     await this.loadSettings()
@@ -51,6 +52,9 @@ export default class DigestPlugin extends Plugin {
   }
 
   onunload() {
+    if (this.chatSettingsReloadTimer) {
+      window.clearTimeout(this.chatSettingsReloadTimer)
+    }
     // Views are automatically cleaned up by Obsidian
   }
 
@@ -62,6 +66,17 @@ export default class DigestPlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings)
+  }
+
+  scheduleChatSettingsReload() {
+    if (this.chatSettingsReloadTimer) {
+      window.clearTimeout(this.chatSettingsReloadTimer)
+    }
+    this.chatSettingsReloadTimer = window.setTimeout(() => {
+      this.chatSettingsReloadTimer = null
+      const view = this.getView()
+      if (view) void view.reloadAgentFromSettings()
+    }, 400)
   }
 
   getView(): DigestView | null {

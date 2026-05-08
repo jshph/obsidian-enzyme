@@ -48,6 +48,7 @@ export class DigestSettingsTab extends PluginSettingTab {
           .onChange(async value => {
             this.plugin.settings.apiKey = value
             await this.plugin.saveSettings()
+            this.plugin.scheduleChatSettingsReload()
           })
       )
 
@@ -61,6 +62,7 @@ export class DigestSettingsTab extends PluginSettingTab {
           .onChange(async value => {
             this.plugin.settings.baseURL = value
             await this.plugin.saveSettings()
+            this.plugin.scheduleChatSettingsReload()
           })
       )
 
@@ -74,6 +76,7 @@ export class DigestSettingsTab extends PluginSettingTab {
           .onChange(async value => {
             this.plugin.settings.model = value
             await this.plugin.saveSettings()
+            this.plugin.scheduleChatSettingsReload()
           })
       )
 
