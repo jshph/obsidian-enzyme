@@ -689,9 +689,11 @@ export class DigestView extends ItemView {
     }
   }
 
-  private spawnEnzymeRefresh(): void {
+  private async spawnEnzymeRefresh(): Promise<void> {
     const mgr = this.plugin.enzymeManager
     if (!mgr) return
+    if (!mgr.isInitialized() || !(await mgr.isInstalled())) return
+
     const settings = this.plugin.settings
     mgr.spawnBackgroundRefresh({
       ...(settings.apiKey && { OPENAI_API_KEY: settings.apiKey }),

@@ -14,12 +14,13 @@ export default class DigestPlugin extends Plugin {
     // Extend PATH so child_process can find enzyme in common locations
     const home = process.env.HOME || ''
     const extra = ['/usr/local/bin', '/opt/homebrew/bin', `${home}/.local/bin`, `${home}/.cargo/bin`]
-    const current = process.env.PATH || ''
+    const pathParts = (process.env.PATH || '').split(':').filter(Boolean)
     for (const p of extra) {
-      if (!current.includes(p)) {
-        process.env.PATH = `${current}:${p}`
+      if (p && !pathParts.includes(p)) {
+        pathParts.push(p)
       }
     }
+    process.env.PATH = pathParts.join(':')
 
     // Create EnzymeManager for the vault
     const adapter = this.app.vault.adapter

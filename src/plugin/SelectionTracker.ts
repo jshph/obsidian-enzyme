@@ -71,8 +71,8 @@ export class SelectionTracker {
   }
 
   private update(sel: StoredSelection | null): void {
-    const prevKey = this.current ? `${this.current.filePath}:${this.current.text.length}` : null
-    const newKey = sel ? `${sel.filePath}:${sel.text.length}` : null
+    const prevKey = this.current ? `${this.current.filePath}:${this.current.text}` : null
+    const newKey = sel ? `${sel.filePath}:${sel.text}` : null
 
     if (prevKey !== newKey) {
       this.current = sel

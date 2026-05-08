@@ -149,7 +149,7 @@ export class MentionSuggest extends AbstractInputSuggest<MentionItem> {
 
   // ── Static helpers for mention parsing (used by DigestView) ─────
 
-  static readonly MENTION_PATTERN = /(?:^|\s)@(\w[\w/\-. ]*\.md)(?=\s|$)/g
+  static readonly MENTION_PATTERN = /(?:^|\s)@([^\r\n@]+?\.md)(?=\s|$)/g
 
   static getResolvedMentions(app: App, text: string): TFile[] {
     const pattern = new RegExp(MentionSuggest.MENTION_PATTERN.source, 'g')
@@ -171,7 +171,7 @@ export class MentionSuggest extends AbstractInputSuggest<MentionItem> {
   }
 
   static cleanMentions(text: string): string {
-    const pattern = /(?:^|\s)@\w[\w/\-. ]*\.md(?=\s|$)/g
+    const pattern = /(?:^|\s)@[^\r\n@]+?\.md(?=\s|$)/g
     return text.replace(pattern, '').trim()
   }
 }

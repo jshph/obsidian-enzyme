@@ -176,6 +176,9 @@ export class EnzymeManager {
       stdio: 'ignore',
       env: { ...process.env, ...env },
     })
+    child.on('error', (err: Error) => {
+      console.warn('Failed to start enzyme background refresh:', err.message)
+    })
     child.unref()
   }
 
