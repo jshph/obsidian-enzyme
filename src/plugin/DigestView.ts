@@ -27,17 +27,18 @@ import {
 import {
   Agent,
   createOpenAIProvider,
-  buildSystemPrompt,
   createVaultSearchTool,
   createEnzymePrefetch,
 } from '@jshph/digest'
-import type { ToolResult } from '@jshph/digest'
+import type { SystemPromptBlock, ToolResult } from '@jshph/digest'
 import { createObsidianReadFileTool, createObsidianWriteFileTool } from './tools.js'
 import { MentionSuggest } from './MentionDropdown.js'
 import { SelectionTracker } from './SelectionTracker.js'
 import type DigestPlugin from './DigestPlugin.js'
 
 export const VIEW_TYPE_DIGEST = 'digest-chat-view'
+const DEFAULT_MAX_CONTEXT = 32768
+const DEFAULT_MAX_TOKENS = 2048
 
 export class DigestView extends ItemView {
   private plugin: DigestPlugin
@@ -282,25 +283,22 @@ export class DigestView extends ItemView {
     const enzymeInitialized = mgr ? mgr.isInitialized() : false
     const enzymeAvailable = enzymeInstalled && enzymeInitialized
 
-    let enzymeOverview: string | undefined
-    if (enzymeAvailable) {
-      enzymeOverview = await this.getEnzymeOverview(vaultPath)
-    }
-
-    const systemPrompt = buildSystemPrompt({
-      vaultName: this.app.vault.getName(),
-      enzymeOverview,
-    })
+    const systemPrompt: SystemPromptBlock[] = []
 
     const provider = createOpenAIProvider({
       baseURL: settings.baseURL || 'https://openrouter.ai/api/v1',
       model: settings.model,
-      maxTokens: settings.maxTokens || 2048,
+      maxTokens: DEFAULT_MAX_TOKENS,
       apiKey: settings.apiKey,
     })
 
+    const vaultSearchTool = enzymeAvailable ? createVaultSearchTool(vaultPath) : null
+    if (vaultSearchTool) {
+      delete vaultSearchTool.definition.parameters.limit
+    }
+
     const tools = [
-      ...(enzymeAvailable ? [createVaultSearchTool(vaultPath)] : []),
+      ...(vaultSearchTool ? [vaultSearchTool] : []),
       createObsidianReadFileTool(this.app),
       createObsidianWriteFileTool(this.app),
     ]
@@ -310,7 +308,7 @@ export class DigestView extends ItemView {
       tools,
       provider,
       context: {
-        maxTokens: settings.maxContext || 32768,
+        maxTokens: DEFAULT_MAX_CONTEXT,
         compactThreshold: 0.70,
         keepRecentToolResults: 2,
       },
@@ -666,28 +664,6 @@ export class DigestView extends ItemView {
   }
 
   // ── Enzyme Helpers ──────────────────────────────────────────────
-
-  private async getEnzymeOverview(vaultPath: string): Promise<string | undefined> {
-    try {
-      const { execFile } = require('child_process')
-      const { promisify } = require('util')
-      const exec = promisify(execFile)
-      const { stdout } = await exec(
-        'enzyme',
-        ['petri', '-p', vaultPath, '-n', '20'],
-        { timeout: 15000 },
-      )
-      const petri = JSON.parse(stdout)
-      const entities = (petri.entities || []).slice(0, 20)
-      if (entities.length === 0) return undefined
-      return entities.map((e: any) => {
-        const cats = (e.catalysts || []).slice(0, 3).map((c: any) => c.text).join('; ')
-        return `- ${e.name}: ${cats}`
-      }).join('\n')
-    } catch {
-      return undefined
-    }
-  }
 
   private async spawnEnzymeRefresh(): Promise<void> {
     const mgr = this.plugin.enzymeManager

@@ -6,16 +6,12 @@ export interface DigestSettings {
   apiKey: string
   baseURL: string
   model: string
-  maxContext: number
-  maxTokens: number
 }
 
 export const DEFAULT_SETTINGS: DigestSettings = {
   apiKey: '',
   baseURL: 'https://openrouter.ai/api/v1',
   model: 'google/gemini-3-flash-preview',
-  maxContext: 32768,
-  maxTokens: 2048,
 }
 
 export class DigestSettingsTab extends PluginSettingTab {
@@ -69,38 +65,6 @@ export class DigestSettingsTab extends PluginSettingTab {
           .onChange(async value => {
             this.plugin.settings.model = value
             await this.plugin.saveSettings()
-          })
-      )
-
-    new Setting(containerEl)
-      .setName('Max context')
-      .setDesc('Total context window size in tokens')
-      .addText(text =>
-        text
-          .setPlaceholder('32768')
-          .setValue(String(this.plugin.settings.maxContext))
-          .onChange(async value => {
-            const num = parseInt(value, 10)
-            if (!isNaN(num) && num >= 1024) {
-              this.plugin.settings.maxContext = num
-              await this.plugin.saveSettings()
-            }
-          })
-      )
-
-    new Setting(containerEl)
-      .setName('Max output tokens')
-      .setDesc('Maximum tokens per response')
-      .addText(text =>
-        text
-          .setPlaceholder('2048')
-          .setValue(String(this.plugin.settings.maxTokens))
-          .onChange(async value => {
-            const num = parseInt(value, 10)
-            if (!isNaN(num) && num >= 128) {
-              this.plugin.settings.maxTokens = num
-              await this.plugin.saveSettings()
-            }
           })
       )
 
