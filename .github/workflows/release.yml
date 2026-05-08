@@ -6,7 +6,7 @@ on:
       - '*'
 
 env:
-  PLUGIN_NAME: digest
+  PLUGIN_NAME: reason
 
 jobs:
   build:

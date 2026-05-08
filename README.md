@@ -15,25 +15,33 @@ The result: responses that reference what you've actually written, quote specifi
 
 ## Install
 
-1. Clone or download this repo into your vault's `.obsidian/plugins/digest/` folder
+1. Clone or download this repo into your vault's `.obsidian/plugins/reason/` folder
 2. Enable "Digest" in Settings → Community Plugins
 3. Open Settings → Digest and add your model settings
-4. In the Enzyme section, install Enzyme, sign in, then initialize the vault
+4. In the Enzyme section, install Enzyme, sign in or add your own AI credentials, then initialize the vault
 
 Digest can install and initialize Enzyme from its settings page. If you prefer Homebrew, `brew install steipete/tap/enzyme` works too.
 
 ## Setup
 
-In **Settings → Digest**, configure:
+In **Settings → Digest**, configure the chat model Digest should use:
 
 | Setting | Example | Notes |
 |---------|---------|-------|
-| API Key | `sk-or-...` | Any OpenAI-compatible key. Leave blank only if your endpoint does not require one |
-| Base URL | `https://openrouter.ai/api/v1` | Or `http://localhost:8080` for local |
-| Model | `openai/gpt-4.1-mini` | Anything the endpoint serves |
-| Max context | `32768` | Match your model's window |
+| Chat API key | `sk-or-...` | Used for Digest chat. Leave blank only if your endpoint does not require one |
+| Base URL | `https://openrouter.ai/api/v1` | Chat completions endpoint, or `http://localhost:8080` for local |
+| Model | `openai/gpt-4.1-mini` | Chat model served by the endpoint |
 
 Works with OpenRouter, OpenAI, Anthropic (via proxy), llama-server, Ollama, vLLM — anything that speaks the OpenAI chat completions API.
+
+The **Enzyme Indexing AI** setting controls what Enzyme uses when it initializes or refreshes catalysts:
+
+| Option | What happens |
+|--------|--------------|
+| Enzyme account | Recommended for most users. Sign in and Enzyme handles indexing credentials |
+| Own credentials | Advanced. Digest passes your Enzyme-specific `OPENAI_API_KEY`, `OPENAI_BASE_URL`, and `OPENAI_MODEL` to the Enzyme child process for initialization and refresh. You can also leave these fields blank and launch Obsidian with those environment variables already set |
+
+Local semantic search uses Enzyme's on-device index and does not call an AI provider. Catalyst generation does use AI. See [Enzyme's privacy details](https://www.enzyme.garden/privacy).
 
 ### Running locally
 

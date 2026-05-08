@@ -515,6 +515,48 @@
   color: var(--text-on-accent);
 }
 
+/* ── Settings Tab ──────────────────────────────────────────────── */
+
+.digest-settings .setting-item {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.digest-settings .setting-item-heading {
+  padding-top: 24px;
+  padding-bottom: 8px;
+  border-top: 0;
+}
+
+.digest-settings .setting-item-heading .setting-item-name {
+  font-size: 1.15em;
+  font-weight: var(--font-semibold);
+}
+
+.digest-settings .setting-item-info {
+  max-width: 640px;
+}
+
+.digest-settings input[type='text'],
+.digest-settings input[type='password'],
+.digest-settings textarea,
+.digest-settings select {
+  min-width: min(100%, 280px);
+}
+
+.digest-settings-subtle .setting-item-name,
+.digest-settings-note .setting-item-name {
+  font-size: var(--font-ui-medium);
+}
+
+.digest-settings-note {
+  border-bottom-color: transparent;
+}
+
+.digest-settings-note .setting-item-name {
+  color: var(--text-muted);
+}
+
 /* ── Enzyme Init Banner ────────────────────────────────────────── */
 
 .digest-enzyme-banner {

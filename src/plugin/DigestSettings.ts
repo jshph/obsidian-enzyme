@@ -6,12 +6,22 @@ export interface DigestSettings {
   apiKey: string
   baseURL: string
   model: string
+  enzymeAIProvider: 'custom' | 'enzyme'
+  enzymeApiKey: string
+  enzymeBaseURL: string
+  enzymeModel: string
+  enzymeShowAdvanced: boolean
 }
 
 export const DEFAULT_SETTINGS: DigestSettings = {
   apiKey: '',
   baseURL: 'https://openrouter.ai/api/v1',
   model: '',
+  enzymeAIProvider: 'enzyme',
+  enzymeApiKey: '',
+  enzymeBaseURL: 'https://openrouter.ai/api/v1',
+  enzymeModel: '',
+  enzymeShowAdvanced: false,
 }
 
 export class DigestSettingsTab extends PluginSettingTab {
@@ -25,12 +35,13 @@ export class DigestSettingsTab extends PluginSettingTab {
   async display(): Promise<void> {
     const { containerEl } = this
     containerEl.empty()
+    containerEl.addClass('digest-settings')
 
-    containerEl.createEl('h2', { text: 'Digest Settings' })
+    new Setting(containerEl).setName('Chat Model').setHeading()
 
     new Setting(containerEl)
-      .setName('API Key')
-      .setDesc('OpenAI-compatible API key (OpenRouter, OpenAI, etc.)')
+      .setName('Chat API key')
+      .setDesc('Used only for Digest chat with your configured OpenAI-compatible model provider.')
       .addText(text =>
         text
           .setPlaceholder('sk-or-...')
@@ -44,7 +55,7 @@ export class DigestSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Base URL')
-      .setDesc('API endpoint (OpenRouter, local llama-server, etc.)')
+      .setDesc('Chat completions endpoint for Digest chat.')
       .addText(text =>
         text
           .setPlaceholder('https://openrouter.ai/api/v1')
@@ -57,7 +68,7 @@ export class DigestSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Model')
-      .setDesc('Model identifier (e.g. google/gemini-3-flash-preview)')
+      .setDesc('Model identifier for Digest chat.')
       .addText(text =>
         text
           .setPlaceholder('google/gemini-3-flash-preview')
@@ -77,11 +88,14 @@ export class DigestSettingsTab extends PluginSettingTab {
     if (!mgr) return
 
     // Header with info tooltip
-    const headerEl = containerEl.createDiv({ cls: 'digest-enzyme-header' })
-    headerEl.createEl('h2', { text: 'Enzyme' })
-    const infoIcon = headerEl.createSpan({ cls: 'digest-enzyme-info', attr: { 'aria-label': 'What is Enzyme?' } })
-    infoIcon.setText('?')
-    infoIcon.title = [
+    new Setting(containerEl)
+      .setName('Enzyme')
+      .setDesc('Local semantic index for vault search.')
+      .setHeading()
+      .addExtraButton(btn => {
+        btn
+          .setIcon('help')
+          .setTooltip([
       'Enzyme is a local-first knowledge indexer for your vault.',
       '',
       'It reads your existing tags, links, and folder structure to build',
@@ -89,15 +103,21 @@ export class DigestSettingsTab extends PluginSettingTab {
       'concept. When you ask Digest a question, Enzyme finds relevant',
       'content in ~8ms — no cloud embeddings, no token cost for retrieval.',
       '',
+      'Initialization and catalyst generation use AI. You can sign in',
+      'and let Enzyme handle indexing credentials, or use your own',
+      'provider from Advanced settings.',
+      '',
       'Without Enzyme, Digest still works (ReadFile / WriteFile) but',
       'cannot search your vault semantically.',
       '',
-      'Learn more: https://enzyme.garden',
-    ].join('\n')
+      'Privacy: https://www.enzyme.garden/privacy',
+          ].join('\n'))
+      })
 
     const status = await mgr.getStatus()
 
     this.renderEnzymeStatus(containerEl, status)
+    this.renderEnzymePrivacySetting(containerEl)
 
     if (!status.installed) {
       const descFrag = document.createDocumentFragment()
@@ -137,8 +157,8 @@ export class DigestSettingsTab extends PluginSettingTab {
     }
     setAccountDesc(
       status.loggedIn
-        ? `Signed in${status.email ? ` as ${status.email}` : ''}. Enzyme can initialize and refresh this vault.`
-        : 'Sign in to enzyme.garden before initializing or refreshing this vault.'
+        ? `Signed in${status.email ? ` as ${status.email}` : ''}.`
+        : 'Recommended. Optional if you use your own AI credentials.'
     )
 
     const accountSetting = new Setting(containerEl)
@@ -146,7 +166,6 @@ export class DigestSettingsTab extends PluginSettingTab {
       .setDesc(accountDesc)
       .addButton(btn => {
         btn.setButtonText(status.loggedIn ? 'Re-login' : 'Sign in')
-        if (!status.loggedIn) btn.setCta()
         btn.onClick(async () => {
           btn.setDisabled(true).setButtonText('Waiting for browser...')
           try {
@@ -191,25 +210,26 @@ export class DigestSettingsTab extends PluginSettingTab {
       )
     }
 
-    if (!status.loggedIn) {
-      new Setting(containerEl)
-        .setName('Initialize vault')
-        .setDesc('Sign in first. Initialization uses your Enzyme account for catalyst generation and credits.')
-        .addButton(btn => btn.setButtonText('Initialize').setDisabled(true))
-      return
-    }
+    this.renderEnzymeAdvancedSetting(containerEl)
 
     if (!status.initialized) {
+      const canRun = this.canRunEnzymeAI(status)
       new Setting(containerEl)
         .setName('Initialize vault')
-        .setDesc('Scan this vault, select entities, and generate catalysts. Usually takes 1-3 minutes.')
+        .setDesc('Scan this vault, select entities, and generate catalysts. Note excerpts are sent to the selected AI provider. Usually takes 1-3 minutes.')
         .addButton(btn =>
-          btn.setButtonText('Initialize').setCta().onClick(async () => {
+          btn.setButtonText('Initialize').setCta().setDisabled(!canRun).onClick(async () => {
             btn.setDisabled(true).setButtonText('Initializing...')
             try {
+              const env = this.getEnzymeAIEnv(status)
+              if (env === false) {
+                new Notice('Sign in to Enzyme, or complete the advanced AI credentials.')
+                btn.setDisabled(false).setButtonText('Initialize')
+                return
+              }
               await mgr.init(event => {
                 btn.setButtonText(event.message || event.stage)
-              })
+              }, env)
               new Notice('Vault initialized')
               this.display()
             } catch (err) {
@@ -222,14 +242,21 @@ export class DigestSettingsTab extends PluginSettingTab {
     }
 
     // Refresh
+    const canRun = this.canRunEnzymeAI(status)
     new Setting(containerEl)
       .setName('Refresh index')
       .setDesc('Incrementally update the vault index')
       .addButton(btn =>
-        btn.setButtonText('Refresh').onClick(async () => {
+        btn.setButtonText('Refresh').setDisabled(!canRun).onClick(async () => {
           btn.setDisabled(true).setButtonText('Refreshing...')
           try {
-            await mgr.refresh()
+            const env = this.getEnzymeAIEnv(status)
+            if (env === false) {
+              new Notice('Sign in to Enzyme, or complete the advanced AI credentials.')
+              btn.setDisabled(false).setButtonText('Refresh')
+              return
+            }
+            await mgr.refresh(true, env)
             new Notice('Index refreshed')
             this.display()
           } catch (err) {
@@ -262,6 +289,143 @@ export class DigestSettingsTab extends PluginSettingTab {
         )
     }
 
+  }
+
+  private renderEnzymePrivacySetting(containerEl: HTMLElement): void {
+    const desc = document.createDocumentFragment()
+    desc.appendText('Search runs locally. Initialization uses AI to generate catalysts from note excerpts. ')
+    const link = desc.createEl('a', { text: 'Privacy details', href: 'https://www.enzyme.garden/privacy' })
+    link.setAttr('target', '_blank')
+
+    new Setting(containerEl)
+      .setName('Privacy')
+      .setDesc(desc)
+      .setClass('digest-settings-subtle')
+  }
+
+  private renderEnzymeAdvancedSetting(containerEl: HTMLElement): void {
+    const usingOwnCredentials = this.plugin.settings.enzymeAIProvider === 'custom'
+
+    new Setting(containerEl)
+      .setName('Advanced')
+      .setDesc(usingOwnCredentials
+        ? 'Using your own AI credentials.'
+        : 'Use your own AI provider.')
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.enzymeShowAdvanced)
+          .onChange(async value => {
+            this.plugin.settings.enzymeShowAdvanced = value
+            if (value && !usingOwnCredentials && !this.plugin.enzymeManager?.isLoggedIn()) {
+              this.plugin.settings.enzymeAIProvider = 'custom'
+            }
+            if (!value && !usingOwnCredentials) {
+              this.plugin.settings.enzymeAIProvider = 'enzyme'
+            }
+            await this.plugin.saveSettings()
+            this.display()
+          })
+      )
+      .setClass('digest-settings-subtle')
+
+    if (!this.plugin.settings.enzymeShowAdvanced) return
+
+    new Setting(containerEl)
+      .setName('Indexing AI')
+      .setDesc('Choose how Enzyme gets AI credentials for catalyst generation.')
+      .addDropdown(dropdown =>
+        dropdown
+          .addOption('enzyme', 'Use Enzyme account')
+          .addOption('custom', 'Use my own credentials')
+          .setValue(this.plugin.settings.enzymeAIProvider)
+          .onChange(async value => {
+            this.plugin.settings.enzymeAIProvider = value as DigestSettings['enzymeAIProvider']
+            await this.plugin.saveSettings()
+            this.display()
+          })
+      )
+
+    if (this.plugin.settings.enzymeAIProvider !== 'custom') return
+
+    const envDesc = document.createDocumentFragment()
+    envDesc.appendText('Fill all three fields, or leave them blank to use existing process environment variables.')
+
+    new Setting(containerEl)
+      .setName('Own credentials')
+      .setDesc(envDesc)
+      .setClass('digest-settings-note')
+
+    new Setting(containerEl)
+      .setName('OPENAI_API_KEY')
+      .setDesc('Used only for Enzyme indexing.')
+      .addText(text =>
+        text
+          .setPlaceholder('sk-...')
+          .setValue(this.plugin.settings.enzymeApiKey || '')
+          .then(t => t.inputEl.type = 'password')
+          .onChange(async value => {
+            this.plugin.settings.enzymeApiKey = value
+            await this.plugin.saveSettings()
+          })
+      )
+
+    new Setting(containerEl)
+      .setName('OPENAI_BASE_URL')
+      .setDesc('OpenAI-compatible endpoint.')
+      .addText(text =>
+        text
+          .setPlaceholder('https://api.openai.com/v1')
+          .setValue(this.plugin.settings.enzymeBaseURL || '')
+          .onChange(async value => {
+            this.plugin.settings.enzymeBaseURL = value
+            await this.plugin.saveSettings()
+          })
+      )
+
+    new Setting(containerEl)
+      .setName('OPENAI_MODEL')
+      .setDesc('Model for catalyst generation.')
+      .addText(text =>
+        text
+          .setPlaceholder('gpt-4.1-mini')
+          .setValue(this.plugin.settings.enzymeModel || '')
+          .onChange(async value => {
+            this.plugin.settings.enzymeModel = value
+            await this.plugin.saveSettings()
+          })
+      )
+  }
+
+  private getEffectiveEnzymeAIProvider(status: EnzymeStatus): DigestSettings['enzymeAIProvider'] {
+    if (this.plugin.settings.enzymeAIProvider === 'custom') return 'custom'
+    if (status.loggedIn) return 'enzyme'
+
+    const { enzymeApiKey, enzymeBaseURL, enzymeModel } = this.plugin.settings
+    const hasSavedEnv = Boolean(enzymeApiKey && enzymeBaseURL && enzymeModel)
+    const hasProcessEnv = Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_BASE_URL && process.env.OPENAI_MODEL)
+    return hasSavedEnv || hasProcessEnv ? 'custom' : 'enzyme'
+  }
+
+  private canRunEnzymeAI(status: EnzymeStatus): boolean {
+    return this.getEnzymeAIEnv(status) !== false
+  }
+
+  private getEnzymeAIEnv(status: EnzymeStatus): Record<string, string> | undefined | false {
+    if (this.getEffectiveEnzymeAIProvider(status) !== 'custom') {
+      return status.loggedIn ? undefined : false
+    }
+
+    const { enzymeApiKey, enzymeBaseURL, enzymeModel } = this.plugin.settings
+    if (!enzymeApiKey || !enzymeBaseURL || !enzymeModel) {
+      const hasProcessEnv = Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_BASE_URL && process.env.OPENAI_MODEL)
+      return hasProcessEnv ? undefined : false
+    }
+
+    return {
+      OPENAI_API_KEY: enzymeApiKey,
+      OPENAI_BASE_URL: enzymeBaseURL,
+      OPENAI_MODEL: enzymeModel,
+    }
   }
 
   private renderEnzymeStatus(containerEl: HTMLElement, status: EnzymeStatus): void {

@@ -669,14 +669,33 @@ export class DigestView extends ItemView {
     const mgr = this.plugin.enzymeManager
     if (!mgr) return
     if (!mgr.isInitialized() || !(await mgr.isInstalled())) return
-    if (!mgr.isLoggedIn()) return
 
     const settings = this.plugin.settings
-    mgr.spawnBackgroundRefresh({
-      ...(settings.apiKey && { OPENAI_API_KEY: settings.apiKey }),
-      ...(settings.baseURL && { OPENAI_BASE_URL: settings.baseURL }),
-      ...(settings.model && { OPENAI_MODEL: settings.model }),
-    })
+    if (settings.enzymeAIProvider === 'enzyme') {
+      if (mgr.isLoggedIn()) {
+        mgr.spawnBackgroundRefresh()
+        return
+      }
+      if (!settings.enzymeApiKey || !settings.enzymeBaseURL || !settings.enzymeModel) {
+        if (process.env.OPENAI_API_KEY && process.env.OPENAI_BASE_URL && process.env.OPENAI_MODEL) {
+          mgr.spawnBackgroundRefresh()
+        }
+        return
+      }
+    }
+
+    if (settings.enzymeApiKey && settings.enzymeBaseURL && settings.enzymeModel) {
+      mgr.spawnBackgroundRefresh({
+        OPENAI_API_KEY: settings.enzymeApiKey,
+        OPENAI_BASE_URL: settings.enzymeBaseURL,
+        OPENAI_MODEL: settings.enzymeModel,
+      })
+      return
+    }
+
+    if (process.env.OPENAI_API_KEY && process.env.OPENAI_BASE_URL && process.env.OPENAI_MODEL) {
+      mgr.spawnBackgroundRefresh()
+    }
   }
 
   private showEnzymeInitBanner(): void {

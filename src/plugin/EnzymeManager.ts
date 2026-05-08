@@ -207,12 +207,12 @@ export class EnzymeManager {
     })
   }
 
-  async init(onProgress?: (event: InitProgress) => void): Promise<void> {
+  async init(onProgress?: (event: InitProgress) => void, env?: Record<string, string>): Promise<void> {
     const { spawn } = require('child_process')
 
     return new Promise((resolve, reject) => {
       const child = spawn('enzyme', ['init', '-p', this.vaultPath, '--json-progress'], {
-        env: process.env,
+        env: { ...process.env, ...env },
         stdio: ['ignore', 'pipe', 'pipe'],
       })
 
@@ -245,7 +245,7 @@ export class EnzymeManager {
     })
   }
 
-  async refresh(quiet = true): Promise<void> {
+  async refresh(quiet = true, env?: Record<string, string>): Promise<void> {
     const { spawn } = require('child_process')
     const args = ['refresh', '-p', this.vaultPath]
     if (quiet) args.push('--quiet')
@@ -256,7 +256,7 @@ export class EnzymeManager {
       // waits for all pipes to close, but spawn's 'close' event fires
       // when the main process exits.
       const child = spawn('enzyme', args, {
-        env: process.env,
+        env: { ...process.env, ...env },
         stdio: ['ignore', 'ignore', 'ignore'],
       })
 
