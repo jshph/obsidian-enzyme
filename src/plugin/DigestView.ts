@@ -23,6 +23,7 @@ import {
   FileSystemAdapter,
   setIcon,
   TFile,
+  Menu,
 } from 'obsidian'
 import {
   Agent,
@@ -129,6 +130,9 @@ export class DigestView extends ItemView {
           this.app.workspace.openLinkText(href, '', 'tab')
         }
       }
+    })
+    this.messagesEl.addEventListener('contextmenu', (e: MouseEvent) => {
+      this.showMessageContextMenu(e)
     })
 
     // Welcome message
@@ -543,6 +547,40 @@ export class DigestView extends ItemView {
 
     this.currentStreamingEl = null
     this.currentStreamingText = ''
+  }
+
+  private showMessageContextMenu(e: MouseEvent): void {
+    const target = e.target as HTMLElement
+    const block = target.closest('.digest-message-content, .digest-tool-body') as HTMLElement | null
+    if (!block) return
+
+    const text = (block.innerText || block.textContent || '').trim()
+    if (!text) return
+
+    e.preventDefault()
+    const menu = new Menu()
+    menu.addItem(item => {
+      item
+        .setTitle('Copy')
+        .setIcon('copy')
+        .onClick(() => {
+          this.copyText(text)
+        })
+    })
+    menu.showAtMouseEvent(e)
+  }
+
+  private async copyText(text: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch (err) {
+      try {
+        const { clipboard } = require('electron')
+        clipboard.writeText(text)
+      } catch {
+        console.error('Failed to copy Digest block text:', err)
+      }
+    }
   }
 
   // ── Tool Call Sections ──────────────────────────────────────────
