@@ -332,6 +332,7 @@
   padding: 8px 12px 12px;
   border-top: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
+  position: relative;
 }
 
 .digest-status {
@@ -349,7 +350,6 @@
 
 .digest-input {
   flex: 1;
-  resize: none;
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
   padding: 8px 10px;
@@ -361,6 +361,9 @@
   max-height: 150px;
   line-height: 1.4;
   outline: none;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
   transition: border-color 0.15s ease;
 }
 
@@ -368,12 +371,15 @@
   border-color: var(--interactive-accent);
 }
 
-.digest-input:disabled {
+.digest-input-disabled {
   opacity: 0.5;
+  pointer-events: none;
 }
 
-.digest-input::placeholder {
+.digest-input:empty::before {
+  content: attr(data-placeholder);
   color: var(--text-faint);
+  pointer-events: none;
 }
 
 .digest-btn-group {
@@ -442,6 +448,9 @@
 }
 
 .digest-context-chip-dismiss {
+  appearance: none;
+  border: 0;
+  background: transparent;
   cursor: pointer;
   color: var(--text-faint);
   font-size: 14px;
@@ -453,53 +462,57 @@
   color: var(--text-normal);
 }
 
-/* ── @ Mention Dropdown ────────────────────────────────────────── */
-
-.digest-mention-dropdown {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  max-height: 240px;
-  overflow-y: auto;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-m);
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 100;
-  margin-bottom: 4px;
-}
-
-.digest-mention-divider {
-  padding: 4px 10px 2px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.digest-mention-item {
-  padding: 6px 10px;
-  font-size: 13px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0;
-}
-
-.digest-mention-item:hover,
-.digest-mention-item.is-selected {
-  background: var(--background-modifier-hover);
-}
+/* ── @ Mention Suggest Items ───────────────────────────────────── */
 
 .digest-mention-folder {
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: var(--font-smallest);
+  margin-right: 2px;
 }
 
 .digest-mention-name {
   color: var(--text-normal);
+}
+
+.digest-mention-badge {
+  margin-left: auto;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: var(--text-faint);
+  background: var(--background-modifier-hover);
+  border-radius: var(--radius-s);
+}
+
+/* ── Enzyme Settings Header ────────────────────────────────────── */
+
+.digest-enzyme-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.digest-enzyme-header h2 {
+  margin: 0;
+}
+
+.digest-enzyme-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: help;
+  flex-shrink: 0;
+}
+
+.digest-enzyme-info:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
 }
 
 /* ── Enzyme Init Banner ────────────────────────────────────────── */

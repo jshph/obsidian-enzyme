@@ -22,6 +22,7 @@ import {
   Notice,
   FileSystemAdapter,
   setIcon,
+  TFile,
 } from 'obsidian'
 import {
   Agent,
@@ -32,7 +33,7 @@ import {
 } from '@jshph/digest'
 import type { ToolResult } from '@jshph/digest'
 import { createObsidianReadFileTool, createObsidianWriteFileTool } from './tools.js'
-import { MentionDropdown } from './MentionDropdown.js'
+import { MentionSuggest } from './MentionDropdown.js'
 import { SelectionTracker } from './SelectionTracker.js'
 import type DigestPlugin from './DigestPlugin.js'
 
@@ -44,7 +45,7 @@ export class DigestView extends ItemView {
 
   // DOM
   private messagesEl!: HTMLElement
-  private inputEl!: HTMLTextAreaElement
+  private inputEl!: HTMLDivElement
   private sendBtn!: HTMLElement
   private stopBtn!: HTMLElement
   private statusEl!: HTMLElement
@@ -57,9 +58,10 @@ export class DigestView extends ItemView {
   private sessionTokens = { input: 0, output: 0, cacheRead: 0 }
 
   // Context injection
-  private mentionDropdown!: MentionDropdown
+  private mentionSuggest!: MentionSuggest
   private selectionTracker!: SelectionTracker
   private contextChipsEl!: HTMLElement
+  private attachedFiles: TFile[] = []
 
   constructor(leaf: WorkspaceLeaf, plugin: DigestPlugin) {
     super(leaf)
@@ -87,7 +89,7 @@ export class DigestView extends ItemView {
   async onClose(): Promise<void> {
     this.agent?.abort()
     if (this.renderTimer) clearTimeout(this.renderTimer)
-    this.mentionDropdown?.destroy()
+    this.mentionSuggest?.close()
     this.selectionTracker?.destroy()
   }
 
@@ -141,19 +143,27 @@ export class DigestView extends ItemView {
 
     const inputRow = inputArea.createDiv({ cls: 'digest-input-row' })
 
-    this.inputEl = inputRow.createEl('textarea', {
+    this.inputEl = inputRow.createDiv({
       cls: 'digest-input',
-      attr: { placeholder: 'Ask about your vault... (@ to mention files)', rows: '1' },
+      attr: {
+        contenteditable: 'true',
+        'data-placeholder': 'Ask about your vault... (@ to mention files)',
+        role: 'textbox',
+        'aria-multiline': 'true',
+      },
     })
     this.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey && !this.mentionDropdown.isActive()) {
+      if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
         this.sendMessage()
+      } else if (e.key === 'Backspace' && this.getInputText() === '' && this.attachedFiles.length > 0) {
+        e.preventDefault()
+        this.attachedFiles.pop()
+        this.renderContextChips()
       }
     })
-    this.inputEl.addEventListener('input', () => this.autoGrow())
 
-    this.mentionDropdown = new MentionDropdown(this.app, this.inputEl, inputArea)
+    this.mentionSuggest = new MentionSuggest(this.app, this.inputEl, file => this.attachFile(file))
 
     const btnGroup = inputRow.createDiv({ cls: 'digest-btn-group' })
 
@@ -175,33 +185,78 @@ export class DigestView extends ItemView {
     })
   }
 
-  private autoGrow(): void {
-    this.inputEl.style.height = 'auto'
-    this.inputEl.style.height = Math.min(this.inputEl.scrollHeight, 150) + 'px'
+  private getInputText(): string {
+    return (this.inputEl.textContent || '').trim()
+  }
+
+  private clearInput(): void {
+    this.inputEl.textContent = ''
+  }
+
+  private setInputDisabled(disabled: boolean): void {
+    this.inputEl.contentEditable = disabled ? 'false' : 'true'
+    this.inputEl.toggleClass('digest-input-disabled', disabled)
   }
 
   private initSelectionTracker(): void {
     this.selectionTracker = new SelectionTracker(this.app)
-    this.selectionTracker.onChange(sel => {
-      this.contextChipsEl.empty()
-      if (sel) {
-        this.contextChipsEl.removeClass('digest-hidden')
-        const chip = this.contextChipsEl.createDiv({ cls: 'digest-context-chip' })
-        const basename = sel.filePath.split('/').pop()?.replace(/\.md$/, '') || sel.filePath
-        chip.createSpan({
-          cls: 'digest-context-chip-label',
-          text: `${sel.lineCount} line${sel.lineCount > 1 ? 's' : ''} from "${basename}"`,
-        })
-        const dismiss = chip.createSpan({ cls: 'digest-context-chip-dismiss', text: '\u00d7' })
-        dismiss.addEventListener('click', () => {
-          this.selectionTracker.dismiss()
-          this.contextChipsEl.addClass('digest-hidden')
-          this.contextChipsEl.empty()
-        })
-      } else {
-        this.contextChipsEl.addClass('digest-hidden')
-      }
-    })
+    this.selectionTracker.onChange(() => this.renderContextChips())
+  }
+
+  private attachFile(file: TFile): void {
+    if (!this.attachedFiles.some(attached => attached.path === file.path)) {
+      this.attachedFiles.push(file)
+      this.renderContextChips()
+    }
+  }
+
+  private renderContextChips(): void {
+    this.contextChipsEl.empty()
+
+    const selection = this.selectionTracker?.getSelection()
+    if (!selection && this.attachedFiles.length === 0) {
+      this.contextChipsEl.addClass('digest-hidden')
+      return
+    }
+
+    this.contextChipsEl.removeClass('digest-hidden')
+
+    if (selection) {
+      const chip = this.contextChipsEl.createDiv({ cls: 'digest-context-chip' })
+      const basename = selection.filePath.split('/').pop()?.replace(/\.md$/, '') || selection.filePath
+      chip.createSpan({
+        cls: 'digest-context-chip-label',
+        text: `${selection.lineCount} line${selection.lineCount > 1 ? 's' : ''} from "${basename}"`,
+      })
+      const dismiss = chip.createEl('button', {
+        cls: 'digest-context-chip-dismiss',
+        text: '\u00d7',
+        attr: { 'aria-label': 'Remove selected text context' },
+      })
+      dismiss.addEventListener('click', () => {
+        this.selectionTracker.dismiss()
+        this.renderContextChips()
+      })
+    }
+
+    for (const file of this.attachedFiles) {
+      const chip = this.contextChipsEl.createDiv({ cls: 'digest-context-chip' })
+      chip.createSpan({
+        cls: 'digest-context-chip-label',
+        text: `@${file.basename}`,
+        attr: { title: file.path },
+      })
+      const dismiss = chip.createEl('button', {
+        cls: 'digest-context-chip-dismiss',
+        text: '\u00d7',
+        attr: { 'aria-label': `Remove ${file.basename}` },
+      })
+      dismiss.addEventListener('click', () => {
+        this.attachedFiles = this.attachedFiles.filter(attached => attached.path !== file.path)
+        this.renderContextChips()
+        this.inputEl.focus()
+      })
+    }
   }
 
   // ── Agent Initialization ────────────────────────────────────────
@@ -290,7 +345,7 @@ export class DigestView extends ItemView {
           this.isProcessing = true
           this.sendBtn.addClass('digest-hidden')
           this.stopBtn.removeClass('digest-hidden')
-          this.inputEl.disabled = true
+          this.setInputDisabled(true)
           this.showThinkingIndicator()
           break
 
@@ -342,7 +397,7 @@ export class DigestView extends ItemView {
     this.isProcessing = false
     this.sendBtn.removeClass('digest-hidden')
     this.stopBtn.addClass('digest-hidden')
-    this.inputEl.disabled = false
+    this.setInputDisabled(false)
     this.inputEl.focus()
     this.updateStatus()
   }
@@ -350,20 +405,23 @@ export class DigestView extends ItemView {
   // ── Message Sending ─────────────────────────────────────────────
 
   private async sendMessage(): Promise<void> {
-    const text = this.inputEl.value.trim()
-    if (!text || this.isProcessing) return
+    const text = this.getInputText()
+    if ((!text && this.attachedFiles.length === 0) || this.isProcessing) return
 
     if (!this.agent) {
       new Notice('Configure Digest settings first (API key and model)')
       return
     }
 
-    this.inputEl.value = ''
-    this.inputEl.style.height = 'auto'
+    const attachedFiles = [...this.attachedFiles]
+    this.clearInput()
+    this.attachedFiles = []
+    this.renderContextChips()
 
-    // Resolve @mentions to file contents
-    const mentionedFiles = this.mentionDropdown.getResolvedMentions(text)
-    const displayText = this.mentionDropdown.stripMentions(text)
+    const attachedNames = attachedFiles.map(file => `@${file.basename}`).join(', ')
+    const displayText = attachedNames
+      ? [text, `Attached: ${attachedNames}`].filter(Boolean).join('\n\n')
+      : text
     this.addUserMessage(displayText)
 
     // Build context-augmented prompt
@@ -380,13 +438,13 @@ export class DigestView extends ItemView {
     }
 
     let prompt = text
-    if (mentionedFiles.length > 0) {
+    if (attachedFiles.length > 0) {
       const fileSections: string[] = []
       let totalChars = 0
       const MAX_PER_FILE = 4000
       const MAX_TOTAL = 12000
 
-      for (const file of mentionedFiles) {
+      for (const file of attachedFiles) {
         if (totalChars >= MAX_TOTAL) break
         try {
           let content = await this.app.vault.read(file)
@@ -399,9 +457,7 @@ export class DigestView extends ItemView {
       }
 
       if (fileSections.length > 0) {
-        // Strip @path references from prompt text sent to model
-        const cleanText = text.replace(/(?:^|\s)@[\w/\-. ]+\.md(?=\s|$)/g, '').trim()
-        prompt = `[Attached files]\n\n${fileSections.join('\n\n')}\n\n[User message]\n${cleanText}`
+        prompt = `[Attached files]\n\n${fileSections.join('\n\n')}\n\n[User message]\n${text || '(No message provided)'}`
       }
     }
 
