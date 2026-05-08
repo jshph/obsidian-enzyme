@@ -87,6 +87,12 @@
   -webkit-user-select: text;
 }
 
+.digest-message-content *,
+.digest-tool-body * {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 /* User messages: right-aligned with accent tint */
 .digest-user {
   justify-content: flex-end;
