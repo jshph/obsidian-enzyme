@@ -1,5 +1,8 @@
 import type { DigestSettings } from './DigestSettings.js'
 
+const SPOTIFY_CLIENT_ID = ''
+export const SPOTIFY_REDIRECT_URI = 'http://127.0.0.1:42873/spotify-callback'
+
 export interface SpotifyTrack {
   uri: string
   name: string
@@ -23,7 +26,7 @@ export class SpotifyClient {
   }
 
   isConfigured(): boolean {
-    return Boolean(this.settings.spotifyClientId && this.settings.spotifyRedirectUri)
+    return Boolean(SPOTIFY_CLIENT_ID)
   }
 
   isConnected(): boolean {
@@ -39,13 +42,10 @@ export class SpotifyClient {
 
   async connectWithLoopback(): Promise<void> {
     if (!this.isConfigured()) {
-      throw new Error('Add a Spotify client ID and redirect URI first.')
+      throw new Error('Set SPOTIFY_CLIENT_ID in SpotifyClient.ts before connecting Spotify.')
     }
 
-    const redirect = new URL(this.settings.spotifyRedirectUri)
-    if (redirect.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(redirect.hostname)) {
-      throw new Error('Spotify redirect URI must be a loopback HTTP URL for local sign-in.')
-    }
+    const redirect = new URL(SPOTIFY_REDIRECT_URI)
 
     const verifier = randomBase64Url(64)
     const challenge = await sha256Base64Url(verifier)
@@ -54,9 +54,9 @@ export class SpotifyClient {
 
     const authUrl = new URL('https://accounts.spotify.com/authorize')
     authUrl.search = new URLSearchParams({
-      client_id: this.settings.spotifyClientId,
+      client_id: SPOTIFY_CLIENT_ID,
       response_type: 'code',
-      redirect_uri: this.settings.spotifyRedirectUri,
+      redirect_uri: SPOTIFY_REDIRECT_URI,
       code_challenge_method: 'S256',
       code_challenge: challenge,
       state,
@@ -101,10 +101,7 @@ export class SpotifyClient {
   }
 
   async playTrack(uri: string): Promise<void> {
-    const deviceId = this.settings.spotifyDeviceId.trim()
-    const url = new URL('https://api.spotify.com/v1/me/player/play')
-    if (deviceId) url.searchParams.set('device_id', deviceId)
-    await this.apiFetch(url.toString(), {
+    await this.apiFetch('https://api.spotify.com/v1/me/player/play', {
       method: 'PUT',
       body: JSON.stringify({ uris: [uri] }),
     })
@@ -152,7 +149,7 @@ export class SpotifyClient {
     const params = new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: this.settings.spotifyRefreshToken,
-      client_id: this.settings.spotifyClientId,
+      client_id: SPOTIFY_CLIENT_ID,
     })
     const response = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',
@@ -178,8 +175,8 @@ export class SpotifyClient {
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code,
-        redirect_uri: this.settings.spotifyRedirectUri,
-        client_id: this.settings.spotifyClientId,
+        redirect_uri: SPOTIFY_REDIRECT_URI,
+        client_id: SPOTIFY_CLIENT_ID,
         code_verifier: verifier,
       }),
     })

@@ -1,7 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice } from 'obsidian'
 import type DigestPlugin from './DigestPlugin.js'
 import type { EnzymeStatus } from './EnzymeManager.js'
-import { SpotifyClient } from './SpotifyClient.js'
+import { SpotifyClient, SPOTIFY_REDIRECT_URI } from './SpotifyClient.js'
 
 export interface DigestSettings {
   apiKey: string
@@ -10,13 +10,10 @@ export interface DigestSettings {
   realtimeApiKey: string
   realtimeModel: string
   realtimeVoice: string
-  spotifyClientId: string
-  spotifyRedirectUri: string
   spotifyAccessToken: string
   spotifyRefreshToken: string
   spotifyTokenExpiresAt: number
   spotifyConnectedUser: string
-  spotifyDeviceId: string
   writingSessionMinutes: number
   enzymeApiKey: string
   enzymeBaseURL: string
@@ -31,13 +28,10 @@ export const DEFAULT_SETTINGS: DigestSettings = {
   realtimeApiKey: '',
   realtimeModel: 'gpt-realtime-2',
   realtimeVoice: 'marin',
-  spotifyClientId: '',
-  spotifyRedirectUri: 'http://127.0.0.1:42873/spotify-callback',
   spotifyAccessToken: '',
   spotifyRefreshToken: '',
   spotifyTokenExpiresAt: 0,
   spotifyConnectedUser: '',
-  spotifyDeviceId: '',
   writingSessionMinutes: 25,
   enzymeApiKey: '',
   enzymeBaseURL: 'https://openrouter.ai/api/v1',
@@ -172,49 +166,10 @@ export class DigestSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl).setName('Spotify').setHeading()
 
-    new Setting(containerEl)
-      .setName('Client ID')
-      .setDesc('Create a Spotify app and add the redirect URI below to its allowlist. Digest uses PKCE, so no client secret is stored.')
-      .addText(text =>
-        text
-          .setPlaceholder('Spotify app client ID')
-          .setValue(this.plugin.settings.spotifyClientId)
-          .onChange(async value => {
-            this.plugin.settings.spotifyClientId = value.trim()
-            await this.plugin.saveSettings()
-          })
-      )
-
-    new Setting(containerEl)
-      .setName('Redirect URI')
-      .setDesc('Must exactly match a redirect URI in your Spotify app settings. Loopback HTTP is used so Obsidian can finish sign-in locally.')
-      .addText(text =>
-        text
-          .setPlaceholder('http://127.0.0.1:42873/spotify-callback')
-          .setValue(this.plugin.settings.spotifyRedirectUri)
-          .onChange(async value => {
-            this.plugin.settings.spotifyRedirectUri = value.trim()
-            await this.plugin.saveSettings()
-          })
-      )
-
-    new Setting(containerEl)
-      .setName('Device ID')
-      .setDesc('Optional. Leave blank to use the active Spotify Connect device.')
-      .addText(text =>
-        text
-          .setPlaceholder('Optional Spotify device ID')
-          .setValue(this.plugin.settings.spotifyDeviceId)
-          .onChange(async value => {
-            this.plugin.settings.spotifyDeviceId = value.trim()
-            await this.plugin.saveSettings()
-          })
-      )
-
     const spotify = new SpotifyClient(this.plugin.settings, () => this.plugin.saveSettings())
     const accountText = this.plugin.settings.spotifyConnectedUser
       ? `Connected as ${this.plugin.settings.spotifyConnectedUser}.`
-      : 'Not connected.'
+      : `Not connected. Redirect URI: ${SPOTIFY_REDIRECT_URI}`
 
     const accountSetting = new Setting(containerEl)
       .setName('Account')
