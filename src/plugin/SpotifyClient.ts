@@ -16,24 +16,6 @@ interface SpotifyTokenResponse {
   expires_in: number
 }
 
-interface SpotifyDevice {
-  id: string
-  name: string
-  type?: string
-  is_active?: boolean
-  is_restricted?: boolean
-}
-
-class SpotifyApiError extends Error {
-  readonly status: number
-
-  constructor(status: number, message: string) {
-    super(`Spotify request failed (${status}): ${message}`)
-    this.name = 'SpotifyApiError'
-    this.status = status
-  }
-}
-
 export class SpotifyClient {
   private settings: DigestSettings
   private save: () => Promise<void>
@@ -119,13 +101,10 @@ export class SpotifyClient {
   }
 
   async playTrack(uri: string): Promise<void> {
-    try {
-      await this.startPlayback(uri)
-    } catch (err) {
-      if (!(err instanceof SpotifyApiError) || err.status !== 404) throw err
-      const device = await this.activateBestDevice()
-      await this.startPlayback(uri, device.id)
-    }
+    await this.apiFetch('https://api.spotify.com/v1/me/player/play', {
+      method: 'PUT',
+      body: JSON.stringify({ uris: [uri] }),
+    })
   }
 
   async searchAndPlay(query: string): Promise<SpotifyTrack> {
@@ -138,35 +117,6 @@ export class SpotifyClient {
   private async getCurrentUser(): Promise<string> {
     const body = await this.apiFetch('https://api.spotify.com/v1/me')
     return body?.email || body?.display_name || body?.id || 'Spotify user'
-  }
-
-  private async startPlayback(uri: string, deviceId?: string): Promise<void> {
-    const url = new URL('https://api.spotify.com/v1/me/player/play')
-    if (deviceId) url.searchParams.set('device_id', deviceId)
-    await this.apiFetch(url.toString(), {
-      method: 'PUT',
-      body: JSON.stringify({ uris: [uri] }),
-    })
-  }
-
-  private async activateBestDevice(): Promise<SpotifyDevice> {
-    const body = await this.apiFetch('https://api.spotify.com/v1/me/player/devices')
-    const devices = Array.isArray(body?.devices) ? body.devices as SpotifyDevice[] : []
-    const usable = devices.filter(device => device.id && !device.is_restricted)
-    const device = usable.find(d => d.is_active) || usable[0]
-    if (!device) {
-      throw new Error('No Spotify device is available. Open Spotify on this computer or phone, then try again.')
-    }
-
-    await this.apiFetch('https://api.spotify.com/v1/me/player', {
-      method: 'PUT',
-      body: JSON.stringify({
-        device_ids: [device.id],
-        play: false,
-      }),
-    })
-    await sleep(500)
-    return device
   }
 
   private async apiFetch(url: string, init: RequestInit = {}): Promise<any> {
@@ -185,7 +135,7 @@ export class SpotifyClient {
     const body = parseJson(text)
     if (!response.ok) {
       const message = body?.error?.message || body?.error_description || text || response.statusText
-      throw new SpotifyApiError(response.status, message)
+      throw new Error(`Spotify request failed (${response.status}): ${message}`)
     }
     return body
   }
@@ -274,10 +224,6 @@ function base64Url(bytes: Uint8Array): string {
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/g, '')
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => window.setTimeout(resolve, ms))
 }
 
 function createLoopbackServer(redirect: URL, state: string): Promise<{
