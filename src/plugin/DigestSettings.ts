@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting, Notice } from 'obsidian'
 import type DigestPlugin from './DigestPlugin.js'
 import type { EnzymeStatus } from './EnzymeManager.js'
+import { SpotifyClient } from './SpotifyClient.js'
 
 export interface DigestSettings {
   apiKey: string
@@ -9,6 +10,14 @@ export interface DigestSettings {
   realtimeApiKey: string
   realtimeModel: string
   realtimeVoice: string
+  spotifyClientId: string
+  spotifyRedirectUri: string
+  spotifyAccessToken: string
+  spotifyRefreshToken: string
+  spotifyTokenExpiresAt: number
+  spotifyConnectedUser: string
+  spotifyDeviceId: string
+  writingSessionMinutes: number
   enzymeApiKey: string
   enzymeBaseURL: string
   enzymeModel: string
@@ -22,6 +31,14 @@ export const DEFAULT_SETTINGS: DigestSettings = {
   realtimeApiKey: '',
   realtimeModel: 'gpt-realtime-2',
   realtimeVoice: 'marin',
+  spotifyClientId: '',
+  spotifyRedirectUri: 'http://127.0.0.1:42873/spotify-callback',
+  spotifyAccessToken: '',
+  spotifyRefreshToken: '',
+  spotifyTokenExpiresAt: 0,
+  spotifyConnectedUser: '',
+  spotifyDeviceId: '',
+  writingSessionMinutes: 25,
   enzymeApiKey: '',
   enzymeBaseURL: 'https://openrouter.ai/api/v1',
   enzymeModel: '',
@@ -128,8 +145,106 @@ export class DigestSettingsTab extends PluginSettingTab {
           })
       )
 
+    await this.renderWritingSessionsSection(containerEl)
+
     // ── Enzyme Section ────────────────────────────────────────────
     await this.renderEnzymeSection(containerEl)
+  }
+
+  private async renderWritingSessionsSection(containerEl: HTMLElement): Promise<void> {
+    new Setting(containerEl).setName('Writing Sessions').setHeading()
+
+    new Setting(containerEl)
+      .setName('Default session length')
+      .setDesc('Used when the agent starts a timed writing exercise.')
+      .addText(text =>
+        text
+          .setPlaceholder('25')
+          .setValue(String(this.plugin.settings.writingSessionMinutes || 25))
+          .onChange(async value => {
+            const parsed = Number.parseInt(value, 10)
+            this.plugin.settings.writingSessionMinutes = Number.isFinite(parsed)
+              ? Math.max(1, Math.min(180, parsed))
+              : 25
+            await this.plugin.saveSettings()
+          })
+      )
+
+    new Setting(containerEl).setName('Spotify').setHeading()
+
+    new Setting(containerEl)
+      .setName('Client ID')
+      .setDesc('Create a Spotify app and add the redirect URI below to its allowlist. Digest uses PKCE, so no client secret is stored.')
+      .addText(text =>
+        text
+          .setPlaceholder('Spotify app client ID')
+          .setValue(this.plugin.settings.spotifyClientId)
+          .onChange(async value => {
+            this.plugin.settings.spotifyClientId = value.trim()
+            await this.plugin.saveSettings()
+          })
+      )
+
+    new Setting(containerEl)
+      .setName('Redirect URI')
+      .setDesc('Must exactly match a redirect URI in your Spotify app settings. Loopback HTTP is used so Obsidian can finish sign-in locally.')
+      .addText(text =>
+        text
+          .setPlaceholder('http://127.0.0.1:42873/spotify-callback')
+          .setValue(this.plugin.settings.spotifyRedirectUri)
+          .onChange(async value => {
+            this.plugin.settings.spotifyRedirectUri = value.trim()
+            await this.plugin.saveSettings()
+          })
+      )
+
+    new Setting(containerEl)
+      .setName('Device ID')
+      .setDesc('Optional. Leave blank to use the active Spotify Connect device.')
+      .addText(text =>
+        text
+          .setPlaceholder('Optional Spotify device ID')
+          .setValue(this.plugin.settings.spotifyDeviceId)
+          .onChange(async value => {
+            this.plugin.settings.spotifyDeviceId = value.trim()
+            await this.plugin.saveSettings()
+          })
+      )
+
+    const spotify = new SpotifyClient(this.plugin.settings, () => this.plugin.saveSettings())
+    const accountText = this.plugin.settings.spotifyConnectedUser
+      ? `Connected as ${this.plugin.settings.spotifyConnectedUser}.`
+      : 'Not connected.'
+
+    const accountSetting = new Setting(containerEl)
+      .setName('Account')
+      .setDesc(accountText)
+      .addButton(btn =>
+        btn.setButtonText(this.plugin.settings.spotifyRefreshToken ? 'Reconnect' : 'Connect')
+          .setCta()
+          .onClick(async () => {
+            btn.setDisabled(true).setButtonText('Waiting for browser...')
+            try {
+              await spotify.connectWithLoopback()
+              new Notice('Spotify connected')
+              this.display()
+            } catch (err) {
+              new Notice(`Spotify sign-in failed: ${err instanceof Error ? err.message : String(err)}`)
+              btn.setDisabled(false).setButtonText(this.plugin.settings.spotifyRefreshToken ? 'Reconnect' : 'Connect')
+            }
+          })
+      )
+
+    if (this.plugin.settings.spotifyRefreshToken) {
+      accountSetting.addButton(btn =>
+        btn.setButtonText('Disconnect').onClick(async () => {
+          spotify.disconnect()
+          await this.plugin.saveSettings()
+          new Notice('Spotify disconnected')
+          this.display()
+        })
+      )
+    }
   }
 
   private async renderEnzymeSection(containerEl: HTMLElement): Promise<void> {
