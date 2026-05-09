@@ -324,7 +324,6 @@ export class DigestView extends ItemView {
           'Use Enzyme and the Petri dish to notice recent or recurring ideas, especially Linny Veal-related themes if they appear in the vault context.',
           'Prefer concrete writing exercises, outlines, questions, and draftable paragraphs over open-ended conversation.',
           'When a timed writing exercise would help, use StartWritingSession and save enough handoff context for the next return.',
-          'When starting a writing session, usually include a paste-ready music_generation_prompt for an AI music generator. Make it richly aesthetic and specific to the writing prompt, not a generic mood prompt.',
           buildMusicTasteInstruction(),
           'When using VaultSearch results, cite the notes you rely on with their provided Obsidian links.',
           'When quoting evidence, render short excerpts as Markdown blockquotes immediately after the linked note.',
@@ -435,7 +434,6 @@ export class DigestView extends ItemView {
           'Use search results privately and answer as a short spoken thought.',
           'Your purpose is to create space for the user to write in Obsidian. Do not keep a generic voice conversation running when a writing exercise would be better.',
           'When the user is ready to explore an idea, compose a focused writing session with StartWritingSession, choose a useful music query when Spotify is connected, and then let the session timer take over.',
-          'When starting a writing session, usually include a detailed music_generation_prompt for an AI music generator so the saved note can be copied into a music tool later.',
           buildMusicTasteInstruction(),
           petriOverview
             ? `The following are private recurring vault themes. They are not note titles. Use them to notice what seems alive, suggest useful directions, and decide when VaultSearch is useful:\n${petriOverview}`
@@ -565,7 +563,7 @@ export class DigestView extends ItemView {
         name: 'StartWritingSession',
         description: [
           'Create a timed Obsidian writing exercise, save its prompt and handoff context as a markdown note,',
-          'optionally start Spotify music, include a detailed AI music generation prompt, disconnect voice to avoid empty token use, and re-trigger voice when the timer ends.',
+          'optionally start Spotify music, disconnect voice to avoid empty token use, and re-trigger voice when the timer ends.',
         ].join(' '),
         parameters: {
           title: {
@@ -575,14 +573,6 @@ export class DigestView extends ItemView {
           prompt: {
             type: 'string',
             description: 'The concrete writing prompt the user should write into Obsidian.',
-          },
-          music_generation_prompt: {
-            type: 'string',
-            description: [
-              'Optional detailed prompt for an AI music generator.',
-              'Write this as a paste-ready music generation prompt that evokes the writing prompt aesthetically.',
-              'Include instrumentation, genre lineage, tempo/energy, texture, room/production feel, emotional contour, and what to avoid.',
-            ].join(' '),
           },
           duration_minutes: {
             type: 'number',
@@ -615,7 +605,6 @@ export class DigestView extends ItemView {
           : defaultMinutes
         const spotifyQuery = String(args.spotify_query || '').trim()
         const endingSpotifyQuery = String(args.ending_spotify_query || '').trim()
-        const musicGenerationPrompt = String(args.music_generation_prompt || '').trim()
         const handoffContext = String(args.handoff_context || '').trim()
 
         try {
@@ -632,8 +621,8 @@ export class DigestView extends ItemView {
             durationMinutes,
             spotifyQuery,
             endingSpotifyQuery,
-            musicGenerationPrompt,
             handoffContext,
+            petriOverview,
           })
 
           this.pendingSessionContext = [
@@ -1088,8 +1077,8 @@ export class DigestView extends ItemView {
     durationMinutes: number
     spotifyQuery: string
     endingSpotifyQuery: string
-    musicGenerationPrompt: string
     handoffContext: string
+    petriOverview?: string
   }): Promise<string> {
     if (!this.app.vault.getAbstractFileByPath(WRITING_SESSION_FOLDER)) {
       await this.app.vault.createFolder(WRITING_SESSION_FOLDER)
@@ -1117,11 +1106,10 @@ export class DigestView extends ItemView {
       '## Prompt',
       input.prompt,
       '',
-      input.musicGenerationPrompt ? '## AI Music Prompt' : '',
-      input.musicGenerationPrompt ? input.musicGenerationPrompt : '',
-      input.musicGenerationPrompt ? '' : '',
       '## Handoff Context',
       input.handoffContext || 'No handoff context supplied.',
+      '',
+      input.petriOverview ? '## Petri Context\n' + input.petriOverview : '',
       '',
       '## Writing',
       '',
