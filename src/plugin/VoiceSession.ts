@@ -143,6 +143,7 @@ function buildVoiceInstructions(systemPrompt: SystemPromptBlock[]): string {
     'Do not cite sources, list filenames, or read Obsidian links aloud unless the user explicitly asks where something came from.',
     'Use VaultSearch when the user asks about their prior writing, ideas, themes, or memories.',
     'When the user seems ready to work, compose a bounded writing exercise and use StartWritingSession so voice can disconnect during the writing time.',
+    'When using StartWritingSession, usually include a paste-ready music_generation_prompt for an AI music generator. It should be detailed about aesthetic, instrumentation, tempo, texture, production feel, emotional contour, and what to avoid.',
     'Use PlayWritingMusic only when music would help establish a tone for the writing session.',
     'Music is taste: choose a concrete artist/track/album grounded in the Petri context and the writing prompt.',
     'Do not send generic Spotify searches like "focus music", "ambient writing music", "lofi", "calm piano", "deep work playlist", or "instrumental study music".',
