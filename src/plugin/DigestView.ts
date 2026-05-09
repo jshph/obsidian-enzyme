@@ -35,6 +35,7 @@ import { createObsidianReadFileTool, createObsidianVaultSearchTool, createObsidi
 import { GraphHighlighter } from './GraphHighlighter.js'
 import { MentionSuggest } from './MentionDropdown.js'
 import { SelectionTracker } from './SelectionTracker.js'
+import { VoiceSession } from './VoiceSession.js'
 import type DigestPlugin from './DigestPlugin.js'
 
 export const VIEW_TYPE_DIGEST = 'digest-chat-view'
@@ -44,12 +45,14 @@ const DEFAULT_MAX_TOKENS = 2048
 export class DigestView extends ItemView {
   private plugin: DigestPlugin
   private agent: Agent | null = null
+  private voiceSession: VoiceSession | null = null
 
   // DOM
   private messagesEl!: HTMLElement
   private inputEl!: HTMLDivElement
   private sendBtn!: HTMLElement
   private stopBtn!: HTMLElement
+  private voiceBtn!: HTMLElement
   private statusEl!: HTMLElement
 
   // Streaming state
@@ -58,6 +61,8 @@ export class DigestView extends ItemView {
   private currentStreamingText = ''
   private renderTimer: ReturnType<typeof setTimeout> | null = null
   private sessionTokens = { input: 0, output: 0, cacheRead: 0 }
+  private voiceStatus = ''
+  private activeVoiceToolIds: string[] = []
 
   // Context injection
   private mentionSuggest!: MentionSuggest
@@ -92,6 +97,7 @@ export class DigestView extends ItemView {
 
   async onClose(): Promise<void> {
     this.agent?.abort()
+    this.voiceSession?.stop()
     this.graphHighlighter?.clear()
     if (this.renderTimer) clearTimeout(this.renderTimer)
     this.mentionSuggest?.close()
@@ -118,6 +124,13 @@ export class DigestView extends ItemView {
     })
     setIcon(newBtn, 'plus')
     newBtn.addEventListener('click', () => this.clearConversation())
+
+    this.voiceBtn = actions.createEl('button', {
+      cls: 'digest-action-btn clickable-icon',
+      attr: { 'aria-label': 'Start voice' },
+    })
+    setIcon(this.voiceBtn, 'mic')
+    this.voiceBtn.addEventListener('click', () => this.toggleVoice())
 
     // Messages area
     this.messagesEl = contentEl.createDiv({ cls: 'digest-messages' })
@@ -354,6 +367,121 @@ export class DigestView extends ItemView {
     }
   }
 
+  private async toggleVoice(): Promise<void> {
+    if (this.voiceSession?.isActive()) {
+      this.voiceSession.stop()
+      this.voiceSession = null
+      this.voiceStatus = ''
+      this.updateVoiceButton(false)
+      this.updateStatus()
+      return
+    }
+
+    const settings = this.plugin.settings
+    const apiKey = settings.realtimeApiKey.trim()
+    if (!apiKey) {
+      new Notice('Add an OpenAI Realtime API key in Digest settings to use voice.')
+      return
+    }
+
+    const adapter = this.app.vault.adapter
+    if (!(adapter instanceof FileSystemAdapter)) {
+      new Notice('Digest voice requires a local vault.')
+      return
+    }
+
+    const mgr = this.plugin.enzymeManager
+    const enzymeAvailable = Boolean(mgr && await mgr.isInstalled() && mgr.isInitialized())
+    const vaultSearchTool = enzymeAvailable
+      ? createObsidianVaultSearchTool(adapter.getBasePath())
+      : null
+    const petriOverview = enzymeAvailable && mgr
+      ? await mgr.getPetriOverview(20)
+      : undefined
+    const petriTopicCount = petriOverview
+      ? petriOverview.split('\n').filter(line => line.trim().startsWith('- ')).length
+      : 0
+    if (vaultSearchTool) {
+      delete vaultSearchTool.definition.parameters.limit
+    }
+
+    const systemPrompt: SystemPromptBlock[] = [
+      {
+        text: [
+          'You can use Enzyme VaultSearch to ground the conversation in the user\'s vault.',
+          'For voice mode, never cite sources by default.',
+          'Do not read note links, paths, similarity scores, or evidence labels aloud.',
+          'Use search results privately and answer as a short spoken thought.',
+          petriOverview
+            ? `The following are private recurring vault themes. They are not note titles. Use them to notice what seems alive, suggest useful directions, and decide when VaultSearch is useful:\n${petriOverview}`
+            : '',
+        ].join(' '),
+        cache: true,
+      },
+    ]
+
+    this.voiceSession = new VoiceSession({
+      apiKey,
+      model: settings.realtimeModel.trim() || 'gpt-realtime-2',
+      voice: settings.realtimeVoice.trim() || 'marin',
+      systemPrompt,
+      startupContext: petriOverview
+        ? `Private recurring vault themes (${petriTopicCount} loaded):\n${petriOverview}`
+        : undefined,
+      tools: [
+        ...(vaultSearchTool ? [vaultSearchTool] : []),
+      ],
+      onStatus: status => {
+        this.voiceStatus = status
+        this.updateStatus()
+      },
+      onTranscript: (role, text) => {
+        if (role === 'user') this.addUserMessage(text)
+        else this.addAssistantMessage(text)
+      },
+      onToolStart: (name, rawArgs) => {
+        const args = parseToolArgs(rawArgs)
+        const id = this.addToolCallSection(`voice_${Date.now()}_${Math.random().toString(36).slice(2)}`, name, args)
+        this.activeVoiceToolIds.push(id)
+      },
+      onToolEnd: (name, result) => {
+        const id = this.activeVoiceToolIds.shift()
+        if (id) {
+          this.updateToolCallSection(id, name, { content: result, isError: false })
+          if (name === 'VaultSearch') {
+            const sourcePath = this.app.workspace.getActiveFile()?.path ?? ''
+            this.graphHighlighter.highlightVaultSearchResultLinks(result, sourcePath)
+          }
+        }
+      },
+      onError: error => {
+        this.showError(error)
+        this.voiceStatus = ''
+        this.updateVoiceButton(false)
+        this.updateStatus()
+      },
+    })
+
+    try {
+      await this.voiceSession.start()
+      this.updateVoiceButton(true)
+      this.showSystemMessage('Voice started.')
+    } catch {
+      this.voiceSession = null
+      this.updateVoiceButton(false)
+      this.voiceStatus = ''
+      this.updateStatus()
+    }
+  }
+
+  private updateVoiceButton(active: boolean): void {
+    if (!this.voiceBtn) return
+    this.voiceBtn.empty()
+    this.voiceBtn.setAttr('aria-label', active ? 'Stop voice' : 'Start voice')
+    setIcon(this.voiceBtn, active ? 'mic-off' : 'mic')
+    this.voiceBtn.toggleClass('digest-voice-active', active)
+  }
+
   // ── Agent Event Handling ────────────────────────────────────────
 
   private subscribeToEvents(): void {
@@ -509,6 +637,14 @@ export class DigestView extends ItemView {
     this.scrollToBottom()
   }
 
+  private addAssistantMessage(text: string): void {
+    const msg = this.messagesEl.createDiv({ cls: 'digest-message digest-assistant' })
+    const bubble = msg.createDiv({ cls: 'digest-message-content' })
+    const sourcePath = this.app.workspace.getActiveFile()?.path ?? ''
+    MarkdownRenderer.render(this.app, text, bubble, sourcePath, this.plugin)
+    this.scrollToBottom()
+  }
+
   private appendStreamingText(text: string): void {
     if (!this.currentStreamingEl) {
       const msg = this.messagesEl.createDiv({ cls: 'digest-message digest-assistant' })
@@ -600,7 +736,7 @@ export class DigestView extends ItemView {
 
   // ── Tool Call Sections ──────────────────────────────────────────
 
-  private addToolCallSection(id: string, name: string, args: Record<string, unknown>): void {
+  private addToolCallSection(id: string, name: string, args: Record<string, unknown>): string {
     const section = this.messagesEl.createDiv({
       cls: 'digest-tool-call',
       attr: { 'data-tool-id': id },
@@ -623,6 +759,7 @@ export class DigestView extends ItemView {
     }
 
     this.scrollToBottom()
+    return id
   }
 
   private updateToolCallSection(id: string, name: string, result: ToolResult): void {
@@ -699,10 +836,15 @@ export class DigestView extends ItemView {
 
   clearConversation(): void {
     this.agent?.abort()
+    this.voiceSession?.stop()
+    this.voiceSession = null
     this.isProcessing = false
     this.currentStreamingEl = null
     this.currentStreamingText = ''
     this.sessionTokens = { input: 0, output: 0, cacheRead: 0 }
+    this.voiceStatus = ''
+    this.activeVoiceToolIds = []
+    this.updateVoiceButton(false)
     this.graphHighlighter.clear()
     this.messagesEl.empty()
     this.finishProcessing()
@@ -730,6 +872,7 @@ export class DigestView extends ItemView {
       status += ` \u00b7 ${total} tokens`
       if (cached > 0) status += ` (${cached} cached)`
     }
+    if (this.voiceStatus) status += ` \u00b7 ${this.voiceStatus}`
     this.statusEl.setText(status)
   }
 
@@ -805,5 +948,17 @@ export class DigestView extends ItemView {
     requestAnimationFrame(() => {
       this.messagesEl.scrollTop = this.messagesEl.scrollHeight
     })
+  }
+}
+
+function parseToolArgs(rawArgs: string): Record<string, unknown> {
+  if (!rawArgs) return {}
+  try {
+    const parsed = JSON.parse(rawArgs)
+    return typeof parsed === 'object' && parsed !== null
+      ? parsed as Record<string, unknown>
+      : {}
+  } catch {
+    return { query: rawArgs }
   }
 }

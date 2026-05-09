@@ -34,6 +34,18 @@ function resolveDigestPlugin() {
 	}
 }
 
+function resolveRealtimeBrowserShim() {
+	return {
+		name: 'resolve-realtime-browser-shim',
+		setup(build) {
+			build.onResolve({ filter: /^@openai\/agents-realtime\/_shims$/ }, () => {
+				const pkg = require.resolve('@openai/agents-realtime/package.json')
+				return { path: path.join(path.dirname(pkg), 'dist', 'shims', 'shims-browser.js') }
+			})
+		}
+	}
+}
+
 function copyToPluginsPlugin() {
 	return {
 		name: 'copy-to-plugins',
@@ -90,7 +102,7 @@ const context = await esbuild.context({
 	sourcemap: prod ? false : 'inline',
 	treeShaking: true,
 	outdir: './',
-	plugins: [resolveDigestPlugin(), copyToPluginsPlugin()]
+	plugins: [resolveDigestPlugin(), resolveRealtimeBrowserShim(), copyToPluginsPlugin()]
 })
 
 if (prod) {

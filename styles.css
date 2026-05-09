@@ -56,6 +56,16 @@
   background: var(--background-modifier-hover);
 }
 
+.digest-voice-active {
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+}
+
+.digest-voice-active:hover {
+  color: var(--text-on-accent);
+  background: var(--interactive-accent-hover);
+}
+
 /* ── Messages Area ──────────────────────────────────────────────── */
 
 .digest-messages {

@@ -7,7 +7,7 @@ import type { DigestSettings } from './DigestSettings.js'
 export default class DigestPlugin extends Plugin {
   settings: DigestSettings = DEFAULT_SETTINGS
   enzymeManager: EnzymeManager | null = null
-  private chatSettingsReloadTimer: ReturnType<typeof window.setTimeout> | null = null
+  private chatSettingsReloadTimer: number | null = null
 
   async onload() {
     await this.loadSettings()
@@ -59,8 +59,21 @@ export default class DigestPlugin extends Plugin {
   }
 
   async loadSettings() {
-    const data = await this.loadData() as Partial<DigestSettings> & { enzymeAIProvider?: unknown } | null
+    const data = await this.loadData() as Partial<DigestSettings> & {
+      enzymeAIProvider?: unknown
+      voiceApiKey?: string
+      voiceModel?: string
+      voiceName?: string
+    } | null
     if (data) delete data.enzymeAIProvider
+    if (data?.voiceApiKey && !data.realtimeApiKey) data.realtimeApiKey = data.voiceApiKey
+    if (data?.voiceModel && !data.realtimeModel) data.realtimeModel = data.voiceModel
+    if (data?.voiceName && !data.realtimeVoice) data.realtimeVoice = data.voiceName
+    if (data) {
+      delete data.voiceApiKey
+      delete data.voiceModel
+      delete data.voiceName
+    }
     this.settings = Object.assign({}, DEFAULT_SETTINGS, data)
   }
 

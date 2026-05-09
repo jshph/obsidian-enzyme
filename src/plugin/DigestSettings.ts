@@ -6,6 +6,9 @@ export interface DigestSettings {
   apiKey: string
   baseURL: string
   model: string
+  realtimeApiKey: string
+  realtimeModel: string
+  realtimeVoice: string
   enzymeApiKey: string
   enzymeBaseURL: string
   enzymeModel: string
@@ -16,6 +19,9 @@ export const DEFAULT_SETTINGS: DigestSettings = {
   apiKey: '',
   baseURL: 'https://openrouter.ai/api/v1',
   model: '',
+  realtimeApiKey: '',
+  realtimeModel: 'gpt-realtime-2',
+  realtimeVoice: 'marin',
   enzymeApiKey: '',
   enzymeBaseURL: 'https://openrouter.ai/api/v1',
   enzymeModel: '',
@@ -77,6 +83,48 @@ export class DigestSettingsTab extends PluginSettingTab {
             this.plugin.settings.model = value
             await this.plugin.saveSettings()
             this.plugin.scheduleChatSettingsReload()
+          })
+      )
+
+    new Setting(containerEl).setName('OpenAI Realtime Voice').setHeading()
+
+    new Setting(containerEl)
+      .setName('Realtime API key')
+      .setDesc('Used for live voice. A normal OpenAI API key is exchanged for an ephemeral realtime session key before microphone connection.')
+      .addText(text =>
+        text
+          .setPlaceholder('sk-...')
+          .setValue(this.plugin.settings.realtimeApiKey)
+          .then(t => t.inputEl.type = 'password')
+          .onChange(async value => {
+            this.plugin.settings.realtimeApiKey = value
+            await this.plugin.saveSettings()
+          })
+      )
+
+    new Setting(containerEl)
+      .setName('Realtime model')
+      .setDesc('OpenAI realtime model for speech-to-speech.')
+      .addText(text =>
+        text
+          .setPlaceholder('gpt-realtime-2')
+          .setValue(this.plugin.settings.realtimeModel)
+          .onChange(async value => {
+            this.plugin.settings.realtimeModel = value
+            await this.plugin.saveSettings()
+          })
+      )
+
+    new Setting(containerEl)
+      .setName('Voice')
+      .setDesc('OpenAI realtime voice.')
+      .addText(text =>
+        text
+          .setPlaceholder('marin')
+          .setValue(this.plugin.settings.realtimeVoice)
+          .onChange(async value => {
+            this.plugin.settings.realtimeVoice = value
+            await this.plugin.saveSettings()
           })
       )
 

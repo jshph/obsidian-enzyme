@@ -305,6 +305,30 @@ export class EnzymeManager {
     })
   }
 
+  async getPetriOverview(limit = 20): Promise<string | undefined> {
+    try {
+      const { stdout } = await this.exec(
+        this.getEnzymeCommand(),
+        ['petri', '-p', this.vaultPath, '-n', String(limit)],
+        15000,
+      )
+      const petri = JSON.parse(stdout)
+      const entities = (petri.entities || []).slice(0, limit)
+      if (entities.length === 0) return undefined
+      return entities.map((entity: any) => {
+        const catalysts = (entity.catalysts || [])
+          .slice(0, 3)
+          .map((catalyst: any) => catalyst.text)
+          .filter(Boolean)
+          .join('; ')
+        return `- ${entity.name}: ${catalysts}`
+      }).join('\n')
+    } catch (err) {
+      console.warn(`Failed to load Enzyme petri overview: ${err instanceof Error ? err.message : String(err)}`)
+      return undefined
+    }
+  }
+
   async logout(): Promise<void> {
     await this.exec(this.getEnzymeCommand(), ['logout'], 30000)
   }

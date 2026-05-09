@@ -1,0 +1,4 @@
+interface:
+  display_name: "Obsidian Plugin Release"
+  short_description: "Cut a release for this Obsidian plugin repo."
+  default_prompt: "Cut the next release for this Obsidian plugin repository."
