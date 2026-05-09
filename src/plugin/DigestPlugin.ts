@@ -64,9 +64,6 @@ export default class DigestPlugin extends Plugin {
       voiceApiKey?: string
       voiceModel?: string
       voiceName?: string
-      spotifyClientId?: string
-      spotifyRedirectUri?: string
-      spotifyDeviceId?: string
     } | null
     if (data) delete data.enzymeAIProvider
     if (data?.voiceApiKey && !data.realtimeApiKey) data.realtimeApiKey = data.voiceApiKey
@@ -76,9 +73,6 @@ export default class DigestPlugin extends Plugin {
       delete data.voiceApiKey
       delete data.voiceModel
       delete data.voiceName
-      delete data.spotifyClientId
-      delete data.spotifyRedirectUri
-      delete data.spotifyDeviceId
     }
     this.settings = Object.assign({}, DEFAULT_SETTINGS, data)
   }
