@@ -30,7 +30,7 @@ import {
   createOpenAIProvider,
   createEnzymePrefetch,
 } from '@jshph/digest'
-import type { SystemPromptBlock, ToolResult } from '@jshph/digest'
+import type { SystemPromptBlock, Tool, ToolResult } from '@jshph/digest'
 import { createObsidianReadFileTool, createObsidianVaultSearchTool, createObsidianWriteFileTool } from './tools.js'
 import { GraphHighlighter } from './GraphHighlighter.js'
 import { MentionSuggest } from './MentionDropdown.js'
@@ -409,9 +409,16 @@ export class DigestView extends ItemView {
       {
         text: [
           'You can use Enzyme VaultSearch to ground the conversation in the user\'s vault.',
+          'Your posture is hospitality: make the user feel received by their own archive, not coached toward output.',
           'For voice mode, never cite sources by default.',
           'Do not read note links, paths, similarity scores, or evidence labels aloud.',
-          'Use search results privately and answer as a short spoken thought.',
+          'Use search results privately and answer as a short spoken noticing.',
+          'Lead with what you found, then notice one small thing: a word choice, a return, a tension, a stopping point.',
+          'If the result is conversational or tool-use history, restore the thread: name where they had gotten to, what was decided, or what was still open.',
+          'Do not default to writing advice, fiction prompts, publishing ideas, exercises, or productivity framing unless the user explicitly asks for that.',
+          'When VaultSearch returns several notes, choose the one to three most relevant notes for the point you are making.',
+          'After VaultSearch, call RenderSources with only the selected note links you want visible beside your spoken answer.',
+          'The interface renders those clickable sources separately, so keep spoken citations out unless the user asks.',
           petriOverview
             ? `The following are private recurring vault themes. They are not note titles. Use them to notice what seems alive, suggest useful directions, and decide when VaultSearch is useful:\n${petriOverview}`
             : '',
@@ -430,6 +437,7 @@ export class DigestView extends ItemView {
         : undefined,
       tools: [
         ...(vaultSearchTool ? [vaultSearchTool] : []),
+        this.createVoiceRenderSourcesTool(),
       ],
       onStatus: status => {
         this.voiceStatus = status
@@ -802,6 +810,68 @@ export class DigestView extends ItemView {
         body.toggleClass('digest-collapsed', !body.hasClass('digest-collapsed'))
       })
     }
+  }
+
+  private createVoiceRenderSourcesTool(): Tool {
+    return {
+      definition: {
+        name: 'RenderSources',
+        description:
+          'Render selected Obsidian note links in the Digest UI as clickable sources. ' +
+          'Use after VaultSearch, choosing only the notes that support your spoken response.',
+        parameters: {
+          sources: {
+            type: 'string',
+            description:
+              'One to three Obsidian wiki links from VaultSearch, separated by newlines. ' +
+              'Example: [[Folder/Note|Note]]',
+          },
+        },
+        required: ['sources'],
+      },
+      execute: async args => {
+        const rawSources = Array.isArray(args.sources)
+          ? args.sources.join('\n')
+          : typeof args.sources === 'string'
+            ? args.sources
+            : ''
+        const rendered = this.renderVoiceSources(rawSources)
+        return {
+          content: rendered > 0 ? `Rendered ${rendered} source${rendered === 1 ? '' : 's'}.` : 'No valid source links provided.',
+          isError: rendered === 0,
+        }
+      },
+    }
+  }
+
+  private renderVoiceSources(content: string): number {
+    const sources = this.extractVaultSearchSources(content)
+    if (sources.length === 0) return 0
+
+    const msg = this.messagesEl.createDiv({ cls: 'digest-message digest-assistant digest-voice-sources' })
+    const bubble = msg.createDiv({ cls: 'digest-message-content' })
+    const sourcePath = this.app.workspace.getActiveFile()?.path ?? ''
+    const sourceList = sources.map(source => `- ${source}`).join('\n')
+
+    MarkdownRenderer.render(this.app, `Sources\n${sourceList}`, bubble, sourcePath, this.plugin)
+    this.scrollToBottom()
+    return sources.length
+  }
+
+  private extractVaultSearchSources(content: string): string[] {
+    const seen = new Set<string>()
+    const sources: string[] = []
+    const linkPattern = /\[\[[^\]]+\]\]/g
+    let match: RegExpExecArray | null
+
+    while ((match = linkPattern.exec(content)) !== null) {
+      const link = match[0]
+      if (seen.has(link)) continue
+      seen.add(link)
+      sources.push(link)
+    }
+
+    return sources
   }
 
   // ── Thinking Indicator ──────────────────────────────────────────

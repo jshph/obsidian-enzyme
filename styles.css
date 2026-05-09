@@ -179,6 +179,23 @@
   font-weight: 600;
 }
 
+.digest-voice-sources .digest-message-content {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.digest-voice-sources .digest-message-content p {
+  margin: 0 0 4px 0;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.digest-voice-sources .digest-message-content ul {
+  margin: 0;
+}
+
 /* Streaming state: monospace for consistent character flow */
 .digest-streaming {
   white-space: pre-wrap;
