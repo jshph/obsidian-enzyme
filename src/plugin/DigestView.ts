@@ -30,19 +30,17 @@ import {
   createOpenAIProvider,
   createEnzymePrefetch,
 } from '@jshph/digest'
-import type { SystemPromptBlock, Tool, ToolResult } from '@jshph/digest'
+import type { SystemPromptBlock, ToolResult } from '@jshph/digest'
 import { createObsidianReadFileTool, createObsidianVaultSearchTool, createObsidianWriteFileTool } from './tools.js'
 import { GraphHighlighter } from './GraphHighlighter.js'
 import { MentionSuggest } from './MentionDropdown.js'
 import { SelectionTracker } from './SelectionTracker.js'
 import { VoiceSession } from './VoiceSession.js'
-import { SpotifyClient } from './SpotifyClient.js'
 import type DigestPlugin from './DigestPlugin.js'
 
 export const VIEW_TYPE_DIGEST = 'digest-chat-view'
 const DEFAULT_MAX_CONTEXT = 32768
 const DEFAULT_MAX_TOKENS = 2048
-const WRITING_SESSION_FOLDER = 'Enzyme Sessions'
 
 export class DigestView extends ItemView {
   private plugin: DigestPlugin
@@ -65,8 +63,6 @@ export class DigestView extends ItemView {
   private sessionTokens = { input: 0, output: 0, cacheRead: 0 }
   private voiceStatus = ''
   private activeVoiceToolIds: string[] = []
-  private writingSessionTimer: number | null = null
-  private pendingSessionContext = ''
 
   // Context injection
   private mentionSuggest!: MentionSuggest
@@ -102,7 +98,6 @@ export class DigestView extends ItemView {
   async onClose(): Promise<void> {
     this.agent?.abort()
     this.voiceSession?.stop()
-    if (this.writingSessionTimer) window.clearTimeout(this.writingSessionTimer)
     this.graphHighlighter?.clear()
     if (this.renderTimer) clearTimeout(this.renderTimer)
     this.mentionSuggest?.close()
@@ -158,7 +153,7 @@ export class DigestView extends ItemView {
     })
 
     // Welcome message
-    this.showSystemMessage('Use Digest to turn vault themes into writing sessions. Enzyme keeps the Petri dish in view.')
+    this.showSystemMessage('Ask anything about your vault. Digest uses Enzyme for semantic search and context prefetch.')
 
     // Input area
     const inputArea = contentEl.createDiv({ cls: 'digest-input-area' })
@@ -173,7 +168,7 @@ export class DigestView extends ItemView {
       cls: 'digest-input',
       attr: {
         contenteditable: 'true',
-        'data-placeholder': 'Ask for a writing session, draft, or vault thread... (@ to mention files)',
+        'data-placeholder': 'Ask about your vault... (@ to mention files)',
         role: 'textbox',
         'aria-multiline': 'true',
       },
@@ -312,25 +307,14 @@ export class DigestView extends ItemView {
     const enzymeInstalled = mgr ? await mgr.isInstalled() : false
     const enzymeInitialized = mgr ? mgr.isInitialized() : false
     const enzymeAvailable = enzymeInstalled && enzymeInitialized
-    const petriOverview = enzymeAvailable && mgr
-      ? await mgr.getPetriOverview(20)
-      : undefined
 
     const systemPrompt: SystemPromptBlock[] = [
       {
         text: [
-          'You are a writing and thinking agent for an Obsidian vault, not a generic assistant.',
-          'Assume the vault is where the user does their best thinking; help them create, extend, and refine writing there.',
-          'Use Enzyme and the Petri dish to notice recent or recurring ideas, especially Linny Veal-related themes if they appear in the vault context.',
-          'Prefer concrete writing exercises, outlines, questions, and draftable paragraphs over open-ended conversation.',
-          'When a timed writing exercise would help, use StartWritingSession and save enough handoff context for the next return.',
           'When using VaultSearch results, cite the notes you rely on with their provided Obsidian links.',
           'When quoting evidence, render short excerpts as Markdown blockquotes immediately after the linked note.',
           'Use tight paraphrases only when a quote would be noisy or repetitive.',
           'Keep links attached to the relevant point, not collected at the end.',
-          petriOverview
-            ? `Private recurring vault themes from Enzyme Petri. Use as taste and direction, not as a list to recite:\n${petriOverview}`
-            : '',
         ].join(' '),
         cache: true,
       },
@@ -352,8 +336,6 @@ export class DigestView extends ItemView {
       ...(vaultSearchTool ? [vaultSearchTool] : []),
       createObsidianReadFileTool(this.app),
       createObsidianWriteFileTool(this.app),
-      this.createSpotifyMusicTool(),
-      this.createWritingSessionTool(petriOverview),
     ]
 
     this.agent = new Agent({
@@ -416,7 +398,6 @@ export class DigestView extends ItemView {
     const petriOverview = enzymeAvailable && mgr
       ? await mgr.getPetriOverview(20)
       : undefined
-    const latestSessionContext = await this.loadRecentWritingSessionContext()
     const petriTopicCount = petriOverview
       ? petriOverview.split('\n').filter(line => line.trim().startsWith('- ')).length
       : 0
@@ -431,17 +412,8 @@ export class DigestView extends ItemView {
           'For voice mode, never cite sources by default.',
           'Do not read note links, paths, similarity scores, or evidence labels aloud.',
           'Use search results privately and answer as a short spoken thought.',
-          'Your purpose is to create space for the user to write in Obsidian. Do not keep a generic voice conversation running when a writing exercise would be better.',
-          'When the user is ready to explore an idea, compose a focused writing session with StartWritingSession, choose a useful music query when Spotify is connected, and then let the session timer take over.',
-          'Treat music selection as taste: infer tone from the Petri dish, the user\'s current idea, and the writing task. Avoid explaining the taste at length.',
           petriOverview
             ? `The following are private recurring vault themes. They are not note titles. Use them to notice what seems alive, suggest useful directions, and decide when VaultSearch is useful:\n${petriOverview}`
-            : '',
-          latestSessionContext
-            ? `The latest saved writing-session handoff is private continuity context:\n${latestSessionContext}`
-            : '',
-          this.pendingSessionContext
-            ? `The just-ended writing session left this private handoff context:\n${this.pendingSessionContext}`
             : '',
         ].join(' '),
         cache: true,
@@ -453,15 +425,11 @@ export class DigestView extends ItemView {
       model: settings.realtimeModel.trim() || 'gpt-realtime-2',
       voice: settings.realtimeVoice.trim() || 'marin',
       systemPrompt,
-      startupContext: [
-        petriOverview ? `Private recurring vault themes (${petriTopicCount} loaded):\n${petriOverview}` : '',
-        latestSessionContext ? `Latest writing-session handoff:\n${latestSessionContext}` : '',
-        this.pendingSessionContext ? `Just-ended writing-session handoff:\n${this.pendingSessionContext}` : '',
-      ].filter(Boolean).join('\n\n') || undefined,
+      startupContext: petriOverview
+        ? `Private recurring vault themes (${petriTopicCount} loaded):\n${petriOverview}`
+        : undefined,
       tools: [
         ...(vaultSearchTool ? [vaultSearchTool] : []),
-        this.createSpotifyMusicTool(),
-        this.createWritingSessionTool(petriOverview),
       ],
       onStatus: status => {
         this.voiceStatus = status
@@ -512,151 +480,6 @@ export class DigestView extends ItemView {
     this.voiceBtn.setAttr('aria-label', active ? 'Stop voice' : 'Start voice')
     setIcon(this.voiceBtn, active ? 'mic-off' : 'mic')
     this.voiceBtn.toggleClass('digest-voice-active', active)
-  }
-
-  private createSpotifyMusicTool(): Tool {
-    return {
-      definition: {
-        name: 'PlayWritingMusic',
-        description: [
-          'Search Spotify and start one track for a writing session.',
-          'Use this when music would help set a tone for the user\'s thinking.',
-          'Choose the query from vault themes, the writing prompt, and your own taste.',
-        ].join(' '),
-        parameters: {
-          query: {
-            type: 'string',
-            description: 'A Spotify search query for the track, artist, album mood, or exact song to play.',
-          },
-        },
-        required: ['query'],
-      },
-      execute: async args => {
-        const query = String(args.query || '').trim()
-        if (!query) return { content: 'Missing Spotify search query.', isError: true }
-        const spotify = new SpotifyClient(this.plugin.settings, () => this.plugin.saveSettings())
-        if (!spotify.isConnected()) {
-          return { content: 'Spotify is not connected. Connect it in Digest settings first.', isError: true }
-        }
-
-        try {
-          const track = await spotify.searchAndPlay(query)
-          return {
-            content: `Playing "${track.name}" by ${track.artists.join(', ')} for query "${query}".`,
-            isError: false,
-          }
-        } catch (err) {
-          return {
-            content: err instanceof Error ? err.message : String(err),
-            isError: true,
-          }
-        }
-      },
-    }
-  }
-
-  private createWritingSessionTool(petriOverview?: string): Tool {
-    return {
-      definition: {
-        name: 'StartWritingSession',
-        description: [
-          'Create a timed Obsidian writing exercise, save its prompt and handoff context as a markdown note,',
-          'optionally start Spotify music, disconnect voice to avoid empty token use, and re-trigger voice when the timer ends.',
-        ].join(' '),
-        parameters: {
-          title: {
-            type: 'string',
-            description: 'Short title for the writing exercise.',
-          },
-          prompt: {
-            type: 'string',
-            description: 'The concrete writing prompt the user should write into Obsidian.',
-          },
-          duration_minutes: {
-            type: 'number',
-            description: 'Timer length in minutes. Use the user preference unless they ask for another length.',
-          },
-          spotify_query: {
-            type: 'string',
-            description: 'Optional Spotify query for music to start at the beginning.',
-          },
-          ending_spotify_query: {
-            type: 'string',
-            description: 'Optional Spotify query to play when the timer ends.',
-          },
-          handoff_context: {
-            type: 'string',
-            description: 'Private continuity context the agent should load when it returns after the timer.',
-          },
-        },
-        required: ['title', 'prompt'],
-      },
-      execute: async args => {
-        const title = String(args.title || 'Writing session').trim()
-        const prompt = String(args.prompt || '').trim()
-        if (!prompt) return { content: 'A writing prompt is required.', isError: true }
-
-        const defaultMinutes = this.plugin.settings.writingSessionMinutes || 25
-        const requestedMinutes = Number(args.duration_minutes || defaultMinutes)
-        const durationMinutes = Number.isFinite(requestedMinutes)
-          ? Math.max(1, Math.min(180, Math.round(requestedMinutes)))
-          : defaultMinutes
-        const spotifyQuery = String(args.spotify_query || '').trim()
-        const endingSpotifyQuery = String(args.ending_spotify_query || '').trim()
-        const handoffContext = String(args.handoff_context || '').trim()
-
-        try {
-          let startedTrack = ''
-          const spotify = new SpotifyClient(this.plugin.settings, () => this.plugin.saveSettings())
-          if (spotifyQuery && spotify.isConnected()) {
-            const track = await spotify.searchAndPlay(spotifyQuery)
-            startedTrack = `"${track.name}" by ${track.artists.join(', ')}`
-          }
-
-          const notePath = await this.saveWritingSessionNote({
-            title,
-            prompt,
-            durationMinutes,
-            spotifyQuery,
-            endingSpotifyQuery,
-            handoffContext,
-            petriOverview,
-          })
-
-          this.pendingSessionContext = [
-            `Session: ${title}`,
-            `Prompt: ${prompt}`,
-            handoffContext ? `Handoff: ${handoffContext}` : '',
-            `Saved note: ${notePath}`,
-          ].filter(Boolean).join('\n')
-
-          this.armWritingSessionTimer(durationMinutes, title, endingSpotifyQuery)
-
-          window.setTimeout(() => {
-            this.voiceSession?.stop()
-            this.voiceSession = null
-            this.voiceStatus = ''
-            this.updateVoiceButton(false)
-            this.updateStatus()
-          }, 1200)
-
-          return {
-            content: [
-              `Started a ${durationMinutes}-minute writing session: ${title}.`,
-              `Saved context to ${notePath}.`,
-              startedTrack ? `Music: ${startedTrack}.` : '',
-              'Voice will disconnect now and return when the timer ends.',
-            ].filter(Boolean).join('\n'),
-            isError: false,
-          }
-        } catch (err) {
-          return {
-            content: err instanceof Error ? err.message : String(err),
-            isError: true,
-          }
-        }
-      },
-    }
   }
 
   // ── Agent Event Handling ────────────────────────────────────────
@@ -1014,10 +837,6 @@ export class DigestView extends ItemView {
   clearConversation(): void {
     this.agent?.abort()
     this.voiceSession?.stop()
-    if (this.writingSessionTimer) {
-      window.clearTimeout(this.writingSessionTimer)
-      this.writingSessionTimer = null
-    }
     this.voiceSession = null
     this.isProcessing = false
     this.currentStreamingEl = null
@@ -1038,101 +857,6 @@ export class DigestView extends ItemView {
     this.agent?.abort()
     this.agent = null
     await this.initAgent(false)
-  }
-
-  private armWritingSessionTimer(durationMinutes: number, title: string, endingSpotifyQuery: string): void {
-    if (this.writingSessionTimer) window.clearTimeout(this.writingSessionTimer)
-    this.showSystemMessage(`Writing session started: ${title} (${durationMinutes} min). Voice will return when the timer ends.`)
-    this.writingSessionTimer = window.setTimeout(() => {
-      this.writingSessionTimer = null
-      void this.finishWritingSession(title, endingSpotifyQuery)
-    }, durationMinutes * 60_000)
-  }
-
-  private async finishWritingSession(title: string, endingSpotifyQuery: string): Promise<void> {
-    if (endingSpotifyQuery) {
-      const spotify = new SpotifyClient(this.plugin.settings, () => this.plugin.saveSettings())
-      if (spotify.isConnected()) {
-        try {
-          await spotify.searchAndPlay(endingSpotifyQuery)
-        } catch (err) {
-          console.warn(`Failed to play writing-session ending music: ${err instanceof Error ? err.message : String(err)}`)
-        }
-      }
-    }
-
-    new Notice(`Writing session complete: ${title}`)
-    this.showSystemMessage(`Writing session complete: ${title}. Voice is reconnecting with the saved handoff context.`)
-
-    if (!this.voiceSession?.isActive() && this.plugin.settings.realtimeApiKey.trim()) {
-      await this.toggleVoice()
-    }
-  }
-
-  private async saveWritingSessionNote(input: {
-    title: string
-    prompt: string
-    durationMinutes: number
-    spotifyQuery: string
-    endingSpotifyQuery: string
-    handoffContext: string
-    petriOverview?: string
-  }): Promise<string> {
-    if (!this.app.vault.getAbstractFileByPath(WRITING_SESSION_FOLDER)) {
-      await this.app.vault.createFolder(WRITING_SESSION_FOLDER)
-    }
-
-    const now = new Date()
-    const stamp = formatSessionTimestamp(now)
-    const filename = `${stamp} ${sanitizeFilename(input.title)}.md`
-    let path = `${WRITING_SESSION_FOLDER}/${filename}`
-    let suffix = 2
-    while (this.app.vault.getAbstractFileByPath(path)) {
-      path = `${WRITING_SESSION_FOLDER}/${filename.replace(/\.md$/i, `-${suffix}.md`)}`
-      suffix += 1
-    }
-    const contentParts = [
-      '---',
-      `created: ${now.toISOString()}`,
-      `duration_minutes: ${input.durationMinutes}`,
-      input.spotifyQuery ? `spotify_query: ${JSON.stringify(input.spotifyQuery)}` : '',
-      input.endingSpotifyQuery ? `ending_spotify_query: ${JSON.stringify(input.endingSpotifyQuery)}` : '',
-      '---',
-      '',
-      `# ${input.title}`,
-      '',
-      '## Prompt',
-      input.prompt,
-      '',
-      '## Handoff Context',
-      input.handoffContext || 'No handoff context supplied.',
-      '',
-      input.petriOverview ? '## Petri Context\n' + input.petriOverview : '',
-      '',
-      '## Writing',
-      '',
-    ]
-    const content = contentParts
-      .filter((line, index) => line !== '' || contentParts[index - 1] !== '')
-      .join('\n')
-
-    await this.app.vault.create(path, content)
-    return path
-  }
-
-  private async loadRecentWritingSessionContext(): Promise<string> {
-    const sessions = this.app.vault.getMarkdownFiles()
-      .filter(file => file.path.startsWith(`${WRITING_SESSION_FOLDER}/`))
-      .sort((a, b) => b.stat.mtime - a.stat.mtime)
-    const latest = sessions[0]
-    if (!latest) return ''
-
-    try {
-      const content = await this.app.vault.cachedRead(latest)
-      return content.slice(0, 2500)
-    } catch {
-      return ''
-    }
   }
 
   // ── Status Bar ──────────────────────────────────────────────────
@@ -1237,24 +961,4 @@ function parseToolArgs(rawArgs: string): Record<string, unknown> {
   } catch {
     return { query: rawArgs }
   }
-}
-
-function formatSessionTimestamp(date: Date): string {
-  const pad = (value: number) => String(value).padStart(2, '0')
-  return [
-    date.getFullYear(),
-    pad(date.getMonth() + 1),
-    pad(date.getDate()),
-  ].join('-') + ' ' + [
-    pad(date.getHours()),
-    pad(date.getMinutes()),
-  ].join('-')
-}
-
-function sanitizeFilename(value: string): string {
-  const clean = value
-    .replace(/[\\/:*?"<>|#^[\]]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return (clean || 'Writing session').slice(0, 80)
 }
