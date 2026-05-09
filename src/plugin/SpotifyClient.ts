@@ -1,6 +1,6 @@
 import type { DigestSettings } from './DigestSettings.js'
 
-const SPOTIFY_CLIENT_ID = ''
+const SPOTIFY_CLIENT_ID = '3ef05bdfeab9409390644d8e7d84c1d1'
 export const SPOTIFY_REDIRECT_URI = 'http://127.0.0.1:42873/spotify-callback'
 
 export interface SpotifyTrack {
