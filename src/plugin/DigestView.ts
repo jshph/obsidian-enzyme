@@ -324,7 +324,6 @@ export class DigestView extends ItemView {
           'Use Enzyme and the Petri dish to notice recent or recurring ideas, especially Linny Veal-related themes if they appear in the vault context.',
           'Prefer concrete writing exercises, outlines, questions, and draftable paragraphs over open-ended conversation.',
           'When a timed writing exercise would help, use StartWritingSession and save enough handoff context for the next return.',
-          buildMusicTasteInstruction(),
           'When using VaultSearch results, cite the notes you rely on with their provided Obsidian links.',
           'When quoting evidence, render short excerpts as Markdown blockquotes immediately after the linked note.',
           'Use tight paraphrases only when a quote would be noisy or repetitive.',
@@ -434,7 +433,7 @@ export class DigestView extends ItemView {
           'Use search results privately and answer as a short spoken thought.',
           'Your purpose is to create space for the user to write in Obsidian. Do not keep a generic voice conversation running when a writing exercise would be better.',
           'When the user is ready to explore an idea, compose a focused writing session with StartWritingSession, choose a useful music query when Spotify is connected, and then let the session timer take over.',
-          buildMusicTasteInstruction(),
+          'Treat music selection as taste: infer tone from the Petri dish, the user\'s current idea, and the writing task. Avoid explaining the taste at length.',
           petriOverview
             ? `The following are private recurring vault themes. They are not note titles. Use them to notice what seems alive, suggest useful directions, and decide when VaultSearch is useful:\n${petriOverview}`
             : '',
@@ -520,15 +519,14 @@ export class DigestView extends ItemView {
       definition: {
         name: 'PlayWritingMusic',
         description: [
-          'Search Spotify and start one specific track for a writing session.',
-          'Use this only after forming a tasteful music choice from the vault themes and writing prompt.',
-          'The query should usually include an artist and track title, or at least a distinctive artist/album.',
-          'Do not send generic mood or utility searches like "ambient writing music", "focus music", "lofi", "instrumental", or "calm piano".',
+          'Search Spotify and start one track for a writing session.',
+          'Use this when music would help set a tone for the user\'s thinking.',
+          'Choose the query from vault themes, the writing prompt, and your own taste.',
         ].join(' '),
         parameters: {
           query: {
             type: 'string',
-            description: 'Specific Spotify query, preferably "artist track" or "artist album". Avoid generic mood/genre searches.',
+            description: 'A Spotify search query for the track, artist, album mood, or exact song to play.',
           },
         },
         required: ['query'],
@@ -580,11 +578,11 @@ export class DigestView extends ItemView {
           },
           spotify_query: {
             type: 'string',
-            description: 'Optional specific Spotify query to start at the beginning. Prefer artist plus track; avoid generic mood searches.',
+            description: 'Optional Spotify query for music to start at the beginning.',
           },
           ending_spotify_query: {
             type: 'string',
-            description: 'Optional specific Spotify query to play when the timer ends. Prefer artist plus track; avoid generic mood searches.',
+            description: 'Optional Spotify query to play when the timer ends.',
           },
           handoff_context: {
             type: 'string',
@@ -1239,17 +1237,6 @@ function parseToolArgs(rawArgs: string): Record<string, unknown> {
   } catch {
     return { query: rawArgs }
   }
-}
-
-function buildMusicTasteInstruction(): string {
-  return [
-    'Music selection is part of your taste, not a generic productivity feature.',
-    'Pick a concrete recording that creates a useful intellectual weather for the session.',
-    'Prefer specific artists/tracks/albums with texture: minimalism, ECM, ambient, kosmische, dub techno, spiritual jazz, post-rock, field recordings, or quiet electronic music can work when apt.',
-    'Examples of query specificity: "Brian Eno An Ending Ascent", "Nils Frahm Says", "Alice Coltrane Journey in Satchidananda", "Stars of the Lid Requiem for Dying Mothers", "Hiroshi Yoshimura Green".',
-    'Avoid generic searches like "focus music", "ambient writing music", "lofi beats", "calm piano", "deep work playlist", or "instrumental study music".',
-    'If you cannot make a tasteful specific choice, skip music rather than choosing filler.',
-  ].join(' ')
 }
 
 function formatSessionTimestamp(date: Date): string {
