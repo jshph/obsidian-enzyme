@@ -6,7 +6,6 @@ on:
       - '*'
 
 env:
-  PLUGIN_NAME: reason
   DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
 
 jobs:
@@ -28,19 +27,12 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Package plugin
-        run: |
-          mkdir "${PLUGIN_NAME}"
-          cp main.js manifest.json styles.css "${PLUGIN_NAME}"
-          zip -r "${PLUGIN_NAME}.zip" "${PLUGIN_NAME}"
-
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           files: |
-            ${{ env.PLUGIN_NAME }}.zip
             main.js
             manifest.json
             styles.css

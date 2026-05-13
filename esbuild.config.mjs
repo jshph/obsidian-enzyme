@@ -58,7 +58,7 @@ function copyToPluginsPlugin() {
 					'obsidian',
 					'.obsidian',
 					'plugins',
-					'enzyme'
+					'reason'
 				)
 				await fs.promises.mkdir(destDir, { recursive: true })
 				for (const file of ['main.js', 'manifest.json', 'styles.css']) {
