@@ -18,14 +18,14 @@ type SelectionChangeCallback = (selection: StoredSelection | null) => void
 
 export class SelectionTracker {
   private app: App
-  private interval: ReturnType<typeof setInterval>
+  private interval: number
   private current: StoredSelection | null = null
   private dismissed = false
   private listeners: SelectionChangeCallback[] = []
 
   constructor(app: App) {
     this.app = app
-    this.interval = setInterval(() => this.poll(), 250)
+    this.interval = activeWindow.setInterval(() => this.poll(), 250)
   }
 
   getSelection(): StoredSelection | null {
@@ -45,7 +45,7 @@ export class SelectionTracker {
   }
 
   destroy(): void {
-    clearInterval(this.interval)
+    activeWindow.clearInterval(this.interval)
     this.listeners = []
   }
 

@@ -49,6 +49,19 @@ export interface EnzymeAccount {
   email: string
 }
 
+type PetriEntity = {
+  name?: string
+  catalysts?: Array<{ text?: string }>
+}
+
+type PetriResponse = {
+  entities?: PetriEntity[]
+}
+
+type EnzymeTomlConfig = {
+  vaults?: Record<string, Partial<EnzymeVaultConfig>>
+}
+
 export class EnzymeManager {
   private vaultPath: string
   private enzymeCommand: string | null = null
@@ -163,7 +176,6 @@ export class EnzymeManager {
 
     return new Promise((resolve, reject) => {
       const child = spawn(cmd, ['login', '--json'], {
-        env: process.env,
         stdio: ['ignore', 'pipe', 'pipe'],
       })
 
@@ -222,7 +234,7 @@ export class EnzymeManager {
     return new Promise((resolve, reject) => {
       const args = ['init', '-p', this.vaultPath, '--json-progress']
       const child = spawn(cmd, args, {
-        env: { ...process.env, ...env },
+        env: this.getCommandEnv(env),
         stdio: ['ignore', 'pipe', 'pipe'],
       })
 
@@ -278,7 +290,7 @@ export class EnzymeManager {
       // waits for all pipes to close, but spawn's 'close' event fires
       // when the main process exits.
       const child = spawn(cmd, args, {
-        env: { ...process.env, ...env },
+        env: this.getCommandEnv(env),
         stdio: ['ignore', 'pipe', 'pipe'],
       })
 
@@ -312,16 +324,16 @@ export class EnzymeManager {
         ['petri', '-p', this.vaultPath, '-n', String(limit)],
         15000,
       )
-      const petri = JSON.parse(stdout)
+      const petri = JSON.parse(stdout) as PetriResponse
       const entities = (petri.entities || []).slice(0, limit)
       if (entities.length === 0) return undefined
-      return entities.map((entity: any) => {
+      return entities.map(entity => {
         const catalysts = (entity.catalysts || [])
           .slice(0, 3)
-          .map((catalyst: any) => catalyst.text)
+          .map(catalyst => catalyst.text)
           .filter(Boolean)
           .join('; ')
-        return `- ${entity.name}: ${catalysts}`
+        return `- ${entity.name || 'unknown'}: ${catalysts}`
       }).join('\n')
     } catch (err) {
       console.warn(`Failed to load Enzyme petri overview: ${err instanceof Error ? err.message : String(err)}`)
@@ -341,7 +353,7 @@ export class EnzymeManager {
     const child = spawn(cmd, args, {
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, ...env },
+      env: this.getCommandEnv(env),
     })
     let output = ''
     child.stdout.on('data', (chunk: Buffer) => {
@@ -362,11 +374,11 @@ export class EnzymeManager {
   readConfig(): EnzymeVaultConfig | null {
     const fs = require('fs')
     const path = require('path')
-    const configPath = path.join(process.env.HOME || '', '.enzyme', 'config.toml')
+    const configPath = path.join(this.getHomeDir(), '.enzyme', 'config.toml')
 
     try {
       const content = fs.readFileSync(configPath, 'utf-8')
-      const parsed = TOML.parse(content) as any
+      const parsed = TOML.parse(content) as EnzymeTomlConfig
       const vaults = parsed.vaults || {}
       const vaultConfig = vaults[this.vaultPath]
 
@@ -386,13 +398,13 @@ export class EnzymeManager {
   writeConfig(config: Partial<EnzymeVaultConfig>): void {
     const fs = require('fs')
     const path = require('path')
-    const configPath = path.join(process.env.HOME || '', '.enzyme', 'config.toml')
+    const configPath = path.join(this.getHomeDir(), '.enzyme', 'config.toml')
 
     try {
-      let parsed: any = {}
+      let parsed: EnzymeTomlConfig = {}
       try {
         const content = fs.readFileSync(configPath, 'utf-8')
-        parsed = TOML.parse(content)
+        parsed = TOML.parse(content) as EnzymeTomlConfig
       } catch { /* file doesn't exist yet */ }
 
       if (!parsed.vaults) parsed.vaults = {}
@@ -419,7 +431,7 @@ export class EnzymeManager {
 
     const fs = require('fs')
     const path = require('path')
-    const home = process.env.HOME || ''
+    const home = this.getHomeDir()
     const candidates = [
       path.join(home, '.cargo', 'bin', 'enzyme'),
       path.join(home, '.local', 'bin', 'enzyme'),
@@ -449,12 +461,12 @@ export class EnzymeManager {
     const { execFile } = require('child_process')
     const { promisify } = require('util')
     const execFileAsync = promisify(execFile)
-    return execFileAsync(cmd, args, { timeout, env: process.env })
+    return execFileAsync(cmd, args, { timeout })
   }
 
   private authPath(): string {
     const path = require('path')
-    const enzymeHome = process.env.ENZYME_HOME || path.join(process.env.HOME || '', '.enzyme')
+    const enzymeHome = path.join(this.getHomeDir(), '.enzyme')
     return path.join(enzymeHome, 'auth.json')
   }
 
@@ -493,7 +505,6 @@ export class EnzymeManager {
 
     return new Promise((resolve, reject) => {
       const child = spawn(cmd, args, {
-        env: process.env,
         stdio: ['ignore', 'pipe', 'pipe'],
       })
 
@@ -518,5 +529,18 @@ export class EnzymeManager {
 
       child.on('error', (err: Error) => reject(err))
     })
+  }
+
+  private getHomeDir(): string {
+    const os = require('os')
+    return os.homedir()
+  }
+
+  private getCommandEnv(env?: Record<string, string>): Record<string, string> | undefined {
+    if (!env) return undefined
+    return {
+      ...env,
+      HOME: this.getHomeDir(),
+    }
   }
 }

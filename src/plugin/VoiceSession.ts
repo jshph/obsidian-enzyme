@@ -1,6 +1,7 @@
+import { requestUrl } from 'obsidian'
 import { OpenAIRealtimeWebRTC, RealtimeAgent, RealtimeSession } from '@openai/agents/realtime'
 import { tool } from '@openai/agents'
-import type { SystemPromptBlock, Tool } from '@jshph/digest'
+import type { SystemPromptBlock, Tool, ToolParameter } from '@jshph/digest'
 
 export interface VoiceSessionConfig {
   apiKey: string
@@ -19,6 +20,8 @@ export interface VoiceSessionConfig {
 export class VoiceSession {
   private session: RealtimeSession | null = null
   private readonly config: VoiceSessionConfig
+  private isSpeaking = false
+  private awaitingPlayback = false
 
   constructor(config: VoiceSessionConfig) {
     this.config = config
@@ -78,7 +81,7 @@ export class VoiceSession {
           },
         })
       }
-      this.config.onStatus?.('Voice connected')
+      this.config.onStatus?.('Listening...')
     } catch (err) {
       this.session = null
       const msg = formatRealtimeError(err)
@@ -89,6 +92,8 @@ export class VoiceSession {
 
   stop(): void {
     if (!this.session) return
+    this.isSpeaking = false
+    this.awaitingPlayback = false
     this.session.close()
     this.session = null
     this.config.onStatus?.('Voice disconnected')
@@ -98,12 +103,46 @@ export class VoiceSession {
     return this.session !== null
   }
 
+  isMuted(): boolean {
+    return Boolean(this.session?.muted)
+  }
+
+  mute(muted: boolean): void {
+    this.session?.mute(muted)
+  }
+
   private bindEvents(session: RealtimeSession): void {
-    session.on('agent_start', () => this.config.onStatus?.('Voice thinking...'))
-    session.on('agent_end', () => this.config.onStatus?.('Voice connected'))
-    session.on('audio_start', () => this.config.onStatus?.('Speaking...'))
-    session.on('audio_stopped', () => this.config.onStatus?.('Voice connected'))
-    session.on('audio_interrupted', () => this.config.onStatus?.('Interrupted'))
+    session.on('agent_start', () => {
+      this.isSpeaking = false
+      this.awaitingPlayback = true
+      this.config.onStatus?.('Thinking...')
+    })
+    session.on('agent_end', () => {
+      if (!this.isSpeaking && !this.awaitingPlayback) this.config.onStatus?.('Listening...')
+    })
+    session.on('audio_start', () => {
+      this.isSpeaking = true
+      this.awaitingPlayback = false
+      this.config.onStatus?.('Speaking...')
+    })
+    session.on('audio_interrupted', () => {
+      this.isSpeaking = false
+      this.awaitingPlayback = false
+      this.config.onStatus?.('Interrupted')
+    })
+    session.on('transport_event', event => {
+      if (event.type === 'output_audio_buffer.started') {
+        this.isSpeaking = true
+        this.awaitingPlayback = false
+        this.config.onStatus?.('Speaking...')
+      } else if (event.type === 'output_audio_buffer.stopped' || event.type === 'output_audio_buffer.cleared') {
+        this.isSpeaking = false
+        this.awaitingPlayback = false
+        this.config.onStatus?.('Listening...')
+      } else if (event.type === 'response.output_audio.delta' || event.type === 'response.output_audio_transcript.delta') {
+        this.awaitingPlayback = true
+      }
+    })
     session.on('agent_tool_start', (_context, _agent, sdkTool, details) => {
       const call = details.toolCall as { arguments?: string } | undefined
       this.config.onToolStart?.(sdkTool.name, call?.arguments || '')
@@ -152,7 +191,7 @@ function buildVoiceInstructions(systemPrompt: SystemPromptBlock[]): string {
 }
 
 function toRealtimeTool(localTool: Tool) {
-  const properties: Record<string, any> = {}
+  const properties: Record<string, ToolParameter> = {}
   for (const [name, param] of Object.entries(localTool.definition.parameters)) {
     properties[name] = {
       type: param.type,
@@ -188,27 +227,29 @@ async function createRealtimeClientSecret(
 ): Promise<string> {
   if (config.apiKey.startsWith('ek_')) return config.apiKey
 
-  const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
+  const response = await requestUrl({
+    url: 'https://api.openai.com/v1/realtime/client_secrets',
     method: 'POST',
+    contentType: 'application/json',
+    throw: false,
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       session: initialSessionPayload,
     }),
   })
 
-  const bodyText = await response.text()
-  let body: any = null
+  const bodyText = response.text
+  let body: RealtimeClientSecretResponse | null = null
   try {
-    body = bodyText ? JSON.parse(bodyText) : null
+    body = bodyText ? parseRealtimeClientSecretResponse(JSON.parse(bodyText) as unknown) : null
   } catch {
     body = null
   }
 
-  if (!response.ok) {
-    const message = body?.error?.message || bodyText || response.statusText
+  if (response.status < 200 || response.status >= 300) {
+    const message = body?.error?.message || bodyText || `HTTP ${response.status}`
     throw new Error(`Realtime client secret failed (${response.status}): ${message}`)
   }
 
@@ -224,13 +265,14 @@ function formatRealtimeError(error: unknown): string {
   if (typeof error === 'string') return error
   if (!error || typeof error !== 'object') return String(error)
 
-  const value = error as any
+  const value = error as RealtimeErrorLike
   const nested = value.error
   if (typeof nested === 'string') return nested
   if (nested && typeof nested === 'object') {
-    if (typeof nested.message === 'string') return nested.message
-    if (typeof nested.code === 'string' && typeof nested.type === 'string') {
-      return `${nested.type}: ${nested.code}`
+    const nestedError = nested as RealtimeErrorLike
+    if (typeof nestedError.message === 'string') return nestedError.message
+    if (typeof nestedError.code === 'string' && typeof nestedError.type === 'string') {
+      return `${nestedError.type}: ${nestedError.code}`
     }
   }
   if (typeof value.message === 'string') return value.message
@@ -243,4 +285,22 @@ function formatRealtimeError(error: unknown): string {
   } catch {
     return Object.prototype.toString.call(error)
   }
+}
+
+type RealtimeClientSecretResponse = {
+  value?: string
+  client_secret?: { value?: string }
+  secret?: { value?: string }
+  error?: { message?: string }
+}
+
+type RealtimeErrorLike = {
+  error?: unknown
+  message?: unknown
+  type?: unknown
+  code?: unknown
+}
+
+function parseRealtimeClientSecretResponse(value: unknown): RealtimeClientSecretResponse | null {
+  return value && typeof value === 'object' ? value as RealtimeClientSecretResponse : null
 }

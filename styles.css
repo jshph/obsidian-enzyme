@@ -1,12 +1,7 @@
-/* ── Digest — Claudian-inspired chat styles ───────────────────────
+/* ── Digest chat styles ───────────────────────────────────────────
  *
  * Uses Obsidian CSS variables for theme-aware light/dark mode.
  * Layout: flex column with fixed header, scrollable messages, fixed input.
- *
- * Differences from Claudian:
- *   - Single conversation (no tab bar)
- *   - Simpler toolbar (no model/mode selectors in header)
- *   - Tool calls styled as inline sections, not sidebar panels
  * ────────────────────────────────────────────────────────────────── */
 
 /* ── Container ──────────────────────────────────────────────────── */
@@ -130,7 +125,7 @@
 
 /* Markdown content inside assistant messages */
 .digest-assistant .digest-message-content p {
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
 }
 
 .digest-assistant .digest-message-content p:last-child {
@@ -174,7 +169,7 @@
 .digest-assistant .digest-message-content h1,
 .digest-assistant .digest-message-content h2,
 .digest-assistant .digest-message-content h3 {
-  margin: 12px 0 4px 0;
+  margin: 12px 0 4px;
   font-size: 14px;
   font-weight: 600;
 }
@@ -187,7 +182,7 @@
 }
 
 .digest-voice-sources .digest-message-content p {
-  margin: 0 0 4px 0;
+  margin: 0 0 4px;
   font-weight: 600;
   color: var(--text-normal);
 }
@@ -379,6 +374,128 @@
   color: var(--text-faint);
   margin-bottom: 6px;
   padding: 0 2px;
+}
+
+.digest-voice-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.digest-voice-mode {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  background: var(--background-secondary);
+  color: var(--text-muted);
+}
+
+.digest-voice-waveform {
+  height: 18px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.digest-voice-wave {
+  width: 3px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--color-blue, #3b82f6);
+  opacity: 0.7;
+  animation: digest-voice-wave 1.05s ease-in-out infinite;
+}
+
+.digest-voice-wave:nth-child(2) { animation-delay: 0.08s; }
+.digest-voice-wave:nth-child(3) { animation-delay: 0.16s; }
+.digest-voice-wave:nth-child(4) { animation-delay: 0.24s; }
+.digest-voice-wave:nth-child(5) { animation-delay: 0.32s; }
+.digest-voice-wave:nth-child(6) { animation-delay: 0.40s; }
+.digest-voice-wave:nth-child(7) { animation-delay: 0.48s; }
+.digest-voice-wave:nth-child(8) { animation-delay: 0.56s; }
+.digest-voice-wave:nth-child(9) { animation-delay: 0.64s; }
+
+.digest-voice-speaking .digest-voice-wave {
+  background: var(--color-orange, #f97316);
+  animation-duration: 0.72s;
+}
+
+.digest-voice-thinking .digest-voice-wave {
+  background: var(--color-yellow, #eab308);
+  animation-duration: 1.35s;
+}
+
+.digest-voice-muted .digest-voice-wave,
+.digest-voice-connecting .digest-voice-wave {
+  background: var(--text-faint);
+  animation-play-state: paused;
+  transform: scaleY(0.65);
+}
+
+.digest-voice-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.digest-voice-speaking .digest-voice-label {
+  color: var(--color-orange, #f97316);
+}
+
+.digest-voice-listening .digest-voice-label {
+  color: var(--color-blue, #3b82f6);
+}
+
+.digest-voice-thinking .digest-voice-label {
+  color: var(--color-yellow, #eab308);
+}
+
+.digest-voice-mute-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-s);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.digest-voice-mute-btn:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.digest-voice-mute-btn.digest-voice-muted {
+  color: var(--text-on-accent);
+  background: var(--color-orange, #f97316);
+  border-color: transparent;
+}
+
+.digest-settings-entities {
+  width: 100%;
+  font-family: var(--font-monospace);
+  font-size: 12px;
+}
+
+@keyframes digest-voice-wave {
+  0%, 100% { transform: scaleY(0.45); opacity: 0.55; }
+  50% { transform: scaleY(1.9); opacity: 1; }
 }
 
 .digest-input-row {
@@ -635,7 +752,7 @@
 /* ── Utility ────────────────────────────────────────────────────── */
 
 .digest-hidden {
-  display: none !important;
+  display: none;
 }
 
 /* ── Scrollbar Styling ──────────────────────────────────────────── */

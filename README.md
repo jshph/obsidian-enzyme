@@ -1,10 +1,11 @@
+# Enzyme
+
 <div align="center">
-  <h1>Enzyme</h1>
   <p><strong>A chat agent that actually knows the ideas in your Obsidian vault.</strong></p>
   <p>
     <img
       alt="Obsidian community plugin downloads"
-      src="https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22reason%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json&style=for-the-badge"
+      src="https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%23483699&label=downloads&query=%24%5B%22enzyme%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json&style=for-the-badge"
     >
   </p>
   <p>
@@ -24,7 +25,7 @@ In practice, Enzyme can save up to 90% of the tokens of Claude Code because it u
 
 ## Install
 
-Install Enzyme from Obsidian's [Community Plugins](https://obsidian.md/plugins?id=reason).
+Install Enzyme from Obsidian's [Community Plugins](https://obsidian.md/plugins?id=enzyme).
 
 ## Setup
 
@@ -45,7 +46,6 @@ VaultSearch uses Enzyme's on-device index and does not call an AI provider. Init
 ### Running locally
 
 ```bash
-# llama-server with a small model
 llama-server -hf ggml-org/gemma-4-E4B-it-GGUF
 ```
 

@@ -1,6 +1,6 @@
 {
   "name": "obsidian-enzyme",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Token-efficient writing and thinking agent for Obsidian vaults",
   "scripts": {
     "dev": "bun esbuild.config.mjs",
@@ -11,13 +11,12 @@
   "dependencies": {
     "@jshph/digest": "github:jshph/digest",
     "@openai/agents": "^0.11.0",
-    "obsidian": "^1.5.7",
+    "obsidian": "^1.7.2",
     "smol-toml": "^1.6.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "builtin-modules": "^3.3.0",
-    "esbuild": "^0.21.0",
+    "esbuild": "^0.28.0",
     "typescript": "^5.7.0"
   },
   "license": "AGPL-3.0-only"

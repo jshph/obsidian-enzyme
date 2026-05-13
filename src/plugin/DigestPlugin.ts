@@ -1,4 +1,4 @@
-import { Plugin, WorkspaceLeaf, FileSystemAdapter } from 'obsidian'
+import { Plugin, FileSystemAdapter } from 'obsidian'
 import { DigestView, VIEW_TYPE_DIGEST } from './DigestView.js'
 import { DigestSettingsTab, DEFAULT_SETTINGS } from './DigestSettings.js'
 import { EnzymeManager } from './EnzymeManager.js'
@@ -12,17 +12,6 @@ export default class DigestPlugin extends Plugin {
   async onload() {
     await this.loadSettings()
 
-    // Extend PATH so child_process can find enzyme in the same order EnzymeManager prefers.
-    const home = process.env.HOME || ''
-    const extra = [`${home}/.cargo/bin`, `${home}/.local/bin`, '/opt/homebrew/bin', '/usr/local/bin']
-    const pathParts = (process.env.PATH || '').split(':').filter(Boolean)
-    for (const p of extra) {
-      if (p && !pathParts.includes(p)) {
-        pathParts.push(p)
-      }
-    }
-    process.env.PATH = pathParts.join(':')
-
     // Create EnzymeManager for the vault
     const adapter = this.app.vault.adapter
     if (adapter instanceof FileSystemAdapter) {
@@ -31,12 +20,16 @@ export default class DigestPlugin extends Plugin {
 
     this.registerView(VIEW_TYPE_DIGEST, leaf => new DigestView(leaf, this))
 
-    this.addRibbonIcon('message-circle', 'Open Enzyme', () => this.activateView())
+    this.addRibbonIcon('message-circle', 'Open Enzyme', () => {
+      void this.activateView()
+    })
 
     this.addCommand({
       id: 'open-enzyme',
-      name: 'Open Enzyme',
-      callback: () => this.activateView(),
+      name: 'Open',
+      callback: () => {
+        void this.activateView()
+      },
     })
 
     this.addCommand({
@@ -53,7 +46,7 @@ export default class DigestPlugin extends Plugin {
 
   onunload() {
     if (this.chatSettingsReloadTimer) {
-      window.clearTimeout(this.chatSettingsReloadTimer)
+      activeWindow.clearTimeout(this.chatSettingsReloadTimer)
     }
     // Views are automatically cleaned up by Obsidian
   }
@@ -83,9 +76,9 @@ export default class DigestPlugin extends Plugin {
 
   scheduleChatSettingsReload() {
     if (this.chatSettingsReloadTimer) {
-      window.clearTimeout(this.chatSettingsReloadTimer)
+      activeWindow.clearTimeout(this.chatSettingsReloadTimer)
     }
-    this.chatSettingsReloadTimer = window.setTimeout(() => {
+    this.chatSettingsReloadTimer = activeWindow.setTimeout(() => {
       this.chatSettingsReloadTimer = null
       const view = this.getView()
       if (view) void view.reloadAgentFromSettings()

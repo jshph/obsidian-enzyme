@@ -97,10 +97,10 @@ export class MentionSuggest extends AbstractInputSuggest<MentionItem> {
   // ── Cursor helpers for contenteditable ───────────────────────────
 
   private getCursorOffset(): number {
-    const sel = window.getSelection()
+    const sel = activeWindow.getSelection()
     if (!sel || sel.rangeCount === 0) return 0
     const range = sel.getRangeAt(0)
-    const preRange = document.createRange()
+    const preRange = activeDocument.createRange()
     preRange.selectNodeContents(this.inputEl)
     preRange.setEnd(range.startContainer, range.startOffset)
     return preRange.toString().length
@@ -109,11 +109,11 @@ export class MentionSuggest extends AbstractInputSuggest<MentionItem> {
   private setCursorOffset(offset: number): void {
     const textNode = this.inputEl.firstChild
     if (!textNode) return
-    const range = document.createRange()
+    const range = activeDocument.createRange()
     const pos = Math.min(offset, (textNode.textContent || '').length)
     range.setStart(textNode, pos)
     range.collapse(true)
-    const sel = window.getSelection()
+    const sel = activeWindow.getSelection()
     sel?.removeAllRanges()
     sel?.addRange(range)
   }

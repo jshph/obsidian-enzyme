@@ -1,5 +1,5 @@
 /**
- * DigestView — Claudian-style chat interface for Enzyme.
+ * DigestView — chat interface for Enzyme.
  *
  * Extends Obsidian's ItemView to provide a sidebar chat panel with:
  *   - Streaming message rendering with live markdown
@@ -7,12 +7,6 @@
  *   - Thinking dots animation
  *   - Auto-growing input textarea
  *   - Token usage tracking
- *
- * Differences from Claudian:
- *   - Single conversation (no tabs) — Enzyme is simpler by design
- *   - Enzyme prefetch context injection before each LLM call
- *   - Direct API calls via fetch (no CLI subprocess)
- *   - Built-in context compaction at 70% window usage
  */
 
 import {
@@ -53,15 +47,20 @@ export class DigestView extends ItemView {
   private sendBtn!: HTMLElement
   private stopBtn!: HTMLElement
   private voiceBtn!: HTMLElement
+  private voiceBarEl!: HTMLElement
+  private voiceModeEl!: HTMLElement
+  private voiceWaveEl!: HTMLElement
+  private voiceMuteBtn!: HTMLElement
   private statusEl!: HTMLElement
 
   // Streaming state
   private isProcessing = false
   private currentStreamingEl: HTMLElement | null = null
   private currentStreamingText = ''
-  private renderTimer: ReturnType<typeof setTimeout> | null = null
+  private renderTimer: number | null = null
   private sessionTokens = { input: 0, output: 0, cacheRead: 0 }
   private voiceStatus = ''
+  private voiceMuted = false
   private activeVoiceToolIds: string[] = []
 
   // Context injection
@@ -99,7 +98,7 @@ export class DigestView extends ItemView {
     this.agent?.abort()
     this.voiceSession?.stop()
     this.graphHighlighter?.clear()
-    if (this.renderTimer) clearTimeout(this.renderTimer)
+    if (this.renderTimer) activeWindow.clearTimeout(this.renderTimer)
     this.mentionSuggest?.close()
     this.selectionTracker?.destroy()
   }
@@ -130,7 +129,9 @@ export class DigestView extends ItemView {
       attr: { 'aria-label': 'Start voice' },
     })
     setIcon(this.voiceBtn, 'mic')
-    this.voiceBtn.addEventListener('click', () => this.toggleVoice())
+    this.voiceBtn.addEventListener('click', () => {
+      void this.toggleVoice()
+    })
 
     // Messages area
     this.messagesEl = contentEl.createDiv({ cls: 'digest-messages' })
@@ -144,7 +145,7 @@ export class DigestView extends ItemView {
         e.preventDefault()
         const href = link.getAttr('data-href')
         if (href) {
-          this.app.workspace.openLinkText(href, '', 'tab')
+          void this.app.workspace.openLinkText(href, '', 'tab')
         }
       }
     })
@@ -162,6 +163,20 @@ export class DigestView extends ItemView {
     this.statusEl = inputArea.createDiv({ cls: 'digest-status' })
     this.updateStatus()
 
+    this.voiceBarEl = inputArea.createDiv({ cls: 'digest-voice-bar digest-hidden' })
+    this.voiceModeEl = this.voiceBarEl.createDiv({ cls: 'digest-voice-mode' })
+    this.voiceWaveEl = this.voiceModeEl.createDiv({ cls: 'digest-voice-waveform', attr: { 'aria-hidden': 'true' } })
+    for (let i = 0; i < 9; i++) {
+      this.voiceWaveEl.createSpan({ cls: 'digest-voice-wave' })
+    }
+    this.voiceModeEl.createSpan({ cls: 'digest-voice-label', text: 'Listening' })
+    this.voiceMuteBtn = this.voiceBarEl.createEl('button', {
+      cls: 'digest-voice-mute-btn clickable-icon',
+      attr: { 'aria-label': 'Mute microphone' },
+    })
+    setIcon(this.voiceMuteBtn, 'mic')
+    this.voiceMuteBtn.addEventListener('click', () => this.toggleVoiceMute())
+
     const inputRow = inputArea.createDiv({ cls: 'digest-input-row' })
 
     this.inputEl = inputRow.createDiv({
@@ -176,7 +191,7 @@ export class DigestView extends ItemView {
     this.inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
-        this.sendMessage()
+        void this.sendMessage()
       } else if (e.key === 'Backspace' && this.getInputText() === '' && this.attachedFiles.length > 0) {
         e.preventDefault()
         this.attachedFiles.pop()
@@ -193,7 +208,9 @@ export class DigestView extends ItemView {
       attr: { 'aria-label': 'Send' },
     })
     setIcon(this.sendBtn, 'arrow-up')
-    this.sendBtn.addEventListener('click', () => this.sendMessage())
+    this.sendBtn.addEventListener('click', () => {
+      void this.sendMessage()
+    })
 
     this.stopBtn = btnGroup.createEl('button', {
       cls: 'digest-stop-btn clickable-icon digest-hidden',
@@ -353,7 +370,7 @@ export class DigestView extends ItemView {
     this.subscribeToEvents()
 
     // Pre-warm KV cache
-    if (provider.warmup) provider.warmup(systemPrompt, [])
+    if (provider.warmup) void provider.warmup(systemPrompt, [])
 
     this.updateStatus()
 
@@ -372,7 +389,9 @@ export class DigestView extends ItemView {
       this.voiceSession.stop()
       this.voiceSession = null
       this.voiceStatus = ''
+      this.voiceMuted = false
       this.updateVoiceButton(false)
+      this.updateVoiceControls(false)
       this.updateStatus()
       return
     }
@@ -441,6 +460,7 @@ export class DigestView extends ItemView {
       ],
       onStatus: status => {
         this.voiceStatus = status
+        this.updateVoiceControls(true)
         this.updateStatus()
       },
       onTranscript: (role, text) => {
@@ -465,7 +485,9 @@ export class DigestView extends ItemView {
       onError: error => {
         this.showError(error)
         this.voiceStatus = ''
+        this.voiceMuted = false
         this.updateVoiceButton(false)
+        this.updateVoiceControls(false)
         this.updateStatus()
       },
     })
@@ -473,11 +495,16 @@ export class DigestView extends ItemView {
     try {
       await this.voiceSession.start()
       this.updateVoiceButton(true)
+      this.voiceStatus = 'Listening...'
+      this.updateVoiceControls(true)
+      this.updateStatus()
       this.showSystemMessage('Voice started.')
     } catch {
       this.voiceSession = null
       this.updateVoiceButton(false)
       this.voiceStatus = ''
+      this.voiceMuted = false
+      this.updateVoiceControls(false)
       this.updateStatus()
     }
   }
@@ -488,6 +515,51 @@ export class DigestView extends ItemView {
     this.voiceBtn.setAttr('aria-label', active ? 'Stop voice' : 'Start voice')
     setIcon(this.voiceBtn, active ? 'mic-off' : 'mic')
     this.voiceBtn.toggleClass('digest-voice-active', active)
+  }
+
+  private toggleVoiceMute(): void {
+    if (!this.voiceSession?.isActive()) return
+    this.voiceMuted = !this.voiceMuted
+    this.voiceSession.mute(this.voiceMuted)
+    this.updateVoiceControls(true)
+  }
+
+  private updateVoiceControls(active: boolean): void {
+    if (!this.voiceBarEl || !this.voiceMuteBtn || !this.voiceModeEl) return
+    this.voiceBarEl.toggleClass('digest-hidden', !active)
+    if (!active) return
+
+    const mode = this.voiceMuted
+      ? 'muted'
+      : this.voiceStatus.toLowerCase().includes('speaking')
+        ? 'speaking'
+        : this.voiceStatus.toLowerCase().includes('thinking')
+          ? 'thinking'
+          : this.voiceStatus.toLowerCase().includes('creating') || this.voiceStatus.toLowerCase().includes('connecting')
+            ? 'connecting'
+            : 'listening'
+    const label = mode === 'speaking'
+      ? 'Speaking'
+      : mode === 'muted'
+        ? 'Muted'
+        : mode === 'thinking'
+          ? 'Thinking'
+          : mode === 'connecting'
+            ? 'Connecting'
+            : 'Listening'
+
+    this.voiceBarEl.toggleClass('digest-voice-speaking', mode === 'speaking')
+    this.voiceBarEl.toggleClass('digest-voice-listening', mode === 'listening')
+    this.voiceBarEl.toggleClass('digest-voice-thinking', mode === 'thinking')
+    this.voiceBarEl.toggleClass('digest-voice-muted', mode === 'muted')
+    this.voiceBarEl.toggleClass('digest-voice-connecting', mode === 'connecting')
+
+    const labelEl = this.voiceModeEl.querySelector('.digest-voice-label')
+    labelEl?.setText(label)
+    this.voiceMuteBtn.empty()
+    this.voiceMuteBtn.setAttr('aria-label', this.voiceMuted ? 'Unmute microphone' : 'Mute microphone')
+    setIcon(this.voiceMuteBtn, this.voiceMuted ? 'mic-off' : 'mic')
+    this.voiceMuteBtn.toggleClass('digest-voice-muted', this.voiceMuted)
   }
 
   // ── Agent Event Handling ────────────────────────────────────────
@@ -540,7 +612,7 @@ export class DigestView extends ItemView {
           this.hideThinkingIndicator()
           this.finalizeStreaming()
           this.finishProcessing()
-          this.spawnEnzymeRefresh()
+          void this.spawnEnzymeRefresh()
           break
 
         case 'error':
@@ -649,7 +721,7 @@ export class DigestView extends ItemView {
     const msg = this.messagesEl.createDiv({ cls: 'digest-message digest-assistant' })
     const bubble = msg.createDiv({ cls: 'digest-message-content' })
     const sourcePath = this.app.workspace.getActiveFile()?.path ?? ''
-    MarkdownRenderer.render(this.app, text, bubble, sourcePath, this.plugin)
+    void MarkdownRenderer.render(this.app, text, bubble, sourcePath, this.plugin)
     this.scrollToBottom()
   }
 
@@ -671,7 +743,7 @@ export class DigestView extends ItemView {
    */
   private scheduleRender(): void {
     if (this.renderTimer) return
-    this.renderTimer = setTimeout(() => {
+    this.renderTimer = activeWindow.setTimeout(() => {
       this.renderTimer = null
       this.renderCurrentMarkdown()
     }, 100)
@@ -684,14 +756,14 @@ export class DigestView extends ItemView {
     const sourcePath = this.app.workspace.getActiveFile()?.path ?? ''
 
     el.empty()
-    MarkdownRenderer.render(this.app, text, el, sourcePath, this.plugin)
+    void MarkdownRenderer.render(this.app, text, el, sourcePath, this.plugin)
     this.scrollToBottom()
   }
 
   private finalizeStreaming(): void {
     // Clear any pending debounced render
     if (this.renderTimer) {
-      clearTimeout(this.renderTimer)
+      activeWindow.clearTimeout(this.renderTimer)
       this.renderTimer = null
     }
 
@@ -723,7 +795,7 @@ export class DigestView extends ItemView {
         .setTitle('Copy')
         .setIcon('copy')
         .onClick(() => {
-          this.copyText(text)
+          void this.copyText(text)
         })
     })
     menu.showAtMouseEvent(e)
@@ -853,7 +925,7 @@ export class DigestView extends ItemView {
     const sourcePath = this.app.workspace.getActiveFile()?.path ?? ''
     const sourceList = sources.map(source => `- ${source}`).join('\n')
 
-    MarkdownRenderer.render(this.app, `Sources\n${sourceList}`, bubble, sourcePath, this.plugin)
+    void MarkdownRenderer.render(this.app, `Sources\n${sourceList}`, bubble, sourcePath, this.plugin)
     this.scrollToBottom()
     return sources.length
   }
@@ -919,7 +991,7 @@ export class DigestView extends ItemView {
     this.messagesEl.empty()
     this.finishProcessing()
     this.showSystemMessage('New conversation started.')
-    this.initAgent()
+    void this.initAgent()
   }
 
   async reloadAgentFromSettings(): Promise<void> {
@@ -968,9 +1040,6 @@ export class DigestView extends ItemView {
       return
     }
 
-    if (process.env.OPENAI_API_KEY && process.env.OPENAI_BASE_URL && process.env.OPENAI_MODEL) {
-      mgr.spawnBackgroundRefresh()
-    }
   }
 
   private showEnzymeInitBanner(): void {
@@ -986,36 +1055,40 @@ export class DigestView extends ItemView {
       cls: 'digest-enzyme-init-btn',
       text: loggedIn ? 'Initialize' : 'Open settings',
     })
-    btn.addEventListener('click', async () => {
-      const mgr = this.plugin.enzymeManager
-      if (!mgr) return
-      if (!mgr.isLoggedIn()) {
-        const setting = (this.app as any).setting
-        setting?.open?.()
-        setting?.openTabById?.(this.plugin.manifest.id)
-        return
-      }
-      btn.disabled = true
-      btn.setText('Initializing...')
-      try {
-        await mgr.init(event => {
-          btn.setText(event.message || event.stage || 'Initializing...')
-        })
-        banner.remove()
-        new Notice('Vault initialized')
-        this.clearConversation()
-      } catch (err) {
-        btn.disabled = false
-        btn.setText('Initialize')
-        new Notice(`Init failed: ${err instanceof Error ? err.message : err}`)
-      }
+    btn.addEventListener('click', () => {
+      void this.initializeFromBanner(btn, banner)
     })
+  }
+
+  private async initializeFromBanner(btn: HTMLButtonElement, banner: HTMLElement): Promise<void> {
+    const mgr = this.plugin.enzymeManager
+    if (!mgr) return
+    if (!mgr.isLoggedIn()) {
+      const setting = getAppSetting(this.app)
+      setting?.open?.()
+      setting?.openTabById?.(this.plugin.manifest.id)
+      return
+    }
+    btn.disabled = true
+    btn.setText('Initializing...')
+    try {
+      await mgr.init(event => {
+        btn.setText(event.message || event.stage || 'Initializing...')
+      })
+      banner.remove()
+      new Notice('Vault initialized')
+      this.clearConversation()
+    } catch (err) {
+      btn.disabled = false
+      btn.setText('Initialize')
+      new Notice(`Init failed: ${formatErrorMessage(err)}`)
+    }
   }
 
   // ── Utilities ───────────────────────────────────────────────────
 
   private scrollToBottom(): void {
-    requestAnimationFrame(() => {
+    activeWindow.requestAnimationFrame(() => {
       this.messagesEl.scrollTop = this.messagesEl.scrollHeight
     })
   }
@@ -1031,4 +1104,19 @@ function parseToolArgs(rawArgs: string): Record<string, unknown> {
   } catch {
     return { query: rawArgs }
   }
+}
+
+type AppSettingsModal = {
+  open?: () => void
+  openTabById?: (id: string) => void
+}
+
+function getAppSetting(app: unknown): AppSettingsModal | undefined {
+  if (!app || typeof app !== 'object' || !('setting' in app)) return undefined
+  const setting = (app as { setting?: unknown }).setting
+  return setting && typeof setting === 'object' ? setting as AppSettingsModal : undefined
+}
+
+function formatErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
 }

@@ -105,7 +105,8 @@ export function createObsidianReadFileTool(app: App): Tool {
 function getEnzymeCommand(): string {
   const fs = require('fs')
   const path = require('path')
-  const home = process.env.HOME || ''
+  const os = require('os')
+  const home = os.homedir()
   const candidates = [
     path.join(home, '.cargo', 'bin', 'enzyme'),
     path.join(home, '.local', 'bin', 'enzyme'),
@@ -133,7 +134,7 @@ async function execFile(
   const { execFile } = require('child_process')
   const { promisify } = require('util')
   const execFileAsync = promisify(execFile)
-  return execFileAsync(cmd, args, { timeout, env: process.env })
+  return execFileAsync(cmd, args, { timeout })
 }
 
 function formatVaultSearchResults(stdout: string, vaultPath: string, query: string): string {
@@ -168,7 +169,7 @@ function formatVaultSearchResults(stdout: string, vaultPath: string, query: stri
 
   const catalysts = (response.top_contributing_catalysts || [])
     .slice(0, 3)
-    .map((c: any) => `- ${c.text} (${c.entity})`)
+    .map((c: { text?: string; entity?: string }) => `- ${c.text || '(missing text)'} (${c.entity || 'unknown'})`)
 
   let output = formatted.join('\n\n---\n\n')
   if (catalysts.length > 0) {
@@ -179,12 +180,16 @@ function formatVaultSearchResults(stdout: string, vaultPath: string, query: stri
 
 function logToolCommandError(cmd: string, args: string[], err: unknown): void {
   const command = `${cmd} ${args.join(' ')}`
-  const anyErr = err as any
+  const commandError = err as {
+    code?: unknown
+    stdout?: unknown
+    stderr?: unknown
+  }
   const parts = [
     `Enzyme command failed: ${command}`,
-    typeof anyErr?.code === 'number' ? `exit code: ${anyErr.code}` : '',
-    typeof anyErr?.stdout === 'string' && anyErr.stdout.trim() ? `stdout:\n${anyErr.stdout.trim()}` : '',
-    typeof anyErr?.stderr === 'string' && anyErr.stderr.trim() ? `stderr:\n${anyErr.stderr.trim()}` : '',
+    typeof commandError.code === 'number' ? `exit code: ${commandError.code}` : '',
+    typeof commandError.stdout === 'string' && commandError.stdout.trim() ? `stdout:\n${commandError.stdout.trim()}` : '',
+    typeof commandError.stderr === 'string' && commandError.stderr.trim() ? `stderr:\n${commandError.stderr.trim()}` : '',
     getErrorMessage(err),
   ].filter(Boolean)
 

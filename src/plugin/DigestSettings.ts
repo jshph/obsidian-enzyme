@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Notice } from 'obsidian'
+import { App, PluginSettingTab, Setting, Notice, ButtonComponent } from 'obsidian'
 import type DigestPlugin from './DigestPlugin.js'
 import type { EnzymeStatus } from './EnzymeManager.js'
 
@@ -36,7 +36,7 @@ export class DigestSettingsTab extends PluginSettingTab {
     this.plugin = plugin
   }
 
-  async display(): Promise<void> {
+  display(): void {
     const { containerEl } = this
     containerEl.empty()
     containerEl.addClass('digest-settings')
@@ -51,10 +51,9 @@ export class DigestSettingsTab extends PluginSettingTab {
           .setPlaceholder('sk-or-...')
           .setValue(this.plugin.settings.apiKey)
           .then(t => t.inputEl.type = 'password')
-          .onChange(async value => {
+          .onChange(value => {
             this.plugin.settings.apiKey = value
-            await this.plugin.saveSettings()
-            this.plugin.scheduleChatSettingsReload()
+            void this.plugin.saveSettings().then(() => this.plugin.scheduleChatSettingsReload())
           })
       )
 
@@ -65,10 +64,9 @@ export class DigestSettingsTab extends PluginSettingTab {
         text
           .setPlaceholder('https://openrouter.ai/api/v1')
           .setValue(this.plugin.settings.baseURL)
-          .onChange(async value => {
+          .onChange(value => {
             this.plugin.settings.baseURL = value
-            await this.plugin.saveSettings()
-            this.plugin.scheduleChatSettingsReload()
+            void this.plugin.saveSettings().then(() => this.plugin.scheduleChatSettingsReload())
           })
       )
 
@@ -79,10 +77,9 @@ export class DigestSettingsTab extends PluginSettingTab {
         text
           .setPlaceholder('google/gemini-3-flash-preview')
           .setValue(this.plugin.settings.model)
-          .onChange(async value => {
+          .onChange(value => {
             this.plugin.settings.model = value
-            await this.plugin.saveSettings()
-            this.plugin.scheduleChatSettingsReload()
+            void this.plugin.saveSettings().then(() => this.plugin.scheduleChatSettingsReload())
           })
       )
 
@@ -96,9 +93,9 @@ export class DigestSettingsTab extends PluginSettingTab {
           .setPlaceholder('sk-...')
           .setValue(this.plugin.settings.realtimeApiKey)
           .then(t => t.inputEl.type = 'password')
-          .onChange(async value => {
+          .onChange(value => {
             this.plugin.settings.realtimeApiKey = value
-            await this.plugin.saveSettings()
+            void this.plugin.saveSettings()
           })
       )
 
@@ -109,9 +106,9 @@ export class DigestSettingsTab extends PluginSettingTab {
         text
           .setPlaceholder('gpt-realtime-2')
           .setValue(this.plugin.settings.realtimeModel)
-          .onChange(async value => {
+          .onChange(value => {
             this.plugin.settings.realtimeModel = value
-            await this.plugin.saveSettings()
+            void this.plugin.saveSettings()
           })
       )
 
@@ -122,14 +119,14 @@ export class DigestSettingsTab extends PluginSettingTab {
         text
           .setPlaceholder('marin')
           .setValue(this.plugin.settings.realtimeVoice)
-          .onChange(async value => {
+          .onChange(value => {
             this.plugin.settings.realtimeVoice = value
-            await this.plugin.saveSettings()
+            void this.plugin.saveSettings()
           })
       )
 
     // ── Enzyme Section ────────────────────────────────────────────
-    await this.renderEnzymeSection(containerEl)
+    void this.renderEnzymeSection(containerEl)
   }
 
   private async renderEnzymeSection(containerEl: HTMLElement): Promise<void> {
@@ -169,7 +166,7 @@ export class DigestSettingsTab extends PluginSettingTab {
     this.renderEnzymePrivacySetting(containerEl)
 
     if (!status.installed) {
-      const descFrag = document.createDocumentFragment()
+      const descFrag = createFragment()
       descFrag.appendText('Install the local Enzyme binary before signing in or indexing this vault. ')
       const link = descFrag.createEl('a', { text: 'What is Enzyme?', href: 'https://enzyme.garden' })
       link.setAttr('target', '_blank')
@@ -178,23 +175,15 @@ export class DigestSettingsTab extends PluginSettingTab {
         .setName('Install Enzyme')
         .setDesc(descFrag)
         .addButton(btn =>
-          btn.setButtonText('Install').setCta().onClick(async () => {
-            btn.setDisabled(true).setButtonText('Installing...')
-            try {
-              await mgr.install(msg => new Notice(msg))
-              new Notice('Enzyme installed successfully')
-              this.display()
-            } catch (err) {
-              new Notice(`Install failed: ${err instanceof Error ? err.message : err}`)
-              btn.setDisabled(false).setButtonText('Install')
-            }
+          btn.setButtonText('Install').setCta().onClick(() => {
+            void this.installEnzyme(btn, mgr)
           })
         )
       return
     }
 
     // Account
-    const accountDesc = document.createDocumentFragment()
+    const accountDesc = createFragment()
     const setAccountDesc = (message: string, href?: string) => {
       while (accountDesc.firstChild) accountDesc.removeChild(accountDesc.firstChild)
       accountDesc.appendText(message)
@@ -215,46 +204,15 @@ export class DigestSettingsTab extends PluginSettingTab {
       .setDesc(accountDesc)
       .addButton(btn => {
         btn.setButtonText(status.loggedIn ? 'Re-login' : 'Sign in')
-        btn.onClick(async () => {
-          btn.setDisabled(true).setButtonText('Waiting for browser...')
-          try {
-            await mgr.login(event => {
-              if (event.event === 'device_authorization') {
-                btn.setButtonText('Waiting for approval...')
-                setAccountDesc(
-                  event.opened_browser
-                    ? 'Complete sign-in in the browser, then return to Obsidian.'
-                    : 'Complete sign-in in your browser, then return to Obsidian.',
-                  event.verification_uri,
-                )
-                accountSetting.setDesc(accountDesc)
-              } else if (event.event === 'already_logged_in') {
-                btn.setButtonText('Already signed in')
-                setAccountDesc(`Already signed in${event.email ? ` as ${event.email}` : ''}.`)
-                accountSetting.setDesc(accountDesc)
-              }
-            })
-            new Notice('Signed in to enzyme.garden')
-            this.display()
-          } catch (err) {
-            new Notice(`Sign-in failed: ${err instanceof Error ? err.message : err}`)
-            btn.setDisabled(false).setButtonText(status.loggedIn ? 'Re-login' : 'Sign in')
-          }
+        btn.onClick(() => {
+          void this.loginEnzyme(btn, mgr, accountSetting, accountDesc, setAccountDesc, status)
         })
       })
 
     if (status.loggedIn) {
       accountSetting.addButton(btn =>
-        btn.setButtonText('Sign out').onClick(async () => {
-          btn.setDisabled(true).setButtonText('Signing out...')
-          try {
-            await mgr.logout()
-            new Notice('Signed out of enzyme.garden')
-            this.display()
-          } catch (err) {
-            new Notice(`Sign-out failed: ${err instanceof Error ? err.message : err}`)
-            btn.setDisabled(false).setButtonText('Sign out')
-          }
+        btn.setButtonText('Sign out').onClick(() => {
+          void this.logoutEnzyme(btn, mgr)
         })
       )
     }
@@ -266,27 +224,13 @@ export class DigestSettingsTab extends PluginSettingTab {
       new Setting(containerEl)
         .setName('Initialize vault')
         .setDesc('Scan this vault, select entities, and generate catalysts. Note excerpts are sent to the selected AI provider. Usually takes 1-3 minutes.')
-        .addButton(btn =>
-          btn.setButtonText('Initialize').setCta().setDisabled(!canRun).onClick(async () => {
-            btn.setDisabled(true).setButtonText('Initializing...')
-            try {
-              const env = this.getEnzymeAIEnv(status)
-              if (env === false) {
-                new Notice('Sign in to Enzyme, or complete the advanced AI credentials.')
-                btn.setDisabled(false).setButtonText('Initialize')
-                return
-              }
-              await mgr.init(event => {
-                btn.setButtonText(event.message || event.stage)
-              }, env)
-              new Notice('Vault initialized')
-              this.display()
-            } catch (err) {
-              new Notice(`Init failed: ${err instanceof Error ? err.message : err}`)
-              btn.setDisabled(false).setButtonText('Initialize')
-            }
+        .addButton(btn => {
+          btn.setButtonText('Initialize').setCta()
+          setButtonDisabled(btn, !canRun)
+          btn.onClick(() => {
+            void this.initializeVault(btn, mgr, status)
           })
-        )
+        })
       return
     }
 
@@ -295,25 +239,13 @@ export class DigestSettingsTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Refresh index')
       .setDesc('Incrementally update the vault index')
-      .addButton(btn =>
-        btn.setButtonText('Refresh').setDisabled(!canRun).onClick(async () => {
-          btn.setDisabled(true).setButtonText('Refreshing...')
-          try {
-            const env = this.getEnzymeAIEnv(status)
-            if (env === false) {
-              new Notice('Sign in to Enzyme, or complete the advanced AI credentials.')
-              btn.setDisabled(false).setButtonText('Refresh')
-              return
-            }
-            await mgr.refresh(true, env)
-            new Notice('Index refreshed')
-            this.display()
-          } catch (err) {
-            new Notice(`Refresh failed: ${err instanceof Error ? err.message : err}`)
-            btn.setDisabled(false).setButtonText('Refresh')
-          }
+      .addButton(btn => {
+        btn.setButtonText('Refresh')
+        setButtonDisabled(btn, !canRun)
+        btn.onClick(() => {
+          void this.refreshVault(btn, mgr, status)
         })
-      )
+      })
 
     // Entity list
     const config = mgr.readConfig()
@@ -325,23 +257,137 @@ export class DigestSettingsTab extends PluginSettingTab {
           textarea
             .setPlaceholder('#tag\n[[Link]]\nfolder:name')
             .setValue(config.entities.join('\n'))
-            .onChange(async value => {
+            .onChange(value => {
               const entities = value.split('\n').map(s => s.trim()).filter(Boolean)
               mgr.writeConfig({ entities })
             })
             .then(t => {
               t.inputEl.rows = 8
-              t.inputEl.style.width = '100%'
-              t.inputEl.style.fontFamily = 'var(--font-monospace)'
-              t.inputEl.style.fontSize = '12px'
+              t.inputEl.addClass('digest-settings-entities')
             })
         )
     }
 
   }
 
+  private async installEnzyme(btn: ButtonComponent, mgr: NonNullable<DigestPlugin['enzymeManager']>): Promise<void> {
+    setButtonDisabled(btn, true)
+    btn.setButtonText('Installing...')
+    try {
+      await mgr.install(msg => new Notice(msg))
+      new Notice('Enzyme installed successfully')
+      this.display()
+    } catch (err) {
+      new Notice(`Install failed: ${formatErrorMessage(err)}`)
+      setButtonDisabled(btn, false)
+      btn.setButtonText('Install')
+    }
+  }
+
+  private async loginEnzyme(
+    btn: ButtonComponent,
+    mgr: NonNullable<DigestPlugin['enzymeManager']>,
+    accountSetting: Setting,
+    accountDesc: DocumentFragment,
+    setAccountDesc: (message: string, href?: string) => void,
+    status: EnzymeStatus,
+  ): Promise<void> {
+    setButtonDisabled(btn, true)
+    btn.setButtonText('Waiting for browser...')
+    try {
+      await mgr.login(event => {
+        if (event.event === 'device_authorization') {
+          btn.setButtonText('Waiting for approval...')
+          setAccountDesc(
+            event.opened_browser
+              ? 'Complete sign-in in the browser, then return to Obsidian.'
+              : 'Complete sign-in in your browser, then return to Obsidian.',
+            event.verification_uri,
+          )
+          accountSetting.setDesc(accountDesc)
+        } else if (event.event === 'already_logged_in') {
+          btn.setButtonText('Already signed in')
+          setAccountDesc(`Already signed in${event.email ? ` as ${event.email}` : ''}.`)
+          accountSetting.setDesc(accountDesc)
+        }
+      })
+      new Notice('Signed in to enzyme.garden')
+      this.display()
+    } catch (err) {
+      new Notice(`Sign-in failed: ${formatErrorMessage(err)}`)
+      setButtonDisabled(btn, false)
+      btn.setButtonText(status.loggedIn ? 'Re-login' : 'Sign in')
+    }
+  }
+
+  private async logoutEnzyme(btn: ButtonComponent, mgr: NonNullable<DigestPlugin['enzymeManager']>): Promise<void> {
+    setButtonDisabled(btn, true)
+    btn.setButtonText('Signing out...')
+    try {
+      await mgr.logout()
+      new Notice('Signed out of enzyme.garden')
+      this.display()
+    } catch (err) {
+      new Notice(`Sign-out failed: ${formatErrorMessage(err)}`)
+      setButtonDisabled(btn, false)
+      btn.setButtonText('Sign out')
+    }
+  }
+
+  private async initializeVault(
+    btn: ButtonComponent,
+    mgr: NonNullable<DigestPlugin['enzymeManager']>,
+    status: EnzymeStatus,
+  ): Promise<void> {
+    setButtonDisabled(btn, true)
+    btn.setButtonText('Initializing...')
+    try {
+      const env = this.getEnzymeAIEnv(status)
+      if (env === false) {
+        new Notice('Sign in to Enzyme, or complete the advanced AI credentials.')
+        setButtonDisabled(btn, false)
+        btn.setButtonText('Initialize')
+        return
+      }
+      await mgr.init(event => {
+        btn.setButtonText(event.message || event.stage)
+      }, env)
+      new Notice('Vault initialized')
+      this.display()
+    } catch (err) {
+      new Notice(`Init failed: ${formatErrorMessage(err)}`)
+      setButtonDisabled(btn, false)
+      btn.setButtonText('Initialize')
+    }
+  }
+
+  private async refreshVault(
+    btn: ButtonComponent,
+    mgr: NonNullable<DigestPlugin['enzymeManager']>,
+    status: EnzymeStatus,
+  ): Promise<void> {
+    setButtonDisabled(btn, true)
+    btn.setButtonText('Refreshing...')
+    try {
+      const env = this.getEnzymeAIEnv(status)
+      if (env === false) {
+        new Notice('Sign in to Enzyme, or complete the advanced AI credentials.')
+        setButtonDisabled(btn, false)
+        btn.setButtonText('Refresh')
+        return
+      }
+      await mgr.refresh(true, env)
+      new Notice('Index refreshed')
+      this.display()
+    } catch (err) {
+      new Notice(`Refresh failed: ${formatErrorMessage(err)}`)
+      setButtonDisabled(btn, false)
+      btn.setButtonText('Refresh')
+    }
+  }
+
   private renderEnzymePrivacySetting(containerEl: HTMLElement): void {
-    const desc = document.createDocumentFragment()
+    const desc = createFragment()
     desc.appendText('Search runs locally. Initialization uses AI to generate catalysts from note excerpts. ')
     const link = desc.createEl('a', { text: 'Privacy details', href: 'https://www.enzyme.garden/privacy' })
     link.setAttr('target', '_blank')
@@ -359,18 +405,17 @@ export class DigestSettingsTab extends PluginSettingTab {
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.enzymeShowAdvanced)
-          .onChange(async value => {
+          .onChange(value => {
             this.plugin.settings.enzymeShowAdvanced = value
-            await this.plugin.saveSettings()
-            this.display()
+            void this.plugin.saveSettings().then(() => this.display())
           })
       )
       .setClass('digest-settings-subtle')
 
     if (!this.plugin.settings.enzymeShowAdvanced) return
 
-    const envDesc = document.createDocumentFragment()
-    envDesc.appendText('Signed-in Enzyme accounts are used first. Otherwise, fill all three fields or launch Obsidian with matching process environment variables.')
+    const envDesc = createFragment()
+    envDesc.appendText('Signed-in Enzyme accounts are used first. Otherwise, fill all three fields here.')
 
     new Setting(containerEl)
       .setName('Own credentials')
@@ -385,9 +430,9 @@ export class DigestSettingsTab extends PluginSettingTab {
           .setPlaceholder('sk-...')
           .setValue(this.plugin.settings.enzymeApiKey || '')
           .then(t => t.inputEl.type = 'password')
-          .onChange(async value => {
+          .onChange(value => {
             this.plugin.settings.enzymeApiKey = value
-            await this.plugin.saveSettings()
+            void this.plugin.saveSettings()
           })
       )
 
@@ -398,9 +443,9 @@ export class DigestSettingsTab extends PluginSettingTab {
         text
           .setPlaceholder('https://api.openai.com/v1')
           .setValue(this.plugin.settings.enzymeBaseURL || '')
-          .onChange(async value => {
+          .onChange(value => {
             this.plugin.settings.enzymeBaseURL = value
-            await this.plugin.saveSettings()
+            void this.plugin.saveSettings()
           })
       )
 
@@ -411,9 +456,9 @@ export class DigestSettingsTab extends PluginSettingTab {
         text
           .setPlaceholder('gpt-4.1-mini')
           .setValue(this.plugin.settings.enzymeModel || '')
-          .onChange(async value => {
+          .onChange(value => {
             this.plugin.settings.enzymeModel = value
-            await this.plugin.saveSettings()
+            void this.plugin.saveSettings()
           })
       )
   }
@@ -426,10 +471,7 @@ export class DigestSettingsTab extends PluginSettingTab {
     if (status.loggedIn) return undefined
 
     const { enzymeApiKey, enzymeBaseURL, enzymeModel } = this.plugin.settings
-    if (!enzymeApiKey || !enzymeBaseURL || !enzymeModel) {
-      const hasProcessEnv = Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_BASE_URL && process.env.OPENAI_MODEL)
-      return hasProcessEnv ? undefined : false
-    }
+    if (!enzymeApiKey || !enzymeBaseURL || !enzymeModel) return false
 
     return {
       OPENAI_API_KEY: enzymeApiKey,
@@ -459,4 +501,12 @@ export class DigestSettingsTab extends PluginSettingTab {
       .setName('Status')
       .setDesc(parts.join(' · ') || 'Unknown')
   }
+}
+
+function setButtonDisabled(btn: ButtonComponent, disabled: boolean): void {
+  btn.buttonEl.disabled = disabled
+}
+
+function formatErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
 }
