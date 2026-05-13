@@ -1,7 +1,7 @@
 {
 	"id": "reason",
 	"name": "Enzyme",
-	"version": "0.4.5",
+	"version": "0.4.6",
 	"minAppVersion": "1.7.2",
 	"description": "AI chat for your vault, powered by Enzyme's local semantic index.",
 	"author": "Joshua Pham",

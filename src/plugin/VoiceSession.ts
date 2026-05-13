@@ -1,6 +1,5 @@
 import { requestUrl } from 'obsidian'
-import { OpenAIRealtimeWebRTC, RealtimeAgent, RealtimeSession } from '@openai/agents/realtime'
-import { tool } from '@openai/agents'
+import { OpenAIRealtimeWebRTC, RealtimeAgent, RealtimeSession, tool } from '@openai/agents-realtime'
 import type { SystemPromptBlock, Tool, ToolParameter } from '@jshph/digest'
 
 export interface VoiceSessionConfig {
