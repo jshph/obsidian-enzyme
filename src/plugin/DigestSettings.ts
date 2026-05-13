@@ -45,7 +45,7 @@ export class DigestSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Chat API key')
-      .setDesc('Used only for Digest chat with your configured OpenAI-compatible model provider.')
+      .setDesc('Used only for Enzyme chat with your configured OpenAI-compatible model provider.')
       .addText(text =>
         text
           .setPlaceholder('sk-or-...')
@@ -60,7 +60,7 @@ export class DigestSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Base URL')
-      .setDesc('Chat completions endpoint for Digest chat.')
+      .setDesc('Chat completions endpoint for Enzyme chat.')
       .addText(text =>
         text
           .setPlaceholder('https://openrouter.ai/api/v1')
@@ -74,7 +74,7 @@ export class DigestSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Model')
-      .setDesc('Model identifier for Digest chat.')
+      .setDesc('Model identifier for Enzyme chat.')
       .addText(text =>
         text
           .setPlaceholder('google/gemini-3-flash-preview')
@@ -149,14 +149,14 @@ export class DigestSettingsTab extends PluginSettingTab {
       '',
       'It reads your existing tags, links, and folder structure to build',
       'a semantic index with AI-generated "catalyst questions" for each',
-      'concept. When you ask Digest a question, Enzyme finds relevant',
+      'concept. When you ask Enzyme a question, it finds relevant',
       'content in ~8ms — no cloud embeddings, no token cost for retrieval.',
       '',
       'Initialization and catalyst generation use AI. You can sign in',
       'and let Enzyme handle indexing credentials, or use your own',
       'provider from Advanced settings.',
       '',
-      'Without Enzyme, Digest still works (ReadFile / WriteFile) but',
+      'Without the Enzyme index, chat still works with ReadFile and WriteFile but',
       'cannot search your vault semantically.',
       '',
       'Privacy: https://www.enzyme.garden/privacy',

@@ -1,9 +1,9 @@
 {
-	"id": "reason",
-	"name": "Digest",
+	"id": "enzyme",
+	"name": "Enzyme",
 	"version": "0.4.3",
 	"minAppVersion": "1.1.10",
-	"description": "Token-efficient writing and thinking agent for your vault",
+	"description": "AI chat for your vault, powered by Enzyme's local semantic index",
 	"author": "Joshua Pham",
 	"authorUrl": "https://jpham.space",
 	"isDesktopOnly": true

@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-digest",
+  "name": "obsidian-enzyme",
   "version": "0.4.3",
   "description": "Token-efficient writing and thinking agent for Obsidian vaults",
   "scripts": {

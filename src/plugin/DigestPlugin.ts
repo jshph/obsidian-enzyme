@@ -31,11 +31,11 @@ export default class DigestPlugin extends Plugin {
 
     this.registerView(VIEW_TYPE_DIGEST, leaf => new DigestView(leaf, this))
 
-    this.addRibbonIcon('message-circle', 'Open Digest', () => this.activateView())
+    this.addRibbonIcon('message-circle', 'Open Enzyme', () => this.activateView())
 
     this.addCommand({
-      id: 'open-digest',
-      name: 'Open Digest',
+      id: 'open-enzyme',
+      name: 'Open Enzyme',
       callback: () => this.activateView(),
     })
 

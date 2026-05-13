@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "obsidian-digest",
+      "name": "obsidian-enzyme",
       "dependencies": {
         "@jshph/digest": "github:jshph/digest",
         "@openai/agents": "^0.11.0",

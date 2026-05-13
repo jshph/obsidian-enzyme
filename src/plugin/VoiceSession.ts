@@ -60,7 +60,7 @@ export class VoiceSession {
       const initialConfig = await session.getInitialSessionConfig()
       const initialSessionPayload = transport.buildSessionPayload(initialConfig)
       console.info(
-        `Digest voice realtime payload: instructions=${initialSessionPayload.instructions?.length || 0} chars, tools=${initialSessionPayload.tools?.length || 0}`,
+        `Enzyme voice realtime payload: instructions=${initialSessionPayload.instructions?.length || 0} chars, tools=${initialSessionPayload.tools?.length || 0}`,
       )
       const clientKey = await createRealtimeClientSecret(this.config, initialSessionPayload)
       this.config.onStatus?.('Connecting voice...')

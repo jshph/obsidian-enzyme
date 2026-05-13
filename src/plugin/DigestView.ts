@@ -1,5 +1,5 @@
 /**
- * DigestView — Claudian-style chat interface for Digest.
+ * DigestView — Claudian-style chat interface for Enzyme.
  *
  * Extends Obsidian's ItemView to provide a sidebar chat panel with:
  *   - Streaming message rendering with live markdown
@@ -9,7 +9,7 @@
  *   - Token usage tracking
  *
  * Differences from Claudian:
- *   - Single conversation (no tabs) — Digest is simpler by design
+ *   - Single conversation (no tabs) — Enzyme is simpler by design
  *   - Enzyme prefetch context injection before each LLM call
  *   - Direct API calls via fetch (no CLI subprocess)
  *   - Built-in context compaction at 70% window usage
@@ -81,7 +81,7 @@ export class DigestView extends ItemView {
   }
 
   getDisplayText(): string {
-    return 'Digest'
+    return 'Enzyme'
   }
 
   getIcon(): string {
@@ -114,7 +114,7 @@ export class DigestView extends ItemView {
     // Header
     const header = contentEl.createDiv({ cls: 'digest-header' })
     const titleRow = header.createDiv({ cls: 'digest-title-row' })
-    titleRow.createSpan({ cls: 'digest-title', text: 'Digest' })
+    titleRow.createSpan({ cls: 'digest-title', text: 'Enzyme' })
 
     const actions = titleRow.createDiv({ cls: 'digest-actions' })
 
@@ -153,7 +153,7 @@ export class DigestView extends ItemView {
     })
 
     // Welcome message
-    this.showSystemMessage('Ask anything about your vault. Digest uses Enzyme for semantic search and context prefetch.')
+    this.showSystemMessage('Ask anything about your vault. Enzyme uses local semantic search and context prefetch.')
 
     // Input area
     const inputArea = contentEl.createDiv({ cls: 'digest-input-area' })
@@ -290,14 +290,14 @@ export class DigestView extends ItemView {
       this.agent = null
       this.updateStatus()
       if (showSetupMessages) {
-        this.showSystemMessage('Configure a model in Digest settings to get started.')
+        this.showSystemMessage('Configure a model in Enzyme settings to get started.')
       }
       return
     }
 
     const adapter = this.app.vault.adapter
     if (!(adapter instanceof FileSystemAdapter)) {
-      this.showSystemMessage('Digest requires a local vault (not a sync-only vault).')
+      this.showSystemMessage('Enzyme requires a local vault (not a sync-only vault).')
       return
     }
     const vaultPath = adapter.getBasePath()
@@ -359,7 +359,7 @@ export class DigestView extends ItemView {
 
     if (showSetupMessages && !enzymeInstalled) {
       this.showSystemMessage(
-        'Enzyme not found. Install from Settings \u2192 Digest for semantic search. ' +
+        'Enzyme not found. Install from Settings \u2192 Enzyme for semantic search. ' +
         'ReadFile and WriteFile still work without it.'
       )
     } else if (showSetupMessages && !enzymeInitialized) {
@@ -380,13 +380,13 @@ export class DigestView extends ItemView {
     const settings = this.plugin.settings
     const apiKey = settings.realtimeApiKey.trim()
     if (!apiKey) {
-      new Notice('Add an OpenAI Realtime API key in Digest settings to use voice.')
+      new Notice('Add an OpenAI Realtime API key in Enzyme settings to use voice.')
       return
     }
 
     const adapter = this.app.vault.adapter
     if (!(adapter instanceof FileSystemAdapter)) {
-      new Notice('Digest voice requires a local vault.')
+      new Notice('Enzyme voice requires a local vault.')
       return
     }
 
@@ -569,7 +569,7 @@ export class DigestView extends ItemView {
     if ((!text && this.attachedFiles.length === 0) || this.isProcessing) return
 
     if (!this.agent) {
-      new Notice('Configure a model in Digest settings first')
+      new Notice('Configure a model in Enzyme settings first')
       return
     }
 
@@ -737,7 +737,7 @@ export class DigestView extends ItemView {
         const { clipboard } = require('electron')
         clipboard.writeText(text)
       } catch {
-        console.error('Failed to copy Digest block text:', err)
+        console.error('Failed to copy Enzyme block text:', err)
       }
     }
   }
@@ -817,7 +817,7 @@ export class DigestView extends ItemView {
       definition: {
         name: 'RenderSources',
         description:
-          'Render selected Obsidian note links in the Digest UI as clickable sources. ' +
+          'Render selected Obsidian note links in the Enzyme UI as clickable sources. ' +
           'Use after VaultSearch, choosing only the notes that support your spoken response.',
         parameters: {
           sources: {
@@ -980,7 +980,7 @@ export class DigestView extends ItemView {
     banner.createSpan({
       text: loggedIn
         ? 'Enzyme is not initialized for this vault.'
-        : 'Sign in to Enzyme from Digest settings before initializing this vault.',
+        : 'Sign in to Enzyme from settings before initializing this vault.',
     })
     const btn = banner.createEl('button', {
       cls: 'digest-enzyme-init-btn',
