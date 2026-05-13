@@ -7,6 +7,11 @@
  */
 
 import * as TOML from 'smol-toml'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+import { execFile as nodeExecFile, spawn } from 'child_process'
+import { promisify } from 'util'
 
 export interface EnzymeStatus {
   installed: boolean
@@ -62,6 +67,9 @@ type EnzymeTomlConfig = {
   vaults?: Record<string, Partial<EnzymeVaultConfig>>
 }
 
+const execFileAsync = promisify(nodeExecFile)
+const ANSI_ESCAPE_RE = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g')
+
 export class EnzymeManager {
   private vaultPath: string
   private enzymeCommand: string | null = null
@@ -80,13 +88,10 @@ export class EnzymeManager {
   }
 
   isInitialized(): boolean {
-    const fs = require('fs')
-    const path = require('path')
     return fs.existsSync(path.join(this.vaultPath, '.enzyme', 'enzyme.db'))
   }
 
   getAccount(): EnzymeAccount | null {
-    const fs = require('fs')
     try {
       const auth = JSON.parse(fs.readFileSync(this.authPath(), 'utf-8'))
       if (!auth || typeof auth.api_key !== 'string') return null
@@ -171,7 +176,6 @@ export class EnzymeManager {
   }
 
   async login(onEvent?: (event: LoginEvent) => void): Promise<void> {
-    const { spawn } = require('child_process')
     const cmd = this.getEnzymeCommand()
 
     return new Promise((resolve, reject) => {
@@ -228,7 +232,6 @@ export class EnzymeManager {
   }
 
   async init(onProgress?: (event: InitProgress) => void, env?: Record<string, string>): Promise<void> {
-    const { spawn } = require('child_process')
     const cmd = this.getEnzymeCommand()
 
     return new Promise((resolve, reject) => {
@@ -279,7 +282,6 @@ export class EnzymeManager {
   }
 
   async refresh(quiet = true, env?: Record<string, string>): Promise<void> {
-    const { spawn } = require('child_process')
     const cmd = this.getEnzymeCommand()
     const args = ['refresh', '-p', this.vaultPath]
     if (quiet) args.push('--quiet')
@@ -347,7 +349,6 @@ export class EnzymeManager {
 
   /** Spawn a detached background refresh (fire-and-forget). */
   spawnBackgroundRefresh(env?: Record<string, string>): void {
-    const { spawn } = require('child_process')
     const cmd = this.getEnzymeCommand()
     const args = ['refresh', '--quiet', '-p', this.vaultPath]
     const child = spawn(cmd, args, {
@@ -372,8 +373,6 @@ export class EnzymeManager {
   }
 
   readConfig(): EnzymeVaultConfig | null {
-    const fs = require('fs')
-    const path = require('path')
     const configPath = path.join(this.getHomeDir(), '.enzyme', 'config.toml')
 
     try {
@@ -396,8 +395,6 @@ export class EnzymeManager {
   }
 
   writeConfig(config: Partial<EnzymeVaultConfig>): void {
-    const fs = require('fs')
-    const path = require('path')
     const configPath = path.join(this.getHomeDir(), '.enzyme', 'config.toml')
 
     try {
@@ -429,8 +426,6 @@ export class EnzymeManager {
   private getEnzymeCommand(): string {
     if (this.enzymeCommand) return this.enzymeCommand
 
-    const fs = require('fs')
-    const path = require('path')
     const home = this.getHomeDir()
     const candidates = [
       path.join(home, '.cargo', 'bin', 'enzyme'),
@@ -458,14 +453,10 @@ export class EnzymeManager {
     args: string[],
     timeout = 15000,
   ): Promise<{ stdout: string; stderr: string }> {
-    const { execFile } = require('child_process')
-    const { promisify } = require('util')
-    const execFileAsync = promisify(execFile)
     return execFileAsync(cmd, args, { timeout })
   }
 
   private authPath(): string {
-    const path = require('path')
     const enzymeHome = path.join(this.getHomeDir(), '.enzyme')
     return path.join(enzymeHome, 'auth.json')
   }
@@ -473,7 +464,7 @@ export class EnzymeManager {
   private extractUsefulError(output: string, fallback: string): string {
     const clean = output
       .split('\n')
-      .map(line => line.replace(/\x1b\[[0-9;]*m/g, '').trim())
+      .map(line => line.replace(ANSI_ESCAPE_RE, '').trim())
       .filter(Boolean)
       .filter(line => !line.startsWith('{'))
 
@@ -488,7 +479,7 @@ export class EnzymeManager {
 
     const clean = output
       .split('\n')
-      .map(line => line.replace(/\x1b\[[0-9;]*m/g, '').trimEnd())
+      .map(line => line.replace(ANSI_ESCAPE_RE, '').trimEnd())
       .filter(Boolean)
       .join('\n')
 
@@ -501,8 +492,6 @@ export class EnzymeManager {
     args: string[],
     onLine?: (line: string) => void,
   ): Promise<void> {
-    const { spawn } = require('child_process')
-
     return new Promise((resolve, reject) => {
       const child = spawn(cmd, args, {
         stdio: ['ignore', 'pipe', 'pipe'],
@@ -532,7 +521,6 @@ export class EnzymeManager {
   }
 
   private getHomeDir(): string {
-    const os = require('os')
     return os.homedir()
   }
 

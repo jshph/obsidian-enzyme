@@ -1,6 +1,6 @@
 {
   "name": "obsidian-enzyme",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "Token-efficient writing and thinking agent for Obsidian vaults",
   "scripts": {
     "dev": "bun esbuild.config.mjs",

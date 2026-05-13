@@ -46,7 +46,7 @@ export default class DigestPlugin extends Plugin {
 
   onunload() {
     if (this.chatSettingsReloadTimer) {
-      activeWindow.clearTimeout(this.chatSettingsReloadTimer)
+      window.clearTimeout(this.chatSettingsReloadTimer)
     }
     // Views are automatically cleaned up by Obsidian
   }
@@ -76,9 +76,9 @@ export default class DigestPlugin extends Plugin {
 
   scheduleChatSettingsReload() {
     if (this.chatSettingsReloadTimer) {
-      activeWindow.clearTimeout(this.chatSettingsReloadTimer)
+      window.clearTimeout(this.chatSettingsReloadTimer)
     }
-    this.chatSettingsReloadTimer = activeWindow.setTimeout(() => {
+    this.chatSettingsReloadTimer = window.setTimeout(() => {
       this.chatSettingsReloadTimer = null
       const view = this.getView()
       if (view) void view.reloadAgentFromSettings()
@@ -94,13 +94,13 @@ export default class DigestPlugin extends Plugin {
   async activateView() {
     const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE_DIGEST)
     if (existing.length > 0) {
-      this.app.workspace.revealLeaf(existing[0])
+      await this.app.workspace.revealLeaf(existing[0])
       return
     }
     const leaf = this.app.workspace.getRightLeaf(false)
     if (leaf) {
       await leaf.setViewState({ type: VIEW_TYPE_DIGEST, active: true })
-      this.app.workspace.revealLeaf(leaf)
+      await this.app.workspace.revealLeaf(leaf)
     }
   }
 }

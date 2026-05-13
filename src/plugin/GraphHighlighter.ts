@@ -106,7 +106,7 @@ export class GraphHighlighter {
     }
 
     const neighborhood = this.collectNeighborhood(renderer, selectedNodes)
-    const positionedNodes = [...neighborhood].filter(this.hasPosition)
+    const positionedNodes = [...neighborhood].filter(node => this.hasPosition(node))
     if (positionedNodes.length === 0) return
 
     const bounds = this.getBounds(positionedNodes)
@@ -114,7 +114,7 @@ export class GraphHighlighter {
     const height = renderer.height ?? renderer.containerEl?.clientHeight ?? 0
     if (width <= GRAPH_FOCUS_PADDING_PX * 2 || height <= GRAPH_FOCUS_PADDING_PX * 2) return
 
-    const pixelRatio = renderer.containerEl?.ownerDocument.defaultView?.devicePixelRatio ?? activeWindow.devicePixelRatio ?? 1
+    const pixelRatio = renderer.containerEl?.ownerDocument.defaultView?.devicePixelRatio ?? window.devicePixelRatio ?? 1
     const viewportWidth = width * pixelRatio
     const viewportHeight = height * pixelRatio
     const padding = GRAPH_FOCUS_PADDING_PX * pixelRatio

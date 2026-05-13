@@ -135,7 +135,7 @@ export class DigestSettingsTab extends PluginSettingTab {
 
     // Header with info tooltip
     new Setting(containerEl)
-      .setName('Enzyme')
+      .setName('Semantic index')
       .setDesc('Local semantic index for vault search.')
       .setHeading()
       .addExtraButton(btn => {

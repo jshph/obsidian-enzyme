@@ -10,7 +10,14 @@
  */
 
 import { App, TFile } from 'obsidian'
+import fs from 'fs'
+import os from 'os'
+import path from 'path'
+import { execFile as nodeExecFile } from 'child_process'
+import { promisify } from 'util'
 import type { Tool, ToolResult } from '@jshph/digest'
+
+const execFileAsync = promisify(nodeExecFile)
 
 export function createObsidianVaultSearchTool(vaultPath: string): Tool {
   return {
@@ -103,9 +110,6 @@ export function createObsidianReadFileTool(app: App): Tool {
 }
 
 function getEnzymeCommand(): string {
-  const fs = require('fs')
-  const path = require('path')
-  const os = require('os')
   const home = os.homedir()
   const candidates = [
     path.join(home, '.cargo', 'bin', 'enzyme'),
@@ -131,9 +135,6 @@ async function execFile(
   args: string[],
   timeout: number,
 ): Promise<{ stdout: string; stderr: string }> {
-  const { execFile } = require('child_process')
-  const { promisify } = require('util')
-  const execFileAsync = promisify(execFile)
   return execFileAsync(cmd, args, { timeout })
 }
 

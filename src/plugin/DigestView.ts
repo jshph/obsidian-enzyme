@@ -98,7 +98,7 @@ export class DigestView extends ItemView {
     this.agent?.abort()
     this.voiceSession?.stop()
     this.graphHighlighter?.clear()
-    if (this.renderTimer) activeWindow.clearTimeout(this.renderTimer)
+    if (this.renderTimer) window.clearTimeout(this.renderTimer)
     this.mentionSuggest?.close()
     this.selectionTracker?.destroy()
   }
@@ -139,8 +139,9 @@ export class DigestView extends ItemView {
     // Handle internal link clicks — MarkdownRenderer creates the elements
     // but custom ItemViews don't wire up click navigation automatically.
     this.messagesEl.addEventListener('click', (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      const link = target.closest('a.internal-link') as HTMLAnchorElement | null
+      const target = e.target
+      if (!(target instanceof HTMLElement)) return
+      const link = target.closest('a.internal-link')
       if (link) {
         e.preventDefault()
         const href = link.getAttr('data-href')
@@ -721,7 +722,7 @@ export class DigestView extends ItemView {
     const msg = this.messagesEl.createDiv({ cls: 'digest-message digest-assistant' })
     const bubble = msg.createDiv({ cls: 'digest-message-content' })
     const sourcePath = this.app.workspace.getActiveFile()?.path ?? ''
-    void MarkdownRenderer.render(this.app, text, bubble, sourcePath, this.plugin)
+    void MarkdownRenderer.render(this.app, text, bubble, sourcePath, this)
     this.scrollToBottom()
   }
 
@@ -743,7 +744,7 @@ export class DigestView extends ItemView {
    */
   private scheduleRender(): void {
     if (this.renderTimer) return
-    this.renderTimer = activeWindow.setTimeout(() => {
+    this.renderTimer = window.setTimeout(() => {
       this.renderTimer = null
       this.renderCurrentMarkdown()
     }, 100)
@@ -756,14 +757,14 @@ export class DigestView extends ItemView {
     const sourcePath = this.app.workspace.getActiveFile()?.path ?? ''
 
     el.empty()
-    void MarkdownRenderer.render(this.app, text, el, sourcePath, this.plugin)
+    void MarkdownRenderer.render(this.app, text, el, sourcePath, this)
     this.scrollToBottom()
   }
 
   private finalizeStreaming(): void {
     // Clear any pending debounced render
     if (this.renderTimer) {
-      activeWindow.clearTimeout(this.renderTimer)
+      window.clearTimeout(this.renderTimer)
       this.renderTimer = null
     }
 
@@ -781,11 +782,12 @@ export class DigestView extends ItemView {
   }
 
   private showMessageContextMenu(e: MouseEvent): void {
-    const target = e.target as HTMLElement
-    const block = target.closest('.digest-message-content, .digest-tool-body') as HTMLElement | null
+    const target = e.target
+    if (!(target instanceof HTMLElement)) return
+    const block = target.closest('.digest-message-content, .digest-tool-body')
     if (!block) return
 
-    const text = (block.innerText || block.textContent || '').trim()
+    const text = (block.textContent || '').trim()
     if (!text) return
 
     e.preventDefault()
@@ -805,12 +807,7 @@ export class DigestView extends ItemView {
     try {
       await navigator.clipboard.writeText(text)
     } catch (err) {
-      try {
-        const { clipboard } = require('electron')
-        clipboard.writeText(text)
-      } catch {
-        console.error('Failed to copy Enzyme block text:', err)
-      }
+      console.error('Failed to copy Enzyme block text:', err)
     }
   }
 
@@ -843,12 +840,12 @@ export class DigestView extends ItemView {
   }
 
   private updateToolCallSection(id: string, name: string, result: ToolResult): void {
-    const section = this.messagesEl.querySelector(
+    const section = this.messagesEl.querySelector<HTMLElement>(
       `[data-tool-id="${id}"]`
-    ) as HTMLElement | null
+    )
     if (!section) return
 
-    const statusIcon = section.querySelector('.digest-tool-status') as HTMLElement | null
+    const statusIcon = section.querySelector<HTMLElement>('.digest-tool-status')
     if (statusIcon) {
       statusIcon.empty()
       statusIcon.removeClass('digest-spinning')
@@ -862,7 +859,7 @@ export class DigestView extends ItemView {
     }
 
     // Add token count to header
-    const header = section.querySelector('.digest-tool-header') as HTMLElement | null
+    const header = section.querySelector<HTMLElement>('.digest-tool-header')
     if (header && !result.isError) {
       const tokens = Math.ceil(result.content.length / 3.5)
       header.createSpan({ cls: 'digest-tool-tokens', text: `${tokens} tok` })
@@ -925,7 +922,7 @@ export class DigestView extends ItemView {
     const sourcePath = this.app.workspace.getActiveFile()?.path ?? ''
     const sourceList = sources.map(source => `- ${source}`).join('\n')
 
-    void MarkdownRenderer.render(this.app, `Sources\n${sourceList}`, bubble, sourcePath, this.plugin)
+    void MarkdownRenderer.render(this.app, `Sources\n${sourceList}`, bubble, sourcePath, this)
     this.scrollToBottom()
     return sources.length
   }
@@ -1088,7 +1085,7 @@ export class DigestView extends ItemView {
   // ── Utilities ───────────────────────────────────────────────────
 
   private scrollToBottom(): void {
-    activeWindow.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
       this.messagesEl.scrollTop = this.messagesEl.scrollHeight
     })
   }

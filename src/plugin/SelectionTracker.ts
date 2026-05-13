@@ -1,12 +1,11 @@
 /**
- * SelectionTracker — polls the active editor for selected text.
+ * SelectionTracker — watches the active editor for selected text.
  *
- * Runs a 250ms interval checking the active MarkdownView for selection.
- * When text is selected, stores it with the source file path. The chat
- * view can read this to inject selection context into prompts.
+ * When text is selected, stores it with the source file path. The chat view
+ * can read this to inject selection context into prompts.
  */
 
-import { App, MarkdownView } from 'obsidian'
+import { App, MarkdownView, EventRef } from 'obsidian'
 
 export interface StoredSelection {
   text: string
@@ -18,14 +17,20 @@ type SelectionChangeCallback = (selection: StoredSelection | null) => void
 
 export class SelectionTracker {
   private app: App
-  private interval: number
   private current: StoredSelection | null = null
   private dismissed = false
   private listeners: SelectionChangeCallback[] = []
+  private eventRefs: EventRef[] = []
+  private readonly poll = (): void => this.readSelection()
 
   constructor(app: App) {
     this.app = app
-    this.interval = activeWindow.setInterval(() => this.poll(), 250)
+    this.eventRefs.push(this.app.workspace.on('active-leaf-change', this.poll))
+    this.eventRefs.push(this.app.workspace.on('file-open', this.poll))
+    window.addEventListener('selectionchange', this.poll)
+    window.addEventListener('keyup', this.poll)
+    window.addEventListener('mouseup', this.poll)
+    this.poll()
   }
 
   getSelection(): StoredSelection | null {
@@ -45,11 +50,15 @@ export class SelectionTracker {
   }
 
   destroy(): void {
-    activeWindow.clearInterval(this.interval)
+    for (const ref of this.eventRefs) this.app.workspace.offref(ref)
+    this.eventRefs = []
+    window.removeEventListener('selectionchange', this.poll)
+    window.removeEventListener('keyup', this.poll)
+    window.removeEventListener('mouseup', this.poll)
     this.listeners = []
   }
 
-  private poll(): void {
+  private readSelection(): void {
     const view = this.app.workspace.getActiveViewOfType(MarkdownView)
     if (!view || !view.file) {
       this.update(null)
